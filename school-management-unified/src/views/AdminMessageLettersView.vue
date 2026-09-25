@@ -32,8 +32,10 @@
 
         <div class="p-6">
           <div v-if="pageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <FikrLoader />
-            <span class="text-sm">{{ $t('common.loading') }}</span>
+            <template v-if="!routePageLoading">
+              <FikrLoader />
+              <span class="text-sm">{{ $t('common.loading') }}</span>
+            </template>
           </div>
 
           <template v-else-if="letters.length">
@@ -89,40 +91,42 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('messageLetters.colTitle') }}</th>
-                    <th class="px-4 py-3 text-start whitespace-nowrap">{{ $t('messageLetters.colType') }}</th>
-                    <th class="px-4 py-3 text-start whitespace-nowrap">{{ $t('messageLetters.colSource') }}</th>
-                    <th class="px-4 py-3 text-start whitespace-nowrap">{{ $t('messageLetters.colRecipients') }}</th>
-                    <th class="px-4 py-3 text-start whitespace-nowrap">{{ $t('messageLetters.colUpdated') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('messageLetters.colTitle') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('messageLetters.colType') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('messageLetters.colSource') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('messageLetters.colRecipients') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('messageLetters.colUpdated') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="row in paginatedLetters" :key="'list-' + row.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ row.title }}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">
+                <tbody>
+                  <tr v-for="row in paginatedLetters" :key="'list-' + row.id">
+                    <td>
+                      <div class="font-medium">{{ row.title }}</div>
+                    </td>
+                    <td class="whitespace-nowrap">
                       <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                        class="fk-pill"
                         :class="letterTypeBadgeClass(row)"
                       >
                         {{ letterTypeLabel(row) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap">
+                    <td class="whitespace-nowrap">
                       <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                        :class="row.source === 'activity' ? 'bg-violet-100 text-violet-800' : 'bg-gray-100 text-gray-600'"
+                        class="fk-pill"
+                        :class="row.source === 'activity' ? 'fk-pill--outline' : 'fk-pill--mist'"
                       >
                         {{ row.source === 'activity' ? $t('messageLetters.sourceActivity') : $t('messageLetters.sourceCustom') }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 tabular-nums text-gray-700">{{ row.recipient_count }}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ formatDate(row.updated_at) }}</td>
-                    <td class="px-4 py-3">
+                    <td class="tabular-nums">{{ row.recipient_count }}</td>
+                    <td class="whitespace-nowrap">{{ formatDate(row.updated_at) }}</td>
+                    <td>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === row.id"
@@ -770,6 +774,7 @@ import DOMPurify from 'dompurify'
 import { applyNotificationTemplateVariablesHtml } from '@/utils/notification-template-variables'
 import { wrapMessageLetterPrintSrcdoc } from '@/utils/message-letter-print'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t, te } = useI18n()
 const feedback = useFeedback()
@@ -1363,7 +1368,7 @@ function letterTypeLabel(row: SchoolMessageLetterRow): string {
 }
 
 function letterTypeBadgeClass(row: SchoolMessageLetterRow): string {
-  return row.requires_approval ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-700'
+  return row.requires_approval ? 'fk-pill--outline' : 'fk-pill--mist'
 }
 
 function formatDate(iso: string) {

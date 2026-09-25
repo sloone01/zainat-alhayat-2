@@ -78,7 +78,7 @@
         <div v-if="!selectedGroup" class="flex flex-col items-center justify-center px-6 py-16 text-center">
           <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.selectGroupFirst') }}</h3>
         </div>
-        <div v-else-if="loading" class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-fikr-ink-muted">
+        <div v-else-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-fikr-ink-muted">
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
@@ -206,7 +206,7 @@
         <div v-if="!selectedGroup" class="flex flex-col items-center justify-center px-6 py-16 text-center">
           <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.selectGroupFirst') }}</h3>
         </div>
-        <div v-else-if="loading" class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-fikr-ink-muted">
+        <div v-else-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-fikr-ink-muted">
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
@@ -351,7 +351,7 @@
         <div v-if="!selectedGroup" class="mt-10 flex flex-col items-center justify-center py-16 text-center">
           <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.selectGroupFirst') }}</h3>
         </div>
-        <div v-else-if="loading" class="mt-10 flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
+        <div v-else-if="loading && !routePageLoading" class="mt-10 flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
@@ -418,11 +418,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
@@ -437,13 +435,17 @@ import { scheduleService } from '@/services/schedule.service'
 import { settingsService } from '@/services/settings.service'
 import { authService } from '@/services'
 import { useFeedback } from '@/composables/useFeedback'
+import { useSchoolBrand } from '@/composables/useSchoolBrand'
+import { downloadAttendanceReport } from '@/utils/attendance-report'
 import { normalizeScheduleDayKey } from '@/utils/schedule-display'
 import * as XLSX from 'xlsx'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { t, locale } = useI18n()
 const route = useRoute()
 const feedback = useFeedback()
+const { schoolName } = useSchoolBrand()
 
 /** Legacy shell: same attendance UI, collapsible desktop sidebar (see `/attendance/collapsible-layout`). */
 const sidebarDesktopMode = computed<'pinned' | 'collapsible'>(() =>
@@ -470,14 +472,6 @@ watch(desktopView, (value) => {
     /* ignore */
   }
 })
-
-function escapeHtml(text: string): string {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
 
 function sanitizeFilenameSegment(name: string): string {
   return String(name || 'group')
@@ -1085,65 +1079,36 @@ function applyRtlToExcel(wb: XLSX.WorkBook, ws: XLSX.WorkSheet, rtl: boolean) {
   wb.Workbook = { ...(wb.Workbook || {}), Views: [{ RTL: true }] }
 }
 
-function buildAttendancePdfInnerHtml(supervisor: string): string {
-  const stats = attendanceStats.value
-  const rtl = isRtl.value
-  const ta = rtl ? 'right' : 'left'
-  const tableRows = filteredStudents.value
-    .map((student) => {
-      const statusLabel = attendanceStatusLabel(student.id)
-      const notes = attendanceNotes.value[student.id] || ''
-      return `<tr>
-        <td>${escapeHtml(student.name)}</td>
-        <td>${escapeHtml(arrivalLabel(student))}</td>
-        <td>${escapeHtml(statusLabel)}</td>
-        <td>${escapeHtml(notes)}</td>
-      </tr>`
-    })
-    .join('')
+function supervisorName(): string {
+  return `${currentUser.value?.firstName || ''} ${currentUser.value?.lastName || ''}`.trim() || '—'
+}
 
-  return `
-    <style>
-      * { box-sizing: border-box; }
-      .wrap { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #111827; }
-      h1 { font-size: 18px; margin: 0 0 12px; font-weight: 700; text-align: ${ta}; }
-      .meta { font-size: 13px; color: #374151; margin-bottom: 16px; line-height: 1.55; text-align: ${ta}; }
-      .meta strong { color: #111827; }
-      .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
-      .card { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; text-align: center; background: #f9fafb; }
-      .card .n { font-size: 18px; font-weight: 700; color: #0f766e; }
-      .card .l { font-size: 10px; color: #6b7280; margin-top: 4px; }
-      table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: ${ta}; }
-      th { background: #f3f4f6; font-weight: 600; font-size: 11px; text-transform: uppercase; color: #4b5563; }
-      tr:nth-child(even) td { background: #fafafa; }
-    </style>
-    <div class="wrap">
-      <h1>${escapeHtml(t('attendanceManagement.title'))}</h1>
-      <div class="meta">
-        <div><strong>${escapeHtml(t('common.group'))}</strong>: ${escapeHtml(selectedGroup.value!.name)}</div>
-        <div><strong>${escapeHtml(t('attendanceManagement.attendanceDate'))}</strong>: ${escapeHtml(formatDate(selectedDate.value))}</div>
-        <div><strong>${escapeHtml(t('attendanceManagement.supervisor'))}</strong>: ${escapeHtml(supervisor)}</div>
-      </div>
-      <div class="grid">
-        <div class="card"><div class="n">${stats.totalStudents}</div><div class="l">${escapeHtml(t('attendanceManagement.totalStudents'))}</div></div>
-        <div class="card"><div class="n">${stats.presentStudents}</div><div class="l">${escapeHtml(t('attendanceManagement.presentStudents'))}</div></div>
-        <div class="card"><div class="n">${stats.absentStudents}</div><div class="l">${escapeHtml(t('attendanceManagement.absentStudents'))}</div></div>
-        <div class="card"><div class="n">${stats.attendanceRate}%</div><div class="l">${escapeHtml(t('attendanceManagement.attendanceRate'))}</div></div>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>${escapeHtml(t('attendanceManagement.childColumn'))}</th>
-            <th>${escapeHtml(t('attendanceManagement.arrival'))}</th>
-            <th>${escapeHtml(t('attendanceManagement.statusColumn'))}</th>
-            <th>${escapeHtml(t('attendanceManagement.notes'))}</th>
-          </tr>
-        </thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-    </div>
-  `
+function attendanceReportModel() {
+  const stats = attendanceStats.value
+  return {
+    title: t('attendanceManagement.title'),
+    schoolName: schoolName.value,
+    rtl: isRtl.value,
+    meta: [
+      { label: t('common.group'), value: selectedGroup.value!.name },
+      { label: t('attendanceManagement.attendanceDate'), value: formatDate(selectedDate.value) },
+      { label: t('attendanceManagement.periodLabel'), value: currentSessionCaption.value },
+      { label: t('attendanceManagement.supervisor'), value: supervisorName() },
+    ],
+    summary: [
+      { label: t('attendanceManagement.totalStudents'), value: String(stats.totalStudents) },
+      { label: t('attendanceManagement.presentStudents'), value: String(stats.presentStudents) },
+      { label: t('attendanceManagement.status.late'), value: String(stats.lateStudents) },
+      { label: t('attendanceManagement.absentStudents'), value: String(stats.absentStudents) },
+      { label: t('attendanceManagement.attendanceRate'), value: `${stats.attendanceRate}%` },
+    ],
+    columns: buildExportHeaders(),
+    rows: buildStudentExportRows().map((row) => row.map((cell) => String(cell ?? ''))),
+  }
+}
+
+function attendanceExportFilename(): string {
+  return `attendance_${sanitizeFilenameSegment(selectedGroup.value!.name)}_${selectedDate.value}`
 }
 
 const updateAttendance = (studentId: string, status: string) => {
@@ -1211,86 +1176,35 @@ const exportAttendance = () => {
   XLSX.writeFile(wb, fname)
 }
 
-const exportAttendanceWord = () => {
+function canExportAttendance(): boolean {
   if (!selectedGroup.value) {
     alert(t('attendanceManagement.messages.selectGroupFirst'))
-    return
+    return false
   }
   if (filteredStudents.value.length === 0) {
     alert(t('attendanceManagement.messages.noStudentsInGroup'))
-    return
+    return false
   }
+  return true
+}
 
-  const supervisor =
-    `${currentUser.value?.firstName || ''} ${currentUser.value?.lastName || ''}`.trim() || '—'
-  const inner = buildAttendancePdfInnerHtml(supervisor)
-  const html = `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="${locale.value}" dir="${isRtl.value ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><title>${escapeHtml(t('attendanceManagement.title'))}</title></head><body>${inner}</body></html>`
-  const blob = new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `attendance_${sanitizeFilenameSegment(selectedGroup.value.name)}_${selectedDate.value}.doc`
-  a.click()
-  URL.revokeObjectURL(url)
+const exportAttendanceWord = async () => {
+  if (!canExportAttendance()) return
+  try {
+    await downloadAttendanceReport(attendanceReportModel(), 'word', attendanceExportFilename())
+  } catch (e) {
+    console.error('Word export failed:', e)
+    alert(t('attendanceManagement.messages.pdfExportFailed'))
+  }
 }
 
 const printAttendance = async () => {
-  if (!selectedGroup.value) {
-    alert(t('attendanceManagement.messages.selectGroupFirst'))
-    return
-  }
-  if (filteredStudents.value.length === 0) {
-    alert(t('attendanceManagement.messages.noStudentsInGroup'))
-    return
-  }
-
-  const supervisor =
-    `${currentUser.value?.firstName || ''} ${currentUser.value?.lastName || ''}`.trim() || '—'
-
-  const host = document.createElement('div')
-  host.setAttribute('dir', isRtl.value ? 'rtl' : 'ltr')
-  host.style.cssText =
-    'position:fixed;left:-12000px;top:0;width:794px;padding:20px;background:#ffffff;z-index:-1;'
-  host.innerHTML = buildAttendancePdfInnerHtml(supervisor)
-  document.body.appendChild(host)
-
-  await nextTick()
-  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-
+  if (!canExportAttendance()) return
   try {
-    const canvas = await html2canvas(host, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-    })
-
-    const imgData = canvas.toDataURL('image/png')
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-    const pageW = pdf.internal.pageSize.getWidth()
-    const pageH = pdf.internal.pageSize.getHeight()
-    const imgW = pageW
-    const imgH = (canvas.height * imgW) / canvas.width
-
-    let heightLeft = imgH
-    let y = 0
-    pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
-    heightLeft -= pageH
-
-    while (heightLeft > 0) {
-      y -= pageH
-      pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
-      heightLeft -= pageH
-    }
-
-    const fname = `attendance_${sanitizeFilenameSegment(selectedGroup.value.name)}_${selectedDate.value}.pdf`
-    pdf.save(fname)
+    await downloadAttendanceReport(attendanceReportModel(), 'pdf', attendanceExportFilename())
   } catch (e) {
     console.error('PDF export failed:', e)
     alert(t('attendanceManagement.messages.pdfExportFailed'))
-  } finally {
-    host.remove()
   }
 }
 

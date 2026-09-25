@@ -66,6 +66,7 @@
           v-else-if="currentStep === 4"
           v-model="formData.guardian"
           compact
+          :student-civil-id="formData.student.idNumber"
           @next="handleNext"
           @back="handleBack"
         />
@@ -80,6 +81,8 @@
           v-else-if="currentStep === 6"
           v-model="formData.documents"
           compact
+          variant="public"
+          :school-id="schoolId"
           @next="handleNext"
           @back="handleBack"
         />

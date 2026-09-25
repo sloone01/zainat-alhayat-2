@@ -122,11 +122,15 @@
             required
             dir="ltr"
             class="fk-field"
-            :class="isRTL ? 'text-end' : ''"
+            :class="[
+              isRTL ? 'text-end' : '',
+              draftCivilConflict ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20' : '',
+            ]"
             :placeholder="$t('students.civilId')"
             @input="scheduleCivilLookup"
           >
-          <p v-if="civilLoading" class="mt-1 text-xs text-gray-500">{{ $t('common.loading') }}</p>
+          <p v-if="draftCivilConflict" class="mt-1 text-xs font-medium text-red-600" role="alert">{{ draftCivilConflict }}</p>
+          <p v-else-if="civilLoading" class="mt-1 text-xs text-gray-500">{{ $t('common.loading') }}</p>
           <p v-else-if="civilNote" class="mt-1 text-xs text-primary-700">{{ civilNote }}</p>
         </div>
         <div>
@@ -218,6 +222,8 @@ const props = withDefaults(
     compact?: boolean
     /** Editing an existing record: a parent that was empty when loaded stays optional. */
     editMode?: boolean
+    /** Student civil ID — parents must not reuse it. */
+    studentCivilId?: string
     modelValue: {
       type: string
       fatherInfo: ParentInfo
@@ -238,7 +244,7 @@ const props = withDefaults(
       }
     }
   }>(),
-  { compact: false, editMode: false },
+  { compact: false, editMode: false, studentCivilId: '' },
 )
 
 const emit = defineEmits<{
@@ -254,6 +260,13 @@ const localData = ref({ ...props.modelValue })
 
 watch(localData, (v) => emit('update:modelValue', { ...v }), { deep: true })
 
+/** Match backend normalizeCivilId — one person, one civil ID. */
+function normalizeCivil(value?: string | null): string {
+  return (value ?? '').replace(/\s+/g, '').trim()
+}
+
+const studentCivil = computed(() => normalizeCivil(props.studentCivilId))
+
 const info = (role: 'father' | 'mother') => (role === 'father' ? localData.value.fatherInfo : localData.value.motherInfo)
 const parentName = (role: 'father' | 'mother') => {
   const p = info(role)
@@ -264,15 +277,41 @@ const parentFilled = (role: 'father' | 'mother') => {
   return !!(p.first_name_ar?.trim() || p.first_name_en?.trim())
 }
 
-const parentComplete = (p: ParentInfo) => !!(
-  p.civil_id?.trim() &&
-  p.first_name_ar?.trim() &&
-  p.first_name_en?.trim() &&
-  p.last_name_ar?.trim() &&
-  p.last_name_en?.trim() &&
-  p.mobile && isValidPhone(p.mobile) &&
-  p.email && !emailError(p.email)
-)
+function civilConflictMessage(civil: string, otherParentCivil?: string): string {
+  const c = normalizeCivil(civil)
+  if (!c) return ''
+  if (studentCivil.value && c === studentCivil.value) {
+    return t('enrollment.civilIdMatchesStudent')
+  }
+  const other = normalizeCivil(otherParentCivil)
+  if (other && c === other) {
+    return t('enrollment.civilIdMatchesOtherParent')
+  }
+  return ''
+}
+
+const parentsCivilConflict = computed(() => {
+  const father = normalizeCivil(localData.value.fatherInfo.civil_id)
+  const mother = normalizeCivil(localData.value.motherInfo.civil_id)
+  if (father && civilConflictMessage(father, mother)) return true
+  if (mother && civilConflictMessage(mother, father)) return true
+  return false
+})
+
+const parentComplete = (p: ParentInfo, role: 'father' | 'mother') => {
+  const otherCivil =
+    role === 'father' ? localData.value.motherInfo.civil_id : localData.value.fatherInfo.civil_id
+  return !!(
+    p.civil_id?.trim() &&
+    !civilConflictMessage(p.civil_id, otherCivil) &&
+    p.first_name_ar?.trim() &&
+    p.first_name_en?.trim() &&
+    p.last_name_ar?.trim() &&
+    p.last_name_en?.trim() &&
+    p.mobile && isValidPhone(p.mobile) &&
+    p.email && !emailError(p.email)
+  )
+}
 
 /**
  * Edit mode grandfathers the loaded record: a field left exactly as it was loaded
@@ -293,12 +332,16 @@ const initialParent = {
 }
 const parentCompleteEdit = (p: ParentInfo, role: 'father' | 'mother') => {
   const init = initialParent[role]
+  const otherCivil =
+    role === 'father' ? localData.value.motherInfo.civil_id : localData.value.fatherInfo.civil_id
   const fieldOk = (field: ParentField, validator?: (v: string) => boolean) => {
     const v = (p[field] || '').trim()
     if (v === init[field]) return true // unchanged from the saved record (even empty)
     if (!v) return false // cleared a value that used to exist
     return validator ? validator(v) : true
   }
+  // Always block reused civil IDs (student / other parent), even on legacy rows.
+  if (normalizeCivil(p.civil_id) && civilConflictMessage(p.civil_id, otherCivil)) return false
   return (
     fieldOk('civil_id') &&
     fieldOk('first_name_ar') &&
@@ -311,11 +354,12 @@ const parentCompleteEdit = (p: ParentInfo, role: 'father' | 'mother') => {
 }
 const parentOk = (role: 'father' | 'mother') => {
   const p = role === 'father' ? localData.value.fatherInfo : localData.value.motherInfo
-  return props.editMode ? parentCompleteEdit(p, role) : parentComplete(p)
+  return props.editMode ? parentCompleteEdit(p, role) : parentComplete(p, role)
 }
 
 const isValid = computed(() => {
   if (localData.value.type !== 'father' && localData.value.type !== 'mother') return false
+  if (parentsCivilConflict.value) return false
   if (!parentOk('father') || !parentOk('mother')) return false
   if (props.editMode) return true
   return !!(
@@ -373,8 +417,19 @@ function validateDraftMobile() {
   draftMobileError.value = err ? t(err) : ''
 }
 
+const draftOtherParentCivil = computed(() => {
+  if (editing.value === 'father') return localData.value.motherInfo.civil_id
+  if (editing.value === 'mother') return localData.value.fatherInfo.civil_id
+  return ''
+})
+
+const draftCivilConflict = computed(() =>
+  civilConflictMessage(draft.civil_id, draftOtherParentCivil.value),
+)
+
 const draftValid = computed(() => !!(
   draft.civil_id.trim() &&
+  !draftCivilConflict.value &&
   draft.first_name_ar.trim() && draft.first_name_en.trim() &&
   draft.last_name_ar.trim() && draft.last_name_en.trim() &&
   draft.mobile.trim() && isValidPhone(draft.mobile) &&
@@ -412,6 +467,10 @@ function scheduleCivilLookup() {
 async function runCivilLookup() {
   const civil = draft.civil_id.trim()
   if (civil.length < 4) return
+  if (civilConflictMessage(civil, draftOtherParentCivil.value)) {
+    civilNote.value = ''
+    return
+  }
   civilLoading.value = true
   try {
     const res = await userService.lookupParent({ civil_id: civil })

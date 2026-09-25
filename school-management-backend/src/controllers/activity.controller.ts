@@ -146,7 +146,7 @@ export class ActivityController {
     await this.activityService.remove(id);
     return {
       success: true,
-      message: 'Activity deleted successfully',
+      message: 'Activity withdrawn',
     };
   }
 }

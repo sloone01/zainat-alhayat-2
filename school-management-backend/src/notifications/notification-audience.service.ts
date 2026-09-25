@@ -61,6 +61,38 @@ export class NotificationAudienceService {
     };
   }
 
+  async studentsOfGroup(groupId: string): Promise<NotifyRecipient[]> {
+    const students = await this.studentRepo
+      .createQueryBuilder('s')
+      .innerJoin('s.groups', 'g', 'g.id = :groupId', { groupId })
+      .leftJoinAndSelect('s.user', 'u')
+      .getMany();
+    return this.recipientsFromUsers(students.map((s) => s.user));
+  }
+
+  /** Parents and student accounts for every student in the school. */
+  async peopleOfSchool(schoolId: string): Promise<NotifyRecipient[]> {
+    const students = await this.studentRepo.find({
+      where: { school_id: schoolId },
+      relations: ['user', 'parents', 'parents.user'],
+    });
+    const recipients: NotifyRecipient[] = [];
+    const seen = new Set<string>();
+    const push = (list: NotifyRecipient[]) => {
+      for (const recipient of list) {
+        const key = `${recipient.userId ?? ''}|${recipient.email ?? ''}|${recipient.phone ?? ''}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        recipients.push(recipient);
+      }
+    };
+    for (const student of students) {
+      push(this.recipientsFromUsers([student.user]));
+      push(this.recipientsFromParents(student.parents ?? []));
+    }
+    return recipients;
+  }
+
   async parentsOfGroup(groupId: string): Promise<{
     schoolId: string | null;
     recipients: NotifyRecipient[];

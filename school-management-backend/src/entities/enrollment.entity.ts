@@ -9,6 +9,30 @@ export class Enrollment {
   @Column({ length: 200 })
   fullName: string;
 
+  @Column({ name: 'first_name_ar', type: 'varchar', length: 100, nullable: true })
+  first_name_ar?: string | null;
+
+  @Column({ name: 'first_name_en', type: 'varchar', length: 100, nullable: true })
+  first_name_en?: string | null;
+
+  @Column({ name: 'last_name_ar', type: 'varchar', length: 100, nullable: true })
+  last_name_ar?: string | null;
+
+  @Column({ name: 'last_name_en', type: 'varchar', length: 100, nullable: true })
+  last_name_en?: string | null;
+
+  @Column({ name: 'second_name', type: 'varchar', length: 100, nullable: true })
+  secondName?: string | null;
+
+  @Column({ name: 'third_name', type: 'varchar', length: 100, nullable: true })
+  thirdName?: string | null;
+
+  @Column({ name: 'second_name_en', type: 'varchar', length: 100, nullable: true })
+  secondNameEn?: string | null;
+
+  @Column({ name: 'third_name_en', type: 'varchar', length: 100, nullable: true })
+  thirdNameEn?: string | null;
+
   @Column({ length: 100, nullable: true })
   tribe?: string;
 
@@ -108,6 +132,21 @@ export class Enrollment {
   @Column({ length: 200, nullable: true })
   fatherFullName?: string;
 
+  @Column({ name: 'father_first_name_ar', type: 'varchar', length: 100, nullable: true })
+  father_first_name_ar?: string | null;
+
+  @Column({ name: 'father_first_name_en', type: 'varchar', length: 100, nullable: true })
+  father_first_name_en?: string | null;
+
+  @Column({ name: 'father_last_name_ar', type: 'varchar', length: 100, nullable: true })
+  father_last_name_ar?: string | null;
+
+  @Column({ name: 'father_last_name_en', type: 'varchar', length: 100, nullable: true })
+  father_last_name_en?: string | null;
+
+  @Column({ name: 'father_civil_id', type: 'varchar', length: 40, nullable: true })
+  father_civil_id?: string | null;
+
   @Column({ length: 100, nullable: true })
   fatherTribe?: string;
 
@@ -129,6 +168,21 @@ export class Enrollment {
   // Mother Information
   @Column({ length: 200, nullable: true })
   motherFullName?: string;
+
+  @Column({ name: 'mother_first_name_ar', type: 'varchar', length: 100, nullable: true })
+  mother_first_name_ar?: string | null;
+
+  @Column({ name: 'mother_first_name_en', type: 'varchar', length: 100, nullable: true })
+  mother_first_name_en?: string | null;
+
+  @Column({ name: 'mother_last_name_ar', type: 'varchar', length: 100, nullable: true })
+  mother_last_name_ar?: string | null;
+
+  @Column({ name: 'mother_last_name_en', type: 'varchar', length: 100, nullable: true })
+  mother_last_name_en?: string | null;
+
+  @Column({ name: 'mother_civil_id', type: 'varchar', length: 40, nullable: true })
+  mother_civil_id?: string | null;
 
   @Column({ length: 100, nullable: true })
   motherTribe?: string;

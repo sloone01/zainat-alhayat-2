@@ -1210,6 +1210,16 @@ import {
   applyExportLayout,
   type StudentExportColumnKey,
 } from '@/utils/student-export-columns'
+import {
+  alignReportTableColumns,
+  isReportPageHtml,
+  reportLayoutUsesRowSlot,
+  fillReportDate,
+  applyWordPageOrientation,
+  reportPageFragment,
+  reportPageOrientation,
+  reportPagePixelSize,
+} from '@/utils/report-export-layout'
 import { groupService, type Group } from '@/services/group.service'
 import { busService, type Bus } from '@/services/bus.service'
 import { parentService, type Parent } from '@/services/parent.service'
@@ -1634,10 +1644,11 @@ const buildExportTableHtml = (exportRows: Student[], columns: StudentExportColum
       h2 { font-size: 14px; margin: 0 0 12px; font-weight: 500; color: #4b5563; text-align: ${ta}; }
       .meta { font-size: 12px; color: #374151; margin-bottom: 12px; line-height: 1.55; text-align: ${ta}; }
       .meta strong { color: #111827; }
-      table { width: 100%; border-collapse: collapse; font-size: 12px; }
-      th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: ${ta}; }
-      th { background: #f3f4f6; font-weight: 600; font-size: 11px; color: #4b5563; }
-      tr:nth-child(even) td { background: #fafafa; }
+      table { width: 100%; border-collapse: collapse; border-top: 4px solid #F15A24; font-size: 12px; }
+      th, td { border: 0; padding: 9px 12px; text-align: ${ta}; vertical-align: middle; }
+      th { background: #1a1a1a; font-weight: 600; font-size: 12px; color: #ffffff; }
+      tbody tr:nth-child(odd) td { background: #ffffff; }
+      tbody tr:nth-child(even) td { background: #f3f4f6; }
     </style>
     <div class="wrap">
       <h1>${escapeHtml(t('studentManagement.title'))}</h1>
@@ -1692,7 +1703,18 @@ const runExport = async (format: 'word' | 'pdf' | 'excel') => {
     ])
     exportRows = rows
     if (config?.columns?.length) columns = config.columns as StudentExportColumnKey[]
-    layoutHtml = config?.template_html ?? null
+    const localeKey = locale.value === 'ar' ? 'ar' : 'en'
+    if (config?.template_html) {
+      layoutHtml = fillReportDate(config.template_html, localeKey)
+    } else {
+      const templates = await reportExportService.listTemplates().catch(() => [])
+      const chosen = templates.find((item) => item.is_default) || templates[0]
+      if (chosen) {
+        const row = await reportExportService.getTemplate(chosen.id).catch(() => null)
+        const raw = row ? (localeKey === 'ar' ? row.html_ar || row.html_en : row.html_en) : ''
+        if (raw.trim()) layoutHtml = fillReportDate(raw, localeKey)
+      }
+    }
   } catch (e) {
     console.error('Student export fetch failed:', e)
     window.alert(t('studentManagement.loadFailed'))
@@ -1717,11 +1739,49 @@ const runExport = async (format: 'word' | 'pdf' | 'excel') => {
     return
   }
 
-  const tableHtml = buildExportTableHtml(exportRows, columns)
-  const inner = applyExportLayout(layoutHtml, tableHtml)
+  const rowKeys = columns
+  if (layoutHtml && reportLayoutUsesRowSlot(layoutHtml)) {
+    layoutHtml = alignReportTableColumns(
+      layoutHtml,
+      rowKeys.map((key) => ({ key, label: exportColumnLabel(key) })),
+    )
+  }
+  const rowHtml = exportRows
+    .map(
+      (student) =>
+        `<tr>${rowKeys.map((key) => `<td>${escapeHtml(studentExportCell(student, key))}</td>`).join('')}</tr>`,
+    )
+    .join('')
+  const tableHtml = reportLayoutUsesRowSlot(layoutHtml) ? rowHtml : buildExportTableHtml(exportRows, columns)
+  let inner = applyExportLayout(layoutHtml, tableHtml)
+  // A template loaded straight from the editor still has {{schoolName}}. Brand it with the real rows.
+  if (layoutHtml && /\{\{\s*schoolName\s*\}\}/i.test(layoutHtml) && reportLayoutUsesRowSlot(layoutHtml)) {
+    const schoolId = authService.getStoredUser()?.school_id
+    try {
+      const branded = await reportExportService.previewTemplate({
+        locale: locale.value === 'ar' ? 'ar' : 'en',
+        html: layoutHtml,
+        sample_content: rowHtml,
+        ...(schoolId ? { school_id: String(schoolId) } : {}),
+      })
+      if (branded.html?.trim()) inner = branded.html
+    } catch {
+      /* keep the unbranded shell; the report title is still in it */
+    }
+  }
+
+  const orient =
+    reportPageOrientation(layoutHtml) === 'landscape' || reportPageOrientation(inner) === 'landscape'
+      ? 'landscape'
+      : 'portrait'
 
   if (format === 'word') {
-    const html = `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="${locale.value}"><head><meta charset="utf-8"><title>${escapeHtml(t('studentManagement.title'))}</title></head><body>${inner}</body></html>`
+    const html = applyWordPageOrientation(
+      /<html[\s>]/i.test(inner)
+        ? inner
+        : `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="${locale.value}"><head><meta charset="utf-8"><title>${escapeHtml(t('studentManagement.title'))}</title></head><body>${inner}</body></html>`,
+      orient,
+    )
     const blob = new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -1732,11 +1792,16 @@ const runExport = async (format: 'word' | 'pdf' | 'excel') => {
     return
   }
 
+  const pagePx = reportPagePixelSize(orient)
+  const reportPage = isReportPageHtml(layoutHtml) || isReportPageHtml(inner)
   const host = document.createElement('div')
   host.setAttribute('dir', isRTL.value ? 'rtl' : 'ltr')
-  host.style.cssText =
-    'position:fixed;left:-12000px;top:0;width:794px;padding:20px;background:#ffffff;z-index:-1;'
-  host.innerHTML = inner
+  host.style.cssText = reportPage
+    ? `position:fixed;left:-12000px;top:0;width:${pagePx.width}px;padding:0;background:#ffffff;z-index:-1;`
+    : 'position:fixed;left:-12000px;top:0;width:794px;padding:20px;background:#ffffff;z-index:-1;'
+  host.innerHTML = reportPage
+    ? `<style>.rpt-sheet{zoom:1!important;margin:0!important;box-shadow:none!important;width:${pagePx.width}px!important;min-height:${pagePx.height}px!important;}</style>${reportPageFragment(inner)}`
+    : inner
   document.body.appendChild(host)
   await nextTick()
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
@@ -1747,9 +1812,14 @@ const runExport = async (format: 'word' | 'pdf' | 'excel') => {
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
+      windowWidth: pagePx.width,
     })
     const imgData = canvas.toDataURL('image/png')
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pdf = new jsPDF({
+      orientation: reportPage ? orient : 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    })
     const pageW = pdf.internal.pageSize.getWidth()
     const pageH = pdf.internal.pageSize.getHeight()
     const imgW = pageW
@@ -1760,7 +1830,7 @@ const runExport = async (format: 'word' | 'pdf' | 'excel') => {
     heightLeft -= pageH
     while (heightLeft > 0) {
       y -= pageH
-      pdf.addPage()
+      pdf.addPage('a4', reportPage ? orient : 'portrait')
       pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
       heightLeft -= pageH
     }

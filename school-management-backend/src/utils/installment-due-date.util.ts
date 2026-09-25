@@ -47,3 +47,35 @@ export function computeInstallmentDueDate(
 export function formatDueDateYmd(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
+
+/** Calendar day as YYYY-MM-DD. Accepts a `date` column string, an ISO timestamp, or a Date. */
+export function dueDateYmd(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return formatDueDateYmd(asUtcDate(value));
+  }
+  const raw = String(value).trim();
+  const iso = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return formatDueDateYmd(asUtcDate(parsed));
+}
+
+export function classifyDueState(
+  dueYmd: string | null,
+  asOfYmd: string,
+): { state: 'upcoming' | 'due' | 'late' | 'unscheduled'; daysOverdue: number } {
+  if (!dueYmd || !/^\d{4}-\d{2}-\d{2}$/.test(dueYmd) || !/^\d{4}-\d{2}-\d{2}$/.test(asOfYmd)) {
+    return { state: 'unscheduled', daysOverdue: 0 };
+  }
+  if (dueYmd < asOfYmd) {
+    const days = Math.round(
+      (Date.parse(`${asOfYmd}T00:00:00Z`) - Date.parse(`${dueYmd}T00:00:00Z`)) / 86400000,
+    );
+    return { state: 'late', daysOverdue: Math.max(0, days) };
+  }
+  if (dueYmd === asOfYmd) return { state: 'due', daysOverdue: 0 };
+  return { state: 'upcoming', daysOverdue: 0 };
+}

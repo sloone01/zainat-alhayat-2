@@ -15,8 +15,13 @@ import {
   Validate,
   ValidatorConstraint,
   ValidatorConstraintInterface,
+  Matches,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+
+/** Download path from AttachmentService — never a base64 data URL. */
+const ATTACHMENT_DOWNLOAD =
+  /^\/api\/attachments\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/download$/i;
 
 /** Treat blank strings as missing so @IsOptional() skips format validators (e.g. email). */
 const emptyToUndefined = () =>
@@ -166,6 +171,9 @@ export class StudentDetailsDto {
   @IsOptional()
   @emptyToUndefined()
   @IsString()
+  @Matches(ATTACHMENT_DOWNLOAD, {
+    message: 'Student photo must be uploaded via the attachment service',
+  })
   photo?: string;
 }
 
@@ -461,14 +469,22 @@ export class EnrollmentDocumentsDto {
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
+  @Matches(ATTACHMENT_DOWNLOAD, {
+    each: true,
+    message: 'Documents must be uploaded via the attachment service',
+  })
   parentIdDocuments: string[];
 
   @IsString()
-  @MinLength(20)
+  @Matches(ATTACHMENT_DOWNLOAD, {
+    message: 'Birth certificate must be uploaded via the attachment service',
+  })
   birthCertificate: string;
 
   @IsString()
-  @MinLength(20)
+  @Matches(ATTACHMENT_DOWNLOAD, {
+    message: 'Child ID document must be uploaded via the attachment service',
+  })
   childIdDocument: string;
 }
 

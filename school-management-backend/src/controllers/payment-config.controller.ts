@@ -15,6 +15,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { RequireClaim } from '../rbac/require-claim.decorator';
 import { resolveActorSchoolId } from '../common/security/school-access';
 import { User } from '../entities/user.entity';
 import {
@@ -109,7 +110,15 @@ export class PaymentConfigController {
     return { success: true, data, message: 'Charge type updated' };
   }
 
+  @Get('charge-types/:id/packages')
+  @RequireClaim('payment_catalog_charges', 'view')
+  async packagesUsingChargeType(@Param('id') id: string, @Request() req: { user: User }) {
+    const data = await this.paymentConfigService.packagesUsingChargeType(req.user, id);
+    return { success: true, data };
+  }
+
   @Delete('charge-types/:id')
+  @RequireClaim('payment_catalog_charges', 'delete')
   async deleteChargeType(@Param('id') id: string, @Request() req: { user: User }) {
     await this.paymentConfigService.deleteChargeType(req.user, id);
     return { success: true, message: 'Charge type deleted' };
@@ -144,7 +153,15 @@ export class PaymentConfigController {
     return { success: true, data, message: 'Discount type updated' };
   }
 
+  @Get('discount-types/:id/packages')
+  @RequireClaim('payment_catalog_discounts', 'view')
+  async packagesUsingDiscountType(@Param('id') id: string, @Request() req: { user: User }) {
+    const data = await this.paymentConfigService.packagesUsingDiscountType(req.user, id);
+    return { success: true, data };
+  }
+
   @Delete('discount-types/:id')
+  @RequireClaim('payment_catalog_discounts', 'delete')
   async deleteDiscountType(@Param('id') id: string, @Request() req: { user: User }) {
     await this.paymentConfigService.deleteDiscountType(req.user, id);
     return { success: true, message: 'Discount type deleted' };
@@ -214,7 +231,15 @@ export class PaymentConfigController {
     return { success: true, data, message: 'Inclusion type updated' };
   }
 
+  @Get('inclusion-types/:id/packages')
+  @RequireClaim('payment_catalog_inclusions', 'view')
+  async packagesUsingInclusionType(@Param('id') id: string, @Request() req: { user: User }) {
+    const data = await this.paymentConfigService.packagesUsingInclusionType(req.user, id);
+    return { success: true, data };
+  }
+
   @Delete('inclusion-types/:id')
+  @RequireClaim('payment_catalog_inclusions', 'delete')
   async deleteInclusionType(@Param('id') id: string, @Request() req: { user: User }) {
     await this.paymentConfigService.deleteInclusionType(req.user, id);
     return { success: true, message: 'Inclusion type deleted' };

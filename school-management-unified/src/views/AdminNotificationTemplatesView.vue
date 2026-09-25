@@ -28,11 +28,10 @@
         </button>
       </div>
       <div v-if="flashError" class="fk-alert fk-alert--error">{{ flashError }}</div>
-      <div v-if="flashOk" class="fk-alert fk-alert--ok">{{ flashOk }}</div>
 
       <div v-if="loading" class="rounded-xl border border-gray-200 bg-white py-16 text-center shadow-sm">
-        <FikrLoader />
-        <p class="mt-4 text-sm text-gray-600">{{ $t('common.loading') }}…</p>
+        <FikrLoader v-if="!routePageLoading" />
+        <p v-if="!routePageLoading" class="mt-4 text-sm text-gray-600">{{ $t('common.loading') }}…</p>
       </div>
 
       <template v-else>
@@ -71,58 +70,56 @@
                 </option>
               </select>
             </div>
+            <div
+              v-if="current"
+              class="shrink-0"
+              :aria-label="$t('notificationTemplates.editorTabsAria')"
+            >
+              <label class="mb-1 block text-[11px] font-medium text-gray-600">{{
+                $t('notificationTemplates.contentBodyLanguageLabel')
+              }}</label>
+              <div
+                class="inline-flex rounded-lg border border-teal-100/90 bg-teal-50/50 p-0.5 shadow-sm"
+                role="tablist"
+                :aria-label="$t('notificationTemplates.contentBodyLanguageLabel')"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  class="whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold transition-all sm:text-sm"
+                  :class="
+                    langTab === 'en'
+                      ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
+                      : 'text-gray-600 hover:text-gray-900'
+                  "
+                  :aria-selected="langTab === 'en'"
+                  :title="$t('notificationTemplates.langEnHint')"
+                  @click="setLangTab('en')"
+                >
+                  {{ $t('notificationTemplates.langEn') }}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  class="whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold transition-all sm:text-sm"
+                  :class="
+                    langTab === 'ar'
+                      ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
+                      : 'text-gray-600 hover:text-gray-900'
+                  "
+                  :aria-selected="langTab === 'ar'"
+                  :title="$t('notificationTemplates.langArHint')"
+                  @click="setLangTab('ar')"
+                >
+                  {{ $t('notificationTemplates.langAr') }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
         <div v-if="current" class="mt-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
           <div class="space-y-4">
-            <div
-              class="flex flex-col items-center gap-4"
-              :aria-label="$t('notificationTemplates.editorTabsAria')"
-            >
-              <div class="w-full max-w-md text-center">
-                <p class="mb-3 text-sm font-semibold text-gray-900">
-                  {{ $t('notificationTemplates.contentBodyLanguageLabel') }}
-                </p>
-                <div
-                  class="inline-flex w-full max-w-sm justify-center rounded-xl border border-teal-100/90 bg-teal-50/50 p-1 shadow-sm sm:w-auto"
-                  role="tablist"
-                  :aria-label="$t('notificationTemplates.contentBodyLanguageLabel')"
-                >
-                  <button
-                    type="button"
-                    role="tab"
-                    class="min-w-[7.5rem] flex-1 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition-all sm:flex-none"
-                    :class="
-                      langTab === 'en'
-                        ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
-                        : 'text-gray-600 hover:text-gray-900'
-                    "
-                    :aria-selected="langTab === 'en'"
-                    :title="$t('notificationTemplates.langEnHint')"
-                    @click="setLangTab('en')"
-                  >
-                    {{ $t('notificationTemplates.langEn') }}
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    class="min-w-[7.5rem] flex-1 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition-all sm:flex-none"
-                    :class="
-                      langTab === 'ar'
-                        ? 'bg-white text-primary-700 shadow-sm ring-1 ring-primary-200'
-                        : 'text-gray-600 hover:text-gray-900'
-                    "
-                    :aria-selected="langTab === 'ar'"
-                    :title="$t('notificationTemplates.langArHint')"
-                    @click="setLangTab('ar')"
-                  >
-                    {{ $t('notificationTemplates.langAr') }}
-                  </button>
-                </div>
-              </div>
-            </div>
-
             <div :dir="editorContentDir" class="space-y-4 isolate">
             <!-- Email: subject + visual body -->
             <div v-if="showEmailEditorPane" class="space-y-3">
@@ -499,6 +496,8 @@ import { insertIntoStringAtCursor } from '@/utils/field-insert'
 import DOMPurify from 'dompurify'
 import { applyNotificationTemplateVariablesHtml } from '@/utils/notification-template-variables'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
+import { useFeedback } from '@/composables/useFeedback'
 
 /** Placeholder keys that always use live school data — never editable as sample text. */
 const LOCKED_SAMPLE_VAR_KEYS = new Set(['schoolName', 'schoolLogo', 'schoolLogoHtml'])
@@ -509,6 +508,7 @@ const PAYMENT_RECEIPT_SUBJECT_EN = 'Payment received — {{schoolName}}'
 const PAYMENT_RECEIPT_SUBJECT_AR = 'تم استلام الدفعة — {{schoolName}}'
 
 const { locale, t, te } = useI18n()
+const feedback = useFeedback()
 const route = useRoute()
 const isRTL = computed(() => locale.value === 'ar')
 const isPlatform = computed(() => route.path.startsWith('/platform/'))
@@ -553,7 +553,6 @@ const loading = ref(true)
 const saving = ref(false)
 const previewLoading = ref(false)
 const flashError = ref('')
-const flashOk = ref('')
 
 const templates = ref<MergedNotificationTemplate[]>([])
 const layouts = ref<NotificationLayout[]>([])
@@ -1089,7 +1088,6 @@ watch(
 async function save() {
   if (!selectedKey.value) return
   saving.value = true
-  flashOk.value = ''
   flashError.value = ''
   try {
     flushActiveLocaleToStore()
@@ -1112,14 +1110,11 @@ async function save() {
     const idx = templates.value.findIndex((x) => x.template_key === selectedKey.value)
     if (idx >= 0) templates.value[idx] = updated
     applyFormFromMerged(updated)
-    flashOk.value = t('notificationTemplates.saved')
-    setTimeout(() => {
-      flashOk.value = ''
-    }, 3000)
+    feedback.saved(t('notificationTemplates.saved'))
     await runPreview()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    flashError.value = err?.message || t('notificationTemplates.saveError')
+    feedback.error(err?.message || t('notificationTemplates.saveError'))
   } finally {
     saving.value = false
   }
@@ -1128,7 +1123,6 @@ async function save() {
 async function resetToDefault() {
   if (!selectedKey.value) return
   saving.value = true
-  flashOk.value = ''
   flashError.value = ''
   try {
     const updated = isPlatform.value
@@ -1137,16 +1131,15 @@ async function resetToDefault() {
     const idx = templates.value.findIndex((x) => x.template_key === selectedKey.value)
     if (idx >= 0) templates.value[idx] = updated
     applyFormFromMerged(updated)
-    flashOk.value = isPlatform.value
-      ? t('notificationTemplates.resetFactoryDone')
-      : t('notificationTemplates.resetDone')
-    setTimeout(() => {
-      flashOk.value = ''
-    }, 3000)
+    feedback.saved(
+      isPlatform.value
+        ? t('notificationTemplates.resetFactoryDone')
+        : t('notificationTemplates.resetDone'),
+    )
     await runPreview()
   } catch (e: unknown) {
     const err = e as { message?: string }
-    flashError.value = err?.message || t('notificationTemplates.saveError')
+    feedback.error(err?.message || t('notificationTemplates.saveError'))
   } finally {
     saving.value = false
   }

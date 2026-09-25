@@ -33,6 +33,24 @@ export function startOfToday(): Date {
   return startOfDay(new Date())
 }
 
+/**
+ * Calendar day for a date input. A bare `YYYY-MM-DD` stays as written.
+ * An ISO timestamp (Postgres `date` serialized from local midnight) uses the
+ * local calendar day, so UTC+4 does not turn 29 Sep into 28 Sep.
+ */
+export function toCalendarInputDate(value: unknown): string {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return ''
+    return dateKey(value)
+  }
+  const raw = String(value ?? '').trim()
+  if (!raw) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return ''
+  return dateKey(parsed)
+}
+
 export function dateKey(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')

@@ -95,6 +95,13 @@
                     >
                       {{ $t('platformBilling.manage') }}
                     </RowActionsItem>
+                    <RowActionsItem
+                      v-if="canManageSchool"
+                      icon="payment"
+                      @click="onRecordPayment(school)"
+                    >
+                      {{ $t('platformBilling.recordPayment') }}
+                    </RowActionsItem>
                   </RowActionsMenu>
                 </template>
                 <template #meta>
@@ -176,6 +183,13 @@
                           @click="onOpenBilling(school)"
                         >
                           {{ $t('platformBilling.manage') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          v-if="canManageSchool"
+                          icon="payment"
+                          @click="onRecordPayment(school)"
+                        >
+                          {{ $t('platformBilling.recordPayment') }}
                         </RowActionsItem>
                       </RowActionsMenu>
                     </td>
@@ -526,6 +540,7 @@ import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { useClaims } from '@/composables/useClaims'
+import { useFeedback } from '@/composables/useFeedback'
 import { setSelectedPlatformSchoolId } from '@/composables/usePlatformSchoolSelection'
 import {
   platformSchoolService,
@@ -544,6 +559,7 @@ const { locale, t, te } = useI18n()
 const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
 const { hasClaim } = useClaims()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const canManageSchool = computed(
   () => hasClaim('platform_schools', 'manage') || hasClaim('platform_schools', 'edit'),
@@ -706,6 +722,30 @@ function onOpenBilling(school: RegisteredSchool) {
   void openBilling(school)
 }
 
+async function onRecordPayment(school: RegisteredSchool) {
+  activeMenuId.value = null
+  actionBusy.value = true
+  try {
+    selectedSchool.value = school
+    const detail = await platformBillingService.getSchoolSubscription(school.id)
+    if (!detail.subscription) {
+      feedback.error(t('platformBilling.noSubscription'))
+      return
+    }
+    bundle.value = detail
+    let invoice = (detail.invoices || []).find((row) => row.status === 'issued' || row.status === 'draft')
+    if (!invoice) {
+      invoice = await platformBillingService.issueInvoice(school.id)
+      bundle.value = await platformBillingService.getSchoolSubscription(school.id)
+    }
+    openMarkPaid(invoice)
+  } catch (e: unknown) {
+    feedback.error((e as Error)?.message || t('platformBilling.saveError'))
+  } finally {
+    actionBusy.value = false
+  }
+}
+
 async function reloadPage() {
   loading.value = true
   error.value = ''
@@ -849,7 +889,7 @@ async function confirmMarkPaid() {
     bundle.value = await platformBillingService.getSchoolSubscription(selectedSchool.value.id)
     form.school_status = 'active'
     form.status = 'active'
-    drawerMsg.value = t('platformBilling.invoicePaid')
+    feedback.saved(t('platformBilling.invoicePaid'))
     await reloadList()
   } catch (e: any) {
     markPaidError.value = e?.message || t('platformBilling.saveError')

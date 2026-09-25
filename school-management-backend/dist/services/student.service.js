@@ -26,6 +26,11 @@ const user_service_1 = require("./user.service");
 const parent_service_1 = require("./parent.service");
 const school_access_1 = require("../common/security/school-access");
 const bilingual_name_1 = require("../common/identity/bilingual-name");
+const AGE_GROUP_BOUNDS = {
+    toddlers: [3, 4],
+    preschool: [4, 5],
+    kindergarten: [5, 6],
+};
 let StudentService = class StudentService {
     studentRepository;
     userRepository;
@@ -45,19 +50,191 @@ let StudentService = class StudentService {
         this.userService = userService;
         this.parentService = parentService;
     }
+    assertBirthDateNotFuture(dateOfBirth) {
+        if (dateOfBirth == null || dateOfBirth === '')
+            return;
+        const today = new Date();
+        const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+        let birthLocal;
+        if (typeof dateOfBirth === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateOfBirth.trim())) {
+            const [y, m, day] = dateOfBirth.trim().slice(0, 10).split('-').map(Number);
+            birthLocal = new Date(y, m - 1, day).getTime();
+        }
+        else {
+            const d = dateOfBirth instanceof Date ? dateOfBirth : new Date(dateOfBirth);
+            if (Number.isNaN(d.getTime())) {
+                throw new common_1.BadRequestException('Invalid date of birth');
+            }
+            birthLocal = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        }
+        if (birthLocal > todayLocal) {
+            throw new common_1.BadRequestException('Date of birth cannot be in the future');
+        }
+    }
+    async assertCivilIdAvailable(civilId, excludeStudentId, options) {
+        const civil = (0, bilingual_name_1.normalizeCivilId)(civilId);
+        if (!civil)
+            return;
+        const qb = this.studentRepository
+            .createQueryBuilder('s')
+            .where('s.civil_id = :civil', { civil });
+        if (excludeStudentId) {
+            qb.andWhere('s.id != :excludeStudentId', { excludeStudentId });
+        }
+        const dupStudent = await qb.getOne();
+        if (dupStudent) {
+            if (dupStudent.status === 'draft') {
+                const sameSchool = options?.actorSchoolId != null &&
+                    dupStudent.school_id != null &&
+                    String(dupStudent.school_id) === String(options.actorSchoolId);
+                if (!sameSchool) {
+                    throw new common_1.ConflictException('Registration for this civil ID is already in progress at another school');
+                }
+            }
+            throw new common_1.ConflictException(dupStudent.status === 'draft'
+                ? 'Another student already has this civil ID'
+                : 'This civil ID is already registered');
+        }
+        const dupUser = await this.userRepository.findOne({ where: { civil_id: civil } });
+        if (dupUser) {
+            throw new common_1.ConflictException('Another user already has this civil ID');
+        }
+    }
+    async lookupByCivilId(civilId, options) {
+        const civil = (0, bilingual_name_1.normalizeCivilId)(civilId);
+        if (!civil) {
+            return {
+                exists: false,
+                same_school: false,
+                status: null,
+                already_registered: false,
+                allow_new: true,
+                registration_in_progress_elsewhere: false,
+                student: null,
+            };
+        }
+        const row = await this.studentRepository
+            .createQueryBuilder('s')
+            .where('s.civil_id = :civil', { civil })
+            .getOne();
+        if (!row) {
+            return {
+                exists: false,
+                same_school: false,
+                status: null,
+                already_registered: false,
+                allow_new: true,
+                registration_in_progress_elsewhere: false,
+                student: null,
+            };
+        }
+        const sameSchool = options?.schoolId != null &&
+            row.school_id != null &&
+            String(row.school_id) === String(options.schoolId);
+        const status = (row.status || 'active');
+        const payload = {
+            id: row.id,
+            school_id: row.school_id,
+            status,
+            first_name_ar: row.first_name_ar,
+            first_name_en: row.first_name_en,
+            last_name_ar: row.last_name_ar,
+            last_name_en: row.last_name_en,
+            secondName: row.secondName ?? null,
+            thirdName: row.thirdName ?? null,
+            secondNameEn: row.secondNameEn ?? null,
+            thirdNameEn: row.thirdNameEn ?? null,
+            tribe: row.tribe ?? null,
+            civil_id: row.civil_id,
+            gender: row.gender,
+            nationality: row.nationality ?? null,
+            dateOfBirth: row.dateOfBirth,
+            photo: row.photo ?? null,
+        };
+        if (options?.publicMode) {
+            if (status === 'draft') {
+                return {
+                    exists: true,
+                    same_school: sameSchool,
+                    status,
+                    already_registered: false,
+                    allow_new: true,
+                    registration_in_progress_elsewhere: false,
+                    student: null,
+                };
+            }
+            if (sameSchool) {
+                return {
+                    exists: true,
+                    same_school: true,
+                    status,
+                    already_registered: status === 'active' || status === 'inactive',
+                    allow_new: false,
+                    registration_in_progress_elsewhere: false,
+                    student: status === 'active' || status === 'inactive' ? null : payload,
+                };
+            }
+            return {
+                exists: true,
+                same_school: false,
+                status,
+                already_registered: false,
+                allow_new: true,
+                registration_in_progress_elsewhere: false,
+                student: null,
+            };
+        }
+        if (status === 'draft') {
+            if (sameSchool) {
+                return {
+                    exists: true,
+                    same_school: true,
+                    status,
+                    already_registered: false,
+                    allow_new: false,
+                    registration_in_progress_elsewhere: false,
+                    student: payload,
+                };
+            }
+            return {
+                exists: true,
+                same_school: false,
+                status,
+                already_registered: false,
+                allow_new: false,
+                registration_in_progress_elsewhere: true,
+                student: null,
+            };
+        }
+        return {
+            exists: true,
+            same_school: sameSchool,
+            status,
+            already_registered: true,
+            allow_new: false,
+            registration_in_progress_elsewhere: false,
+            student: null,
+        };
+    }
     async create(createStudentDto, actorSchoolId) {
-        if (!createStudentDto.payment_level_id?.trim()) {
+        const asDraft = createStudentDto.status === 'draft';
+        if (!asDraft && !createStudentDto.payment_level_id?.trim()) {
             throw new common_1.BadRequestException('Grade (payment level) is required when registering a student');
         }
         const school_id = actorSchoolId != null ? actorSchoolId : createStudentDto.school_id;
         if (school_id == null) {
             throw new common_1.BadRequestException('school_id is required');
         }
+        await this.assertCivilIdAvailable(createStudentDto.civil_id, undefined, {
+            actorSchoolId: school_id,
+        });
+        this.assertBirthDateNotFuture(createStudentDto.dateOfBirth);
         const names = (0, bilingual_name_1.applyBilingualName)(createStudentDto);
         const student = this.studentRepository.create({
             ...createStudentDto,
             ...names,
             school_id,
+            status: createStudentDto.status || 'active',
         });
         if (createStudentDto.userId) {
             const user = await this.userRepository.findOne({
@@ -72,6 +249,115 @@ let StudentService = class StudentService {
             student.parents = parents;
         }
         return this.studentRepository.save(student);
+    }
+    async saveRegisterDraft(dto, actor) {
+        const schoolId = (0, school_access_1.resolveActorSchoolId)(actor);
+        if (schoolId == null) {
+            throw new common_1.BadRequestException('school_id is required');
+        }
+        if (!(0, bilingual_name_1.hasCompleteBilingualName)(dto)) {
+            throw new common_1.BadRequestException('Student Arabic and English first and last names are required');
+        }
+        if (!dto.secondName?.trim() ||
+            !dto.thirdName?.trim() ||
+            !dto.secondNameEn?.trim() ||
+            !dto.thirdNameEn?.trim()) {
+            throw new common_1.BadRequestException('Student Arabic and English first, second, third, and family names are required');
+        }
+        const names = (0, bilingual_name_1.applyBilingualName)(dto);
+        const civil_id = dto.civil_id?.trim() || undefined;
+        const studentId = dto.studentId?.trim() || civil_id || undefined;
+        this.assertBirthDateNotFuture(dto.dateOfBirth);
+        const payload = {
+            ...names,
+            secondName: dto.secondName?.trim() || undefined,
+            thirdName: dto.thirdName?.trim() || undefined,
+            secondNameEn: dto.secondNameEn?.trim() || null,
+            thirdNameEn: dto.thirdNameEn?.trim() || null,
+            dateOfBirth: new Date(dto.dateOfBirth),
+            gender: dto.gender,
+            nationality: dto.nationality?.trim() || undefined,
+            studentId,
+            civil_id: civil_id || null,
+            photo: dto.photo || undefined,
+            notes: dto.notes?.trim() || undefined,
+            address: dto.address?.trim() || '-',
+            emergencyContact: dto.emergencyContact?.trim() || '—',
+            medicalInfo: dto.medicalInfo?.trim() || undefined,
+            tribe: dto.tribe?.trim() || null,
+        };
+        const draftId = dto.draftStudentId?.trim() || '';
+        if (draftId) {
+            const existing = await this.studentRepository.findOne({ where: { id: draftId } });
+            if (!existing) {
+                throw new common_1.NotFoundException(`Student with ID ${draftId} not found`);
+            }
+            (0, school_access_1.assertSameSchool)(actor, existing.school_id);
+            if (existing.status !== 'draft') {
+                throw new common_1.BadRequestException('Only a draft student can be updated from the register wizard');
+            }
+            await this.assertCivilIdAvailable(civil_id, existing.id, { actorSchoolId: schoolId });
+            Object.assign(existing, payload, { status: 'draft' });
+            return (0, school_access_1.sanitizeUserDeep)(await this.studentRepository.save(existing));
+        }
+        return this.create({
+            ...payload,
+            payment_level_id: null,
+            status: 'draft',
+            school_id: schoolId,
+        }, schoolId);
+    }
+    async saveRegisterDraftParents(dto, actor) {
+        const schoolId = (0, school_access_1.resolveActorSchoolId)(actor);
+        if (schoolId == null) {
+            throw new common_1.BadRequestException('school_id is required');
+        }
+        const student = await this.studentRepository.findOne({
+            where: { id: dto.draftStudentId },
+        });
+        if (!student) {
+            throw new common_1.NotFoundException(`Student with ID ${dto.draftStudentId} not found`);
+        }
+        (0, school_access_1.assertSameSchool)(actor, student.school_id);
+        if (student.status !== 'draft') {
+            throw new common_1.BadRequestException('Only a draft student can receive draft parents from the register wizard');
+        }
+        if (!dto.parents?.length) {
+            throw new common_1.BadRequestException('A parent is required');
+        }
+        for (const item of dto.parents) {
+            if (!(0, bilingual_name_1.hasCompleteBilingualName)(item)) {
+                throw new common_1.BadRequestException('Parent Arabic and English first and last names are required');
+            }
+            const relationship = item.relationship || 'guardian';
+            const existing = await this.parentService.findExistingParent({
+                civil_id: item.civil_id,
+                email: item.email,
+                phone: item.phone,
+            });
+            if (existing) {
+                await this.parentService.assignToStudent(existing.id, student.id, schoolId, relationship);
+                continue;
+            }
+            await this.parentService.create({
+                ...(0, bilingual_name_1.applyBilingualName)(item),
+                civil_id: item.civil_id,
+                email: item.email?.trim() || undefined,
+                phone: item.phone?.trim() || undefined,
+                tribe: item.tribe,
+                workplace: item.workplace,
+                workPhone: item.workPhone,
+                maritalStatus: item.maritalStatus,
+                studentIds: [student.id],
+                relationship,
+                status: 'draft',
+            }, schoolId);
+        }
+        if (dto.emergencyContact?.trim()) {
+            student.emergencyContact = dto.emergencyContact.trim();
+            await this.studentRepository.save(student);
+        }
+        return this.findOne(student.id);
     }
     async registerInApp(dto, actor) {
         const group = await this.groupRepository.findOne({ where: { id: dto.groupId } });
@@ -107,27 +393,77 @@ let StudentService = class StudentService {
         if (!(0, bilingual_name_1.hasCompleteBilingualName)(dto)) {
             throw new common_1.BadRequestException('Student Arabic and English first and last names are required');
         }
+        if (!dto.secondName?.trim() ||
+            !dto.thirdName?.trim() ||
+            !dto.secondNameEn?.trim() ||
+            !dto.thirdNameEn?.trim()) {
+            throw new common_1.BadRequestException('Student Arabic and English first, second, third, and family names are required');
+        }
         const schoolId = String(group.school_id);
         const emergencyContact = (dto.emergencyContact || parentInput?.phone || '').trim() || '—';
+        this.assertBirthDateNotFuture(dto.dateOfBirth);
         const studentNames = (0, bilingual_name_1.applyBilingualName)(dto);
-        const student = await this.create({
-            ...studentNames,
-            secondName: dto.secondName?.trim() || undefined,
-            thirdName: dto.thirdName?.trim() || undefined,
-            dateOfBirth: new Date(dto.dateOfBirth),
-            gender: dto.gender,
-            address: dto.address?.trim() || '-',
-            phone: dto.phone?.trim() || undefined,
-            email: studentEmail || undefined,
-            emergencyContact,
-            medicalInfo: dto.medicalInfo?.trim() || undefined,
-            notes: dto.notes?.trim() || undefined,
-            nationality: dto.nationality?.trim() || undefined,
-            studentId: dto.studentId?.trim() || undefined,
-            photo: dto.photo || undefined,
-            payment_level_id: group.level_id,
-            school_id: schoolId,
-        }, schoolId);
+        const draftId = dto.draftStudentId?.trim() || '';
+        let student;
+        if (draftId) {
+            const existing = await this.studentRepository.findOne({ where: { id: draftId } });
+            if (!existing) {
+                throw new common_1.NotFoundException(`Student with ID ${draftId} not found`);
+            }
+            (0, school_access_1.assertSameSchool)(actor, existing.school_id);
+            if (existing.status !== 'draft') {
+                throw new common_1.BadRequestException('Only a draft student can be completed from the register wizard');
+            }
+            await this.assertCivilIdAvailable(dto.civil_id, existing.id, { actorSchoolId: schoolId });
+            Object.assign(existing, {
+                ...studentNames,
+                secondName: dto.secondName?.trim() || undefined,
+                thirdName: dto.thirdName?.trim() || undefined,
+                secondNameEn: dto.secondNameEn?.trim() || null,
+                thirdNameEn: dto.thirdNameEn?.trim() || null,
+                dateOfBirth: new Date(dto.dateOfBirth),
+                gender: dto.gender,
+                address: dto.address?.trim() || '-',
+                phone: dto.phone?.trim() || undefined,
+                email: studentEmail || existing.email || undefined,
+                emergencyContact,
+                medicalInfo: dto.medicalInfo?.trim() || undefined,
+                notes: dto.notes?.trim() || undefined,
+                nationality: dto.nationality?.trim() || undefined,
+                studentId: dto.studentId?.trim() || undefined,
+                civil_id: dto.civil_id?.trim() || null,
+                photo: dto.photo || undefined,
+                tribe: dto.tribe?.trim() || null,
+                payment_level_id: group.level_id,
+                status: 'draft',
+            });
+            student = await this.studentRepository.save(existing);
+        }
+        else {
+            student = await this.create({
+                ...studentNames,
+                secondName: dto.secondName?.trim() || undefined,
+                thirdName: dto.thirdName?.trim() || undefined,
+                secondNameEn: dto.secondNameEn?.trim() || null,
+                thirdNameEn: dto.thirdNameEn?.trim() || null,
+                tribe: dto.tribe?.trim() || null,
+                dateOfBirth: new Date(dto.dateOfBirth),
+                gender: dto.gender,
+                address: dto.address?.trim() || '-',
+                phone: dto.phone?.trim() || undefined,
+                email: studentEmail || undefined,
+                emergencyContact,
+                medicalInfo: dto.medicalInfo?.trim() || undefined,
+                notes: dto.notes?.trim() || undefined,
+                nationality: dto.nationality?.trim() || undefined,
+                studentId: dto.studentId?.trim() || undefined,
+                civil_id: dto.civil_id?.trim() || undefined,
+                photo: dto.photo || undefined,
+                payment_level_id: group.level_id,
+                school_id: schoolId,
+                status: 'active',
+            }, schoolId);
+        }
         const relationship = parentInput?.relationship || 'guardian';
         if (createNewParent && parentInput) {
             const parentNames = (0, bilingual_name_1.applyBilingualName)(parentInput);
@@ -140,20 +476,6 @@ let StudentService = class StudentService {
                 await this.parentService.assignToStudent(existing.id, student.id, schoolId, relationship);
             }
             else {
-                let parentUserId;
-                if (parentInput.createUser) {
-                    const parentEmail = parentInput.email.trim();
-                    const parentUser = await this.userService.create({
-                        username: await this.userService.uniqueUsernameFromEmail(parentEmail),
-                        email: parentEmail,
-                        ...parentNames,
-                        civil_id: parentInput.civil_id,
-                        phone: parentInput.phone?.trim() || undefined,
-                        user_type: 'parent',
-                        school_id: null,
-                    }, actor);
-                    parentUserId = parentUser.id;
-                }
                 await this.parentService.create({
                     ...parentNames,
                     civil_id: parentInput.civil_id,
@@ -166,9 +488,9 @@ let StudentService = class StudentService {
                     organizationName: parentInput.organizationName,
                     responsiblePerson: parentInput.responsiblePerson,
                     responsiblePhone: parentInput.responsiblePhone,
-                    userId: parentUserId,
                     studentIds: [student.id],
                     relationship,
+                    status: 'active',
                 }, schoolId);
             }
         }
@@ -192,9 +514,46 @@ let StudentService = class StudentService {
             student.email = studentEmail;
             await this.studentRepository.save(student);
         }
-        return this.assignToGroup(student.id, group.id, {
+        if (parentInput?.createUser && parentInput.email?.trim()) {
+            const linkedParent = await this.parentService.findExistingParent({
+                civil_id: parentInput.civil_id,
+                email: parentInput.email,
+                phone: parentInput.phone,
+            });
+            if (linkedParent && !linkedParent.user_id) {
+                const parentNames = (0, bilingual_name_1.applyBilingualName)({
+                    firstName: linkedParent.firstName,
+                    lastName: linkedParent.lastName,
+                    first_name_ar: linkedParent.first_name_ar,
+                    first_name_en: linkedParent.first_name_en,
+                    last_name_ar: linkedParent.last_name_ar,
+                    last_name_en: linkedParent.last_name_en,
+                });
+                const parentEmail = parentInput.email.trim();
+                const parentUser = await this.userService.create({
+                    username: await this.userService.uniqueUsernameFromEmail(parentEmail),
+                    email: parentEmail,
+                    ...parentNames,
+                    civil_id: linkedParent.civil_id || parentInput.civil_id,
+                    phone: linkedParent.phone || parentInput.phone?.trim() || undefined,
+                    user_type: 'parent',
+                    school_id: null,
+                }, actor);
+                linkedParent.user_id = parentUser.id;
+                await this.parentRepository.save(linkedParent);
+            }
+        }
+        const activated = await this.assignToGroup(student.id, group.id, {
             paymentLevelId: group.level_id,
         });
+        await this.studentRepository.update(activated.id, { status: 'active' });
+        await this.studentRepository.query(`UPDATE parents p
+       SET status = 'active'
+       FROM student_parents sp
+       WHERE sp.parent_id = p.id
+         AND sp.student_id = $1
+         AND p.status = 'draft'`, [activated.id]);
+        return this.findOne(activated.id);
     }
     async findAll(schoolId) {
         const where = schoolId != null ? { school_id: schoolId } : {};
@@ -217,6 +576,19 @@ let StudentService = class StudentService {
         if (schoolId != null) {
             idQb.andWhere('student.school_id = :schoolId', { schoolId });
         }
+        if (query.group_id) {
+            idQb.andWhere(`EXISTS (SELECT 1 FROM student_groups sg WHERE sg.student_id = student.id AND sg.group_id = :groupId)`, { groupId: query.group_id });
+        }
+        if (query.bus_id) {
+            idQb.andWhere(`EXISTS (SELECT 1 FROM student_buses sb WHERE sb.student_id = student.id AND sb.bus_id = :busId)`, { busId: query.bus_id });
+        }
+        if (query.status === 'draft' || query.status === 'active' || query.status === 'inactive') {
+            idQb.andWhere('student.status = :status', { status: query.status });
+        }
+        const ageBounds = query.age_group ? AGE_GROUP_BOUNDS[query.age_group] : undefined;
+        if (ageBounds) {
+            idQb.andWhere(`date_part('year', age(CURRENT_DATE, student.dateOfBirth)) BETWEEN :ageMin AND :ageMax`, { ageMin: ageBounds[0], ageMax: ageBounds[1] });
+        }
         if (q) {
             idQb
                 .leftJoin('student_parents', 'sp', 'sp.student_id = student.id')
@@ -224,11 +596,14 @@ let StudentService = class StudentService {
                 .andWhere(new typeorm_2.Brackets((w) => {
                 w.where('LOWER(student.firstName) LIKE :term', { term: `%${q}%` })
                     .orWhere('LOWER(student.lastName) LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(student.email) LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(student.secondName) LIKE :term', { term: `%${q}%` })
+                    .orWhere('LOWER(student.secondNameEn) LIKE :term', { term: `%${q}%` })
                     .orWhere('LOWER(student.first_name_ar) LIKE :term', { term: `%${q}%` })
                     .orWhere('LOWER(student.first_name_en) LIKE :term', { term: `%${q}%` })
                     .orWhere('LOWER(student.last_name_ar) LIKE :term', { term: `%${q}%` })
                     .orWhere('LOWER(student.last_name_en) LIKE :term', { term: `%${q}%` })
-                    .orWhere(`LOWER(CONCAT(COALESCE(student.firstName, ''), ' ', COALESCE(student.lastName, ''))) LIKE :term`, { term: `%${q}%` })
+                    .orWhere(`LOWER(CONCAT_WS(' ', NULLIF(TRIM(COALESCE(student.firstName, '')), ''), NULLIF(TRIM(COALESCE(student.secondName, '')), ''), NULLIF(TRIM(COALESCE(student.lastName, '')), ''))) LIKE :term`, { term: `%${q}%` })
                     .orWhere('LOWER(parent."firstName") LIKE :term', { term: `%${q}%` })
                     .orWhere('LOWER(parent."lastName") LIKE :term', { term: `%${q}%` })
                     .orWhere('LOWER(parent.first_name_ar) LIKE :term', { term: `%${q}%` })
@@ -365,6 +740,12 @@ let StudentService = class StudentService {
     }
     async update(id, updateStudentDto) {
         const student = await this.findOne(id);
+        if (updateStudentDto.civil_id !== undefined) {
+            await this.assertCivilIdAvailable(updateStudentDto.civil_id, id);
+        }
+        if (updateStudentDto.dateOfBirth !== undefined) {
+            this.assertBirthDateNotFuture(updateStudentDto.dateOfBirth);
+        }
         Object.assign(student, updateStudentDto);
         Object.assign(student, (0, bilingual_name_1.applyBilingualName)({ ...student, ...updateStudentDto }));
         if (updateStudentDto.userId) {
@@ -388,6 +769,9 @@ let StudentService = class StudentService {
     }
     async remove(id) {
         const student = await this.findOne(id);
+        if (student.status !== 'draft') {
+            throw new common_1.BadRequestException('Only draft students can be deleted');
+        }
         await this.studentRepository.remove(student);
     }
     async findByGroup(groupId, schoolId) {

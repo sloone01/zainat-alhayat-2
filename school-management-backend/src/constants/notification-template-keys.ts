@@ -20,6 +20,7 @@ export const NOTIFICATION_TEMPLATE_KEYS = {
   MEETING_STARTED: 'meeting.started',
   ACTIVITY_SCHEDULED: 'activity.scheduled',
   ACTIVITY_UPDATED: 'activity.updated',
+  ACTIVITY_WITHDRAWN: 'activity.withdrawn',
   LETTER_APPROVAL_RESOLVED: 'letter.approval_resolved',
   LETTER_APPROVAL_REMINDER: 'letter.approval_reminder',
   CHAT_DIRECT_MESSAGE: 'chat.direct_message',

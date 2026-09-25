@@ -118,7 +118,7 @@
                   <div class="field-value">{{ enrollment.tribe || '____________________' }}</div>
                 </div>
                 <div class="info-field">
-                  <label class="field-label">الرقم المدني / جواز السفر:</label>
+                  <label class="field-label">الرقم المدني:</label>
                   <div class="field-value">{{ enrollment.idNumber || '____________________' }}</div>
                 </div>
               </div>

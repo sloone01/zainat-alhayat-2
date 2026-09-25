@@ -27,7 +27,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -182,6 +182,7 @@ import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useClientPagination } from '@/composables/useClientPagination'
+import { useFeedback } from '@/composables/useFeedback'
 import { authService } from '@/services'
 import {
   chatApiService,
@@ -194,6 +195,7 @@ import {
 } from '@/services/message-letter.service'
 import { isMessageLetterSystemSender } from '@/utils/message-letter-sender'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 type InboxRow = {
   message_id: string
@@ -213,6 +215,7 @@ type InboxRow = {
 }
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
@@ -275,8 +278,8 @@ function openLetterPreview(row: InboxRow) {
 
 async function resolvePreview(decision: 'approve' | 'reject') {
   if (!previewRow.value) return
-  await resolve(previewRow.value, decision)
-  previewOpen.value = false
+  const done = await resolve(previewRow.value, decision)
+  if (done) previewOpen.value = false
 }
 
 function truncateTitle(title: string, maxLen = 48): string {
@@ -389,8 +392,19 @@ async function load() {
   }
 }
 
-async function resolve(row: InboxRow, decision: 'approve' | 'reject') {
-  if (!rowCanApprove(row)) return
+async function resolve(row: InboxRow, decision: 'approve' | 'reject'): Promise<boolean> {
+  if (!rowCanApprove(row)) return false
+  const ok = await feedback.confirm({
+    title: t('common.confirm'),
+    message: decision === 'approve'
+      ? t('messageLetters.confirmApproveLetter')
+      : t('messageLetters.confirmRejectLetter'),
+    confirmLabel: decision === 'approve'
+      ? t('messageLetters.approveLetter')
+      : t('messageLetters.rejectLetter'),
+    danger: decision === 'reject',
+  })
+  if (!ok) return false
   busyId.value = row.message_id
   flashError.value = ''
   closeMenu()
@@ -399,9 +413,11 @@ async function resolve(row: InboxRow, decision: 'approve' | 'reject') {
     await load()
   } catch (e: unknown) {
     flashError.value = t('messageLetters.approvalResolveError')
+    return false
   } finally {
     busyId.value = null
   }
+  return true
 }
 
 function handleClickOutside(event: Event) {

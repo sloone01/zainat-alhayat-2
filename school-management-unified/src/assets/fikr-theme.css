@@ -945,8 +945,24 @@ html.fk-native body {
   overscroll-behavior: none;
 }
 html.fk-native .fk-native-scroll {
-  -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+}
+
+/* Blur sits on a non-interactive layer. backdrop-filter on the bar itself makes iPad Safari miss taps after a scroll. */
+.fk-shell-topbar {
+  isolation: isolate;
+  background: transparent;
+  touch-action: manipulation;
+}
+.fk-shell-topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgb(255 255 255 / 0.8);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  pointer-events: none;
 }
 
 /* Chat / mailbox (web): keep the document still so the thread list scrolls. */
@@ -1621,9 +1637,9 @@ select.fk-tt-field__ctl {
   gap: 0;
   border-top: 1px solid var(--fk-hairline);
   background: rgb(255 255 255 / 0.96);
-  backdrop-filter: blur(12px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   box-shadow: 0 -4px 16px rgb(10 33 71 / 0.06);
+  touch-action: manipulation;
 }
 .mobile-bottom-nav__item {
   display: flex;

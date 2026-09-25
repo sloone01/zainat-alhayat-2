@@ -133,7 +133,7 @@ let ParentService = class ParentService {
         return parent;
     }
     async create(createParentDto, schoolId) {
-        const { studentIds, userId, relationship, workPhone, maritalStatus, organizationName, responsiblePerson, responsiblePhone, civil_id, ...rest } = createParentDto;
+        const { studentIds, userId, relationship, workPhone, maritalStatus, organizationName, responsiblePerson, responsiblePhone, civil_id, status: parentStatus, ...rest } = createParentDto;
         const names = (0, bilingual_name_1.applyBilingualName)(rest);
         const civilId = (0, bilingual_name_1.normalizeCivilId)(civil_id);
         const email = (0, bilingual_name_1.normalizeEmail)(rest.email);
@@ -173,7 +173,7 @@ let ParentService = class ParentService {
             organizationName: organizationName ?? null,
             responsiblePerson: responsiblePerson ?? null,
             responsiblePhone: responsiblePhone ?? null,
-            school_id: null,
+            status: parentStatus || 'active',
         });
         if (userId) {
             const user = await this.userRepository.findOne({
@@ -184,7 +184,25 @@ let ParentService = class ParentService {
                 parent.user_id = userId;
             }
         }
-        const saved = await this.parentRepository.save(parent);
+        let saved;
+        try {
+            saved = await this.parentRepository.save(parent);
+        }
+        catch (e) {
+            if (e?.code === '23505' && civilId) {
+                const raceWinner = await this.findExistingParent({ civil_id: civilId });
+                if (raceWinner) {
+                    if (studentIds?.length) {
+                        const rel = relationship || 'guardian';
+                        for (const studentId of studentIds) {
+                            await this.linkStudentParent(raceWinner.id, studentId, rel);
+                        }
+                    }
+                    return this.findOne(raceWinner.id, schoolId, { forLink: true });
+                }
+            }
+            throw e;
+        }
         if (studentIds && studentIds.length > 0) {
             const students = await this.studentRepository.findBy(schoolId == null
                 ? { id: (0, typeorm_2.In)(studentIds) }
@@ -268,8 +286,35 @@ let ParentService = class ParentService {
                 parent.students = [];
             }
         }
-        parent.school_id = null;
-        return this.parentRepository.save(parent);
+        const saved = await this.parentRepository.save(parent);
+        await this.syncIdentityToUser(saved);
+        return saved;
+    }
+    async syncIdentityToUser(parent) {
+        if (!parent.user_id)
+            return;
+        const user = await this.userRepository.findOne({ where: { id: String(parent.user_id) } });
+        if (!user)
+            return;
+        const email = parent.email?.trim();
+        if (email && email.toLowerCase() !== String(user.email || '').toLowerCase()) {
+            const clash = await this.userRepository.findOne({ where: { email } });
+            if (clash && clash.id !== user.id) {
+                throw new common_1.ConflictException('Another account already uses this email');
+            }
+            user.email = email;
+        }
+        if (parent.phone)
+            user.phone = parent.phone;
+        if (parent.civil_id)
+            user.civil_id = parent.civil_id;
+        user.firstName = parent.firstName || user.firstName;
+        user.lastName = parent.lastName || user.lastName;
+        user.first_name_ar = parent.first_name_ar ?? user.first_name_ar;
+        user.first_name_en = parent.first_name_en ?? user.first_name_en;
+        user.last_name_ar = parent.last_name_ar ?? user.last_name_ar;
+        user.last_name_en = parent.last_name_en ?? user.last_name_en;
+        await this.userRepository.save(user);
     }
     async remove(id, schoolId) {
         const parent = await this.findOne(id, schoolId);

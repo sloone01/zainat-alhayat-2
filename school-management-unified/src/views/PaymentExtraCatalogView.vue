@@ -33,7 +33,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -269,6 +269,7 @@ import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import paymentConfigService, { type PaymentCatalogRow } from '@/services/payment-config.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const feedback = useFeedback()

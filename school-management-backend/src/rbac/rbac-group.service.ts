@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -1018,7 +1019,12 @@ export class RbacGroupService {
     if (data.name != null) group.name = data.name.trim();
     if (data.description !== undefined) group.description = data.description?.trim() || null;
     if (data.color !== undefined) group.color = data.color;
-    if (data.isActive !== undefined && !group.isSystem) group.isActive = data.isActive;
+    if (data.isActive !== undefined) {
+      if (group.systemKey === 'super_admin') {
+        throw new BadRequestException('Super Admin group cannot be deactivated');
+      }
+      group.isActive = data.isActive;
+    }
     if (data.code != null && !group.isSystem) {
       const next = slugifyCode(data.code);
       if (next !== group.code) {
@@ -1035,11 +1041,17 @@ export class RbacGroupService {
   async deleteGroup(actor: User, id: string) {
     const group = await this.groupRepo.findOne({ where: { id } });
     if (!group) throw new NotFoundException('User group not found');
+    this.assertCanManageScope(actor, group.schoolId);
+    const members = await this.memberRepo.count({ where: { groupId: group.id } });
+    if (members > 0) {
+      throw new ConflictException(
+        'This role is assigned to users and cannot be deleted. Deactivate it instead.',
+      );
+    }
     if (group.isSystem) throw new BadRequestException('System groups cannot be deleted');
     if (group.groupType === 'parent' || group.groupType === 'student') {
       throw new BadRequestException('Parent/Student groups cannot be deleted');
     }
-    this.assertCanManageScope(actor, group.schoolId);
     await this.groupRepo.remove(group);
     this.permissionService.invalidateAllClaims('group-deleted');
   }

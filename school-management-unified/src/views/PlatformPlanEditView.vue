@@ -30,28 +30,24 @@
       </div>
 
       <template v-else-if="form">
-        <div v-if="msg" class="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
-          {{ msg }}
-        </div>
-
         <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
           <h2 class="text-lg font-bold text-gray-900">{{ $t('platformBilling.planDetails') }}</h2>
           <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
+            <div class="min-w-0">
               <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.nameEn') }}</label>
-              <input v-model="form.name_en" type="text" class="fk-field" />
+              <input v-model="form.name_en" type="text" class="fk-field" dir="ltr" lang="en" />
             </div>
-            <div>
+            <div class="min-w-0">
               <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.nameAr') }}</label>
-              <input v-model="form.name_ar" type="text" class="fk-field" />
+              <input v-model="form.name_ar" type="text" class="fk-field" dir="rtl" lang="ar" />
             </div>
             <div class="sm:col-span-2">
               <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.descEn') }}</label>
-              <textarea v-model="form.description_en" rows="2" class="fk-field" />
+              <textarea v-model="form.description_en" rows="2" class="fk-field" dir="ltr" lang="en" />
             </div>
             <div class="sm:col-span-2">
               <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.descAr') }}</label>
-              <textarea v-model="form.description_ar" rows="2" class="fk-field" />
+              <textarea v-model="form.description_ar" rows="2" class="fk-field" dir="rtl" lang="ar" />
             </div>
             <div class="sm:col-span-2 rounded-xl border border-primary-100 bg-primary-50/40 p-4">
               <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.seatsIncluded') }}</label>
@@ -222,6 +218,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import { useFeedback } from '@/composables/useFeedback'
 import {
   platformBillingService,
   type PlatformBillingPeriod,
@@ -230,13 +227,13 @@ import {
 
 const route = useRoute()
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
 const planCode = computed(() => String(route.params.code || '').toLowerCase())
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
-const msg = ref('')
 const modules = ref<PlatformModule[]>([])
 const periods = ref<PlatformBillingPeriod[]>(['monthly', 'semester', 'yearly', 'summer'])
 const selected = reactive<Record<string, boolean>>({})
@@ -309,7 +306,6 @@ async function load() {
 async function save() {
   if (!form.value) return
   saving.value = true
-  msg.value = ''
   error.value = ''
   try {
     const module_codes = Object.keys(selected).filter((c) => selected[c])
@@ -343,9 +339,9 @@ async function save() {
       label_en: f.label_en || '',
       label_ar: f.label_ar || '',
     }))
-    msg.value = t('platformBilling.planSaved')
+    feedback.saved(t('platformBilling.planSaved'))
   } catch (e: unknown) {
-    error.value = planSaveError(e) || t('platformBilling.saveError')
+    feedback.error(planSaveError(e) || t('platformBilling.saveError'))
   } finally {
     saving.value = false
   }

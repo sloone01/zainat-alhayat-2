@@ -41,6 +41,7 @@
         <GuardianInfoStep
           v-model="formData.guardian"
           compact
+          :student-civil-id="formData.student.idNumber"
           @next="handleNext"
           @back="handleBack"
         />

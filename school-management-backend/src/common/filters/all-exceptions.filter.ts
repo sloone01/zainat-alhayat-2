@@ -98,7 +98,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
     });
   }
 
+  private isPayloadTooLarge(exception: unknown): boolean {
+    if (!exception || typeof exception !== 'object') return false;
+    const err = exception as { type?: string; status?: number; statusCode?: number; message?: string };
+    if (err.type === 'entity.too.large') return true;
+    if (err.status === 413 || err.statusCode === 413) return true;
+    const msg = String(err.message || '').toLowerCase();
+    return msg.includes('request entity too large') || msg.includes('payload too large');
+  }
+
   private resolveStatus(exception: unknown): number {
+    if (this.isPayloadTooLarge(exception)) return HttpStatus.PAYLOAD_TOO_LARGE;
     if (exception instanceof HttpException) {
       return exception.getStatus();
     }
@@ -111,6 +121,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
     code?: string;
     details?: unknown;
   } {
+    if (this.isPayloadTooLarge(exception)) {
+      return {
+        message:
+          'Uploaded files are too large. Use smaller photos or PDFs (about 2 MB each) and try again.',
+        errorName: 'PAYLOAD_TOO_LARGE',
+        code: 'PAYLOAD_TOO_LARGE',
+      };
+    }
+
     if (exception instanceof HttpException) {
       const res = exception.getResponse();
       if (typeof res === 'string') {

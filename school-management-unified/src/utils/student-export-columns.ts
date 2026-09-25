@@ -36,11 +36,14 @@ export function normalizeStudentExportColumns(raw: unknown): StudentExportColumn
   return unique.length ? unique : [...DEFAULT_STUDENT_EXPORT_COLUMNS]
 }
 
-/** Inject table HTML into an email layout shell at {{content}}. */
+/** Inject table HTML into a report shell at {{content}}. Print-page shells own the table look. */
 export function applyExportLayout(layoutHtml: string | null | undefined, bodyHtml: string): string {
   const layout = (layoutHtml ?? '').trim()
-  const body = (bodyHtml ?? '').trim()
+  let body = (bodyHtml ?? '').trim()
   if (!layout) return body
   if (!/\{\{\s*content\s*\}\}/i.test(layout)) return `${layout}\n${body}`
+  if (/\brpt-page\b/.test(layout)) {
+    body = body.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+  }
   return layout.replace(/\{\{\s*content\s*\}\}/gi, body)
 }

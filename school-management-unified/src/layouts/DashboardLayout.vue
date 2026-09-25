@@ -21,8 +21,9 @@
       :class="[
         'fixed inset-y-0 z-50 flex w-72 flex-col transition-transform duration-300 ease-in-out',
         isRTL ? 'right-0' : 'left-0',
+        /* Open state stays transform-none so iPad Safari still hits the fixed nav after a main-pane scroll. */
         sidebarOpen
-          ? 'translate-x-0 pointer-events-auto'
+          ? 'transform-none pointer-events-auto'
           : `${isRTL ? 'translate-x-full' : '-translate-x-full'} pointer-events-none`,
       ]"
     >
@@ -174,7 +175,7 @@
     <!-- Main content -->
     <div
       :class="[
-        'min-w-0 overflow-x-hidden transition-all duration-300 ease-in-out',
+        'min-w-0 overflow-x-clip transition-all duration-300 ease-in-out',
         lockShell ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : '',
         sidebarOpen
           ? isRTL
@@ -185,7 +186,7 @@
     >
       <!-- Top bar -->
       <div
-        class="sticky top-0 z-40 shrink-0 border-b border-fikr-hairline bg-white/80 backdrop-blur-xl"
+        class="fk-shell-topbar sticky top-0 z-40 shrink-0 border-b border-fikr-hairline"
         :class="nativeShell ? 'pt-[var(--fk-safe-top)]' : ''"
       >
       <div class="flex h-16 shrink-0 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
@@ -926,8 +927,12 @@ function navChildActive(href: string) {
   if (href === '/standalone-courses' && route.path.startsWith('/standalone-courses/')) return true
   if (href === '/progress' && route.path.startsWith('/progress/')) return true
   if (href === '/settings/message-letters' && route.path.startsWith('/settings/message-letters')) return true
-  if (href === '/chat' && (route.path === '/chat' || route.path.startsWith('/chat/'))) return true
-  if (href === '/messages' && route.path.startsWith('/messages')) return true
+  if (
+    href === '/messages' &&
+    (route.path.startsWith('/messages') || route.path === '/chat' || route.path.startsWith('/chat/'))
+  ) {
+    return true
+  }
   if (href === '/groups' && route.path.startsWith('/groups')) return true
   if (href === '/admin/meeting-rooms' && (route.path === '/admin/meeting-rooms' || route.path.startsWith('/meeting-room/'))) {
     return true
@@ -1018,8 +1023,7 @@ function chatsNavGroup(
   opts?: { approvals?: boolean; audit?: boolean },
 ): NavItem {
   const children: NavItem[] = [
-    { name: t('chatRooms.title'), href: '/chat' },
-    { name: t('directMessages.title'), href: '/messages' },
+    { name: t('chatMailbox.nav'), href: '/messages' },
   ]
   if (opts?.approvals !== false) {
     children.push({ name: t('messageLetters.approvalInboxNav'), href: '/approvals' })
@@ -1173,8 +1177,7 @@ const navigationByRole = computed(() => {
       { name: t('parent.weeklyPlans'), href: '/parent/weekly-plans', icon: 'document-text' },
       { name: t('parent.assignedActivities'), href: '/parent/assigned-activities', icon: 'sparkles' },
       { name: t('parent.weeklyActivities'), href: '/parent/weekly-activities', icon: 'sparkles' },
-      { name: t('chatRooms.title'), href: '/chat', icon: 'chat' },
-      { name: t('directMessages.title'), href: '/messages', icon: 'chat' },
+      { name: t('chatMailbox.nav'), href: '/messages', icon: 'chat' },
       { name: t('messageLetters.approvalInboxNav'), href: '/approvals', icon: 'clipboard' },
       { name: t('meetingRooms.myMeetingsNav'), href: '/my-meeting-rooms', icon: 'video-camera' },
       { name: t('support.nav'), href: '/support', icon: 'chat' },
@@ -1328,7 +1331,12 @@ function navItemActive(item: NavItem) {
   if (route.path === item.href) return true
   if (item.href === '/settings/message-letters' && route.path.startsWith('/settings/message-letters')) return true
   if (item.href === '/graded-courses' && route.path.startsWith('/graded-courses')) return true
-  if (item.href === '/messages' && route.path.startsWith('/messages')) return true
+  if (
+    item.href === '/messages' &&
+    (route.path.startsWith('/messages') || route.path === '/chat' || route.path.startsWith('/chat/'))
+  ) {
+    return true
+  }
   if (item.href === '/approvals' && route.path === '/approvals') return true
   if (item.href === '/admin/chat-review' && route.path.startsWith('/admin/chat-review')) return true
   if (item.href === '/chat' && route.path.startsWith('/chat/')) return true

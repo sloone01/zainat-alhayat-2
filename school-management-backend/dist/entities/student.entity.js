@@ -38,8 +38,13 @@ let Student = class Student {
     notes;
     secondName;
     thirdName;
+    secondNameEn;
+    thirdNameEn;
     nationality;
     studentId;
+    civil_id;
+    tribe;
+    status;
     photo;
     createdAt;
     updatedAt;
@@ -56,12 +61,6 @@ let Student = class Student {
     parents;
     attendances;
     progress;
-    first_name;
-    family_name;
-    date_of_birth;
-    medical_conditions;
-    allergies;
-    emergency_contact;
     group_id;
     created_at;
     updated_at;
@@ -139,6 +138,14 @@ __decorate([
     __metadata("design:type", String)
 ], Student.prototype, "thirdName", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'second_name_en', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "secondNameEn", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'third_name_en', type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "thirdNameEn", void 0);
+__decorate([
     (0, typeorm_1.Column)({ length: 100, nullable: true }),
     __metadata("design:type", String)
 ], Student.prototype, "nationality", void 0);
@@ -146,6 +153,18 @@ __decorate([
     (0, typeorm_1.Column)({ length: 50, nullable: true }),
     __metadata("design:type", String)
 ], Student.prototype, "studentId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'civil_id', type: 'varchar', length: 20, nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "civil_id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: true }),
+    __metadata("design:type", Object)
+], Student.prototype, "tribe", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 24, default: 'active' }),
+    __metadata("design:type", String)
+], Student.prototype, "status", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", String)
@@ -229,30 +248,6 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => student_progress_entity_1.StudentProgress, progress => progress.student),
     __metadata("design:type", Array)
 ], Student.prototype, "progress", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ length: 100, nullable: true }),
-    __metadata("design:type", String)
-], Student.prototype, "first_name", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ length: 100, nullable: true }),
-    __metadata("design:type", String)
-], Student.prototype, "family_name", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'date', nullable: true }),
-    __metadata("design:type", Date)
-], Student.prototype, "date_of_birth", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ length: 255, nullable: true }),
-    __metadata("design:type", String)
-], Student.prototype, "medical_conditions", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ length: 255, nullable: true }),
-    __metadata("design:type", String)
-], Student.prototype, "allergies", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ length: 255, nullable: true }),
-    __metadata("design:type", String)
-], Student.prototype, "emergency_contact", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'int', nullable: true }),
     __metadata("design:type", Number)

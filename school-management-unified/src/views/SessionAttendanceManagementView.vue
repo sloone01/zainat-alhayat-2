@@ -28,7 +28,7 @@
           </div>
         </header>
 
-        <div v-if="loading" class="flex min-h-[16rem] flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
+        <div v-if="loading && !routePageLoading" class="flex min-h-[16rem] flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
@@ -249,6 +249,7 @@ import scheduleService from '@/services/schedule.service'
 import { onlineSessionService, type SessionAttendanceRecordRow } from '@/services/online-session.service'
 import { useClientPagination } from '@/composables/useClientPagination'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 
 const { t, locale, te } = useI18n()

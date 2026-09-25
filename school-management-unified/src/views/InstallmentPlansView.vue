@@ -84,7 +84,7 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="overflow-x-auto">
+            <div v-else class="overflow-visible">
               <table class="fk-feetable min-w-full">
                 <thead>
                   <tr>

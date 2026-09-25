@@ -154,6 +154,7 @@ import ChatMessageRow from '@/components/ui/chat-message-row.vue'
 import MessageLetterCardFrame, {
   type LetterCardApproval,
 } from '@/components/MessageLetterCardFrame.vue'
+import { useFeedback } from '@/composables/useFeedback'
 import { buildEmailCardPreviewSrcdoc } from '@/utils/email-template-card-preview'
 import {
   isMessageLetterSystemSender,
@@ -163,6 +164,7 @@ import {
 
 const route = useRoute()
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const clearUnread = inject(clearGroupChatUnreadKey, () => undefined)
 
@@ -344,6 +346,17 @@ function letterApprovalChrome(m: ChatMessage): LetterCardApproval {
 }
 
 async function resolveLetterApproval(m: ChatMessage, decision: 'approve' | 'reject') {
+  const ok = await feedback.confirm({
+    title: t('common.confirm'),
+    message: decision === 'approve'
+      ? t('messageLetters.confirmApproveLetter')
+      : t('messageLetters.confirmRejectLetter'),
+    confirmLabel: decision === 'approve'
+      ? t('messageLetters.approveLetter')
+      : t('messageLetters.rejectLetter'),
+    danger: decision === 'reject',
+  })
+  if (!ok) return
   approvalBusyId.value = m.id
   sendError.value = ''
   try {

@@ -17,10 +17,20 @@ async function bootstrap() {
             ? ['error', 'warn', 'log']
             : ['error', 'warn', 'log', 'debug', 'verbose'],
     });
+    app.set('trust proxy', 1);
+    app.useBodyParser('json', { limit: '30mb' });
+    app.useBodyParser('urlencoded', { limit: '30mb', extended: true });
     app.use((0, helmet_1.default)({
         contentSecurityPolicy: false,
         crossOriginResourcePolicy: { policy: 'cross-origin' },
     }));
+    const preflightLogger = new common_1.Logger('CORS');
+    app.use((req, _res, next) => {
+        if (req.method === 'OPTIONS' && req.headers['access-control-request-method']) {
+            preflightLogger.log(`preflight OPTIONS ${req.originalUrl || req.url} origin=${req.headers.origin ?? '-'} method=${req.headers['access-control-request-method']}`);
+        }
+        next();
+    });
     const corsOrigin = (0, runtime_secrets_1.resolveCorsOrigins)();
     if (isProd && (corsOrigin === true || (Array.isArray(corsOrigin) && corsOrigin.length === 0))) {
         throw new Error('CORS_ORIGIN must be set to an explicit allowlist in production (comma-separated origins).');
@@ -37,6 +47,7 @@ async function bootstrap() {
             'x-request-id',
         ],
         exposedHeaders: ['X-Request-Id'],
+        maxAge: 86400,
     });
     app.useGlobalPipes(new common_1.ValidationPipe({
         whitelist: true,

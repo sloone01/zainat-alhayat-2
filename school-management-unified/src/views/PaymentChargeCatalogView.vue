@@ -34,7 +34,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -270,6 +270,7 @@ import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import paymentConfigService, { type PaymentCatalogRow } from '@/services/payment-config.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const feedback = useFeedback()
@@ -420,8 +421,30 @@ async function onSetActive(row: PaymentCatalogRow, is_active: boolean) {
   }
 }
 
+function apiErrorText(error: unknown, fallback: string): string {
+  const ax = error as { response?: { data?: { message?: string | string[] } }; message?: string }
+  const raw = ax.response?.data?.message
+  if (Array.isArray(raw)) {
+    const text = raw.map((part) => String(part)).filter(Boolean).join(' ')
+    if (text) return text
+  } else if (typeof raw === 'string' && raw.trim() && !raw.startsWith('Request failed')) {
+    return raw.trim()
+  }
+  return fallback
+}
+
 async function onDelete(row: PaymentCatalogRow) {
   closeMenu()
+  try {
+    const names = await paymentConfigService.packagesUsingChargeType(row.id)
+    if (names.length) {
+      flashError.value = t('paymentSettings.chargeUsedInPackage', { names: names.join(', ') })
+      return
+    }
+  } catch (e: unknown) {
+    flashError.value = apiErrorText(e, t('paymentSettings.saveError'))
+    return
+  }
   if (!(await feedback.confirm({
     title: t('common.delete'),
     message: t('paymentSettings.confirmDelete'),
@@ -432,7 +455,7 @@ async function onDelete(row: PaymentCatalogRow) {
     await paymentConfigService.deleteChargeType(row.id)
     rows.value = rows.value.filter((x) => x.id !== row.id)
   } catch (e: unknown) {
-    flashError.value = (e as { message?: string })?.message || t('paymentSettings.saveError')
+    flashError.value = apiErrorText(e, t('paymentSettings.saveError'))
   }
 }
 

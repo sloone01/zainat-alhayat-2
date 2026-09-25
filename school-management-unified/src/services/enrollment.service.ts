@@ -119,6 +119,14 @@ export interface EnrollmentFormData {
 export interface Enrollment {
   id: string
   fullName: string
+  first_name_ar?: string | null
+  first_name_en?: string | null
+  last_name_ar?: string | null
+  last_name_en?: string | null
+  secondName?: string | null
+  thirdName?: string | null
+  secondNameEn?: string | null
+  thirdNameEn?: string | null
   tribe?: string
   idNumber?: string
   gender: 'male' | 'female'
@@ -146,6 +154,11 @@ export interface Enrollment {
   childIdDocument?: string | null
   guardianType: 'father' | 'mother' | 'other'
   fatherFullName?: string
+  father_first_name_ar?: string | null
+  father_first_name_en?: string | null
+  father_last_name_ar?: string | null
+  father_last_name_en?: string | null
+  father_civil_id?: string | null
   fatherTribe?: string
   fatherWorkplace?: string
   fatherWorkPhone?: string
@@ -153,6 +166,11 @@ export interface Enrollment {
   fatherEmail?: string
   fatherMaritalStatus?: string
   motherFullName?: string
+  mother_first_name_ar?: string | null
+  mother_first_name_en?: string | null
+  mother_last_name_ar?: string | null
+  mother_last_name_en?: string | null
+  mother_civil_id?: string | null
   motherTribe?: string
   motherWorkplace?: string
   motherWorkPhone?: string
@@ -253,6 +271,31 @@ class EnrollmentService extends BaseApiService {
     return response.data.data
   }
 
+  async uploadPublicAttachment(
+    file: File,
+    schoolId: string,
+    purpose:
+      | 'enrollment_parent_id'
+      | 'enrollment_birth_certificate'
+      | 'enrollment_child_id'
+      | 'enrollment_photo',
+  ): Promise<{ id: string; url: string; file_name: string; size_bytes: number }> {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('school_id', schoolId)
+    form.append('purpose', purpose)
+    const response = await this.publicClient.post<{
+      success: boolean
+      data: { id: string; url: string; file_name: string; size_bytes: number }
+    }>('/public/enrollments/attachments', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    if (!response.data?.success || !response.data.data?.url) {
+      throw new Error('Failed to upload attachment')
+    }
+    return response.data.data
+  }
+
   private sanitizeEnrollmentPayload(data: EnrollmentFormData): EnrollmentFormData {
     // File / Blob cannot be structuredClone'd — strip media first, then JSON-clone.
     const safe = {
@@ -297,39 +340,28 @@ class EnrollmentService extends BaseApiService {
       out.guardian.motherInfo.email = cleanEmail(out.guardian.motherInfo.email)
     }
 
-    // Drop guardian blocks that are not the selected primary type
-    if (out.guardian.type === 'father') {
-      out.guardian.motherInfo = undefined
+    // Keep both parents when filled. Only drop the unused organisation block.
+    if (out.guardian.type !== 'other') {
       out.guardian.otherInfo = undefined
-    } else if (out.guardian.type === 'mother') {
-      out.guardian.fatherInfo = undefined
-      out.guardian.otherInfo = undefined
-    } else if (out.guardian.type === 'other') {
-      out.guardian.fatherInfo = undefined
-      out.guardian.motherInfo = undefined
     }
 
     return out
   }
 
   async submitEnrollment(enrollmentData: EnrollmentFormData): Promise<Enrollment> {
-    // Convert File objects to base64 strings for medical reports
+    // Documents/photo must already be attachment download paths (uploaded via GCS pipeline).
     const processedData = this.sanitizeEnrollmentPayload(enrollmentData)
 
     if (enrollmentData.health.medicalReports && enrollmentData.health.medicalReports.length > 0) {
-      const medicalReportsBase64: string[] = []
-
-      for (const file of enrollmentData.health.medicalReports) {
-        const base64 = await this.fileToBase64(file)
-        medicalReportsBase64.push(base64)
-      }
-
-      processedData.health.medicalReports = medicalReportsBase64 as any
+      // Medical reports on the public form are optional legacy; ignore File blobs.
+      processedData.health.medicalReports = (enrollmentData.health.medicalReports as unknown[])
+        .filter((f): f is string => typeof f === 'string' && f.startsWith('/api/attachments/')) as any
     }
 
-    // Convert photo to base64 if exists
-    if (enrollmentData.student.photo && enrollmentData.student.photo instanceof File) {
-      processedData.student.photo = await this.fileToBase64(enrollmentData.student.photo as any)
+    if (typeof enrollmentData.student.photo === 'string') {
+      processedData.student.photo = enrollmentData.student.photo
+    } else {
+      processedData.student.photo = null
     }
 
     const docs = enrollmentData.documents || {
@@ -337,20 +369,19 @@ class EnrollmentService extends BaseApiService {
       birthCertificate: null,
       childIdDocument: null,
     }
-    const parentDocs: string[] = []
-    for (const file of docs.parentIdDocuments || []) {
-      if (typeof file === 'string') parentDocs.push(file)
-      else if (file instanceof File) parentDocs.push(await this.fileToBase64(file))
-    }
-    let birthCertificate: string | null = null
-    if (typeof docs.birthCertificate === 'string') birthCertificate = docs.birthCertificate
-    else if (docs.birthCertificate instanceof File) {
-      birthCertificate = await this.fileToBase64(docs.birthCertificate)
-    }
-    let childIdDocument: string | null = null
-    if (typeof docs.childIdDocument === 'string') childIdDocument = docs.childIdDocument
-    else if (docs.childIdDocument instanceof File) {
-      childIdDocument = await this.fileToBase64(docs.childIdDocument)
+    const parentDocs = (docs.parentIdDocuments || []).filter(
+      (f): f is string => typeof f === 'string' && f.startsWith('/api/attachments/'),
+    )
+    const birthCertificate =
+      typeof docs.birthCertificate === 'string' && docs.birthCertificate.startsWith('/api/attachments/')
+        ? docs.birthCertificate
+        : null
+    const childIdDocument =
+      typeof docs.childIdDocument === 'string' && docs.childIdDocument.startsWith('/api/attachments/')
+        ? docs.childIdDocument
+        : null
+    if (!parentDocs.length || !birthCertificate || !childIdDocument) {
+      throw new Error('Documents must be uploaded before submit')
     }
     processedData.documents = {
       parentIdDocuments: parentDocs,
@@ -358,7 +389,6 @@ class EnrollmentService extends BaseApiService {
       childIdDocument,
     }
 
-    // Use the public client for enrollment submission (no auth required)
     const response = await this.publicClient.post<{
       success: boolean
       data: Enrollment
@@ -418,15 +448,6 @@ class EnrollmentService extends BaseApiService {
     })
 
     return response.data
-  }
-
-  private fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = error => reject(error)
-    })
   }
 
   private getAuthToken(): string | null {

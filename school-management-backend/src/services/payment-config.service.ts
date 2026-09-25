@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -32,6 +33,11 @@ import { CoursePaymentProfile, type CoursePricingBasis } from '../entities/cours
 import { CoursePaymentChargeLine } from '../entities/course-payment-charge-line.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
 import { FeePackage } from '../entities/fee-package.entity';
+import { FeePackageChargeType } from '../entities/fee-package-charge-type.entity';
+import { FeePackageDiscountType } from '../entities/fee-package-discount-type.entity';
+import { FeePackageInclusionType } from '../entities/fee-package-inclusion-type.entity';
+import { StudentChargeSheetDiscountLine } from '../entities/student-charge-sheet-discount-line.entity';
+import { StudentChargeSheetInclusionLine } from '../entities/student-charge-sheet-inclusion-line.entity';
 import { GradeFeeLink } from '../entities/grade-fee-link.entity';
 import { GradeFeeLinkLine } from '../entities/grade-fee-link-line.entity';
 
@@ -94,6 +100,16 @@ export class PaymentConfigService {
     private readonly levelRepo: Repository<SchoolPaymentLevel>,
     @InjectRepository(PaymentChargeType)
     private readonly chargeTypeRepo: Repository<PaymentChargeType>,
+    @InjectRepository(FeePackageChargeType)
+    private readonly feePackageChargeTypeRepo: Repository<FeePackageChargeType>,
+    @InjectRepository(FeePackageDiscountType)
+    private readonly feePackageDiscountTypeRepo: Repository<FeePackageDiscountType>,
+    @InjectRepository(StudentChargeSheetDiscountLine)
+    private readonly sheetDiscountRepo: Repository<StudentChargeSheetDiscountLine>,
+    @InjectRepository(FeePackageInclusionType)
+    private readonly feePackageInclusionTypeRepo: Repository<FeePackageInclusionType>,
+    @InjectRepository(StudentChargeSheetInclusionLine)
+    private readonly sheetInclusionRepo: Repository<StudentChargeSheetInclusionLine>,
     @InjectRepository(PaymentDiscountType)
     private readonly discountTypeRepo: Repository<PaymentDiscountType>,
     @InjectRepository(PaymentExtraType)
@@ -402,11 +418,29 @@ export class PaymentConfigService {
     }
   }
 
+  async packagesUsingChargeType(user: User, id: string): Promise<string[]> {
+    this.assertAdmin(user);
+    const row = await this.chargeTypeRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Charge type not found');
+    this.assertSchool(user, row.school_id);
+    const links = await this.feePackageChargeTypeRepo.find({
+      where: { charge_type_id: id },
+      relations: ['package'],
+    });
+    return [...new Set(links.map((link) => link.package?.name).filter((name): name is string => !!name))];
+  }
+
   async deleteChargeType(user: User, id: string): Promise<void> {
     this.assertAdmin(user);
     const row = await this.chargeTypeRepo.findOne({ where: { id } });
     if (!row) throw new NotFoundException('Charge type not found');
     this.assertSchool(user, row.school_id);
+    const packageNames = await this.packagesUsingChargeType(user, id);
+    if (packageNames.length) {
+      throw new ConflictException(
+        `This charge is used in a package: ${packageNames.join(', ')}`,
+      );
+    }
     await this.chargeTypeRepo.remove(row);
   }
 
@@ -414,10 +448,21 @@ export class PaymentConfigService {
   async listDiscountTypes(user: User, schoolId: string): Promise<PaymentDiscountType[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
-    return this.discountTypeRepo.find({
+    const rows = await this.discountTypeRepo.find({
       where: { school_id: schoolId },
       order: { sort_order: 'ASC', label: 'ASC' },
     });
+    const usage = await this.discountUsageById(rows.map((row) => row.id));
+    return rows.map((row) => Object.assign(row, usage.get(row.id) ?? { package_names: [], used_on_charges: false }));
+  }
+
+  async packagesUsingDiscountType(user: User, id: string): Promise<string[]> {
+    this.assertAdmin(user);
+    const row = await this.discountTypeRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Discount type not found');
+    this.assertSchool(user, row.school_id);
+    const usage = await this.discountUsageById([id]);
+    return usage.get(id)?.package_names ?? [];
   }
 
   async createDiscountType(user: User, schoolId: string, dto: UpsertCatalogDto): Promise<PaymentDiscountType> {
@@ -467,7 +512,43 @@ export class PaymentConfigService {
     const row = await this.discountTypeRepo.findOne({ where: { id } });
     if (!row) throw new NotFoundException('Discount type not found');
     this.assertSchool(user, row.school_id);
+    const usage = (await this.discountUsageById([id])).get(id);
+    if (usage?.package_names.length) {
+      throw new ConflictException(
+        `This discount is used in a package: ${usage.package_names.join(', ')}`,
+      );
+    }
+    if (usage?.used_on_charges) {
+      throw new ConflictException('This discount is already used on a student charge');
+    }
     await this.discountTypeRepo.remove(row);
+  }
+
+  private async discountUsageById(ids: string[]): Promise<Map<string, { package_names: string[]; used_on_charges: boolean }>> {
+    const usage = new Map<string, { package_names: string[]; used_on_charges: boolean }>();
+    if (!ids.length) return usage;
+    const links = await this.feePackageDiscountTypeRepo.find({
+      where: { discount_type_id: In(ids) },
+      relations: ['package'],
+    });
+    for (const link of links) {
+      const current = usage.get(link.discount_type_id) ?? { package_names: [], used_on_charges: false };
+      const name = link.package?.name?.trim();
+      if (name && !current.package_names.includes(name)) current.package_names.push(name);
+      usage.set(link.discount_type_id, current);
+    }
+    const sheetHits = await this.sheetDiscountRepo
+      .createQueryBuilder('line')
+      .select('line.discount_type_id', 'id')
+      .where('line.discount_type_id IN (:...ids)', { ids })
+      .groupBy('line.discount_type_id')
+      .getRawMany<{ id: string }>();
+    for (const hit of sheetHits) {
+      const current = usage.get(hit.id) ?? { package_names: [], used_on_charges: false };
+      current.used_on_charges = true;
+      usage.set(hit.id, current);
+    }
+    return usage;
   }
 
   // --- Extra types ---
@@ -534,10 +615,21 @@ export class PaymentConfigService {
   async listInclusionTypes(user: User, schoolId: string): Promise<PaymentInclusionType[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
-    return this.inclusionTypeRepo.find({
+    const rows = await this.inclusionTypeRepo.find({
       where: { school_id: schoolId },
       order: { sort_order: 'ASC', label: 'ASC' },
     });
+    const usage = await this.inclusionUsageById(rows.map((row) => row.id));
+    return rows.map((row) => Object.assign(row, usage.get(row.id) ?? { package_names: [], used_on_charges: false }));
+  }
+
+  async packagesUsingInclusionType(user: User, id: string): Promise<string[]> {
+    this.assertAdmin(user);
+    const row = await this.inclusionTypeRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Inclusion type not found');
+    this.assertSchool(user, row.school_id);
+    const usage = await this.inclusionUsageById([id]);
+    return usage.get(id)?.package_names ?? [];
   }
 
   async createInclusionType(user: User, schoolId: string, dto: UpsertCatalogDto): Promise<PaymentInclusionType> {
@@ -587,7 +679,43 @@ export class PaymentConfigService {
     const row = await this.inclusionTypeRepo.findOne({ where: { id } });
     if (!row) throw new NotFoundException('Inclusion type not found');
     this.assertSchool(user, row.school_id);
+    const usage = (await this.inclusionUsageById([id])).get(id);
+    if (usage?.package_names.length) {
+      throw new ConflictException(
+        `This included item is used in a package: ${usage.package_names.join(', ')}`,
+      );
+    }
+    if (usage?.used_on_charges) {
+      throw new ConflictException('This included item is already used on a student charge');
+    }
     await this.inclusionTypeRepo.remove(row);
+  }
+
+  private async inclusionUsageById(ids: string[]): Promise<Map<string, { package_names: string[]; used_on_charges: boolean }>> {
+    const usage = new Map<string, { package_names: string[]; used_on_charges: boolean }>();
+    if (!ids.length) return usage;
+    const links = await this.feePackageInclusionTypeRepo.find({
+      where: { inclusion_type_id: In(ids) },
+      relations: ['package'],
+    });
+    for (const link of links) {
+      const current = usage.get(link.inclusion_type_id) ?? { package_names: [], used_on_charges: false };
+      const name = link.package?.name?.trim();
+      if (name && !current.package_names.includes(name)) current.package_names.push(name);
+      usage.set(link.inclusion_type_id, current);
+    }
+    const sheetHits = await this.sheetInclusionRepo
+      .createQueryBuilder('line')
+      .select('line.inclusion_type_id', 'id')
+      .where('line.inclusion_type_id IN (:...ids)', { ids })
+      .groupBy('line.inclusion_type_id')
+      .getRawMany<{ id: string }>();
+    for (const hit of sheetHits) {
+      const current = usage.get(hit.id) ?? { package_names: [], used_on_charges: false };
+      current.used_on_charges = true;
+      usage.set(hit.id, current);
+    }
+    return usage;
   }
 
   // --- Profile ---

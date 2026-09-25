@@ -4,20 +4,7 @@
       <FikrPageHeader
         :title="$t('progressTracking.teacherDashboard')"
         :subtitle="progressHeaderSubtitle"
-      >
-        <template v-if="selectedGroup" #leading>
-          <button
-            type="button"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('common.back')"
-            @click="goBack"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        </template>
-      </FikrPageHeader>
+      />
 
       <!-- Step 1: Group Selection -->
       <div v-if="!selectedGroup" class="fk-card">
@@ -126,12 +113,24 @@
       <!-- Step 2: Lesson Selection -->
       <div v-else-if="selectedGroup && !selectedLesson" class="fk-card">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('progressTracking.selectLesson') }}</h2>
-            <p class="fk-card__meta">
-              {{ selectedGroup.name }}
-              <span v-if="!loading"> · {{ $t('progressTracking.lessonsCountLabel', { count: groupLessons.length }) }}</span>
-            </p>
+          <div class="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+              :aria-label="$t('common.back')"
+              @click="goBack"
+            >
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('progressTracking.selectLesson') }}</h2>
+              <p class="fk-card__meta">
+                {{ selectedGroup.name }}
+                <span v-if="!loading"> · {{ $t('progressTracking.lessonsCountLabel', { count: groupLessons.length }) }}</span>
+              </p>
+            </div>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
             <button
@@ -222,17 +221,22 @@
       <!-- Lesson Info -->
       <section class="fk-card">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ selectedLesson.title }}</h2>
-            <p class="fk-card__meta">{{ selectedGroup.name }} — {{ selectedLesson.subject }}</p>
+          <div class="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+              :aria-label="$t('common.back')"
+              @click="goBack"
+            >
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ selectedLesson.title }}</h2>
+              <p class="fk-card__meta">{{ selectedGroup.name }} — {{ selectedLesson.subject }}</p>
+            </div>
           </div>
-          <button
-            type="button"
-            class="fk-btn fk-btn--pearl text-sm"
-            @click="selectedLesson = null"
-          >
-            {{ $t('progressTracking.changeLesson') }}
-          </button>
         </header>
         <div class="space-y-4 p-5 sm:p-6">
           <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
@@ -451,6 +455,7 @@ import { studentService } from '@/services/student.service'
 import { courseService } from '@/services/course.service'
 import { progressService } from '@/services/progress.service'
 import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
+import { getErrorMessage, isDroppedRequest } from '@/utils/error-reporting'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
@@ -553,23 +558,19 @@ const loadGroups = async () => {
 
 // Computed properties
 const completedStudents = computed(() => {
-  if (!selectedLesson.value || !groupStudents.value.length) return 0
-  return groupStudents.value.filter(student => {
-    const milestones = selectedLesson.value.milestones
-    return milestones.every(milestone =>
-      getMilestoneStatus(student.id, milestone.id) === 'completed'
-    )
-  }).length
+  const milestones = selectedLesson.value?.milestones || []
+  if (!milestones.length || !groupStudents.value.length) return 0
+  return groupStudents.value.filter((student) =>
+    milestones.every((milestone) => getMilestoneStatus(student.id, milestone.id) === 'completed'),
+  ).length
 })
 
 const postponedStudents = computed(() => {
-  if (!selectedLesson.value || !groupStudents.value.length) return 0
-  return groupStudents.value.filter(student => {
-    const milestones = selectedLesson.value.milestones
-    return milestones.some(milestone =>
-      getMilestoneStatus(student.id, milestone.id) === 'postponed'
-    )
-  }).length
+  const milestones = selectedLesson.value?.milestones || []
+  if (!milestones.length || !groupStudents.value.length) return 0
+  return groupStudents.value.filter((student) =>
+    milestones.some((milestone) => getMilestoneStatus(student.id, milestone.id) === 'postponed'),
+  ).length
 })
 
 // Course phases computed property
@@ -740,71 +741,57 @@ const loadGroupStudents = async (groupId) => {
   }
 }
 
-// Load existing progress from database
+const progressCell = (studentId, milestoneId) => {
+  const byStudent = studentProgress.value[studentId] || studentProgress.value[String(studentId)]
+  if (!byStudent) return undefined
+  return byStudent[milestoneId] || byStudent[String(milestoneId)]
+}
+
 const loadExistingProgress = async () => {
+  studentProgress.value = {}
+  const courseId = selectedLesson.value?.courseId
+  if (!courseId || !groupStudents.value.length) return
   try {
-    console.log('🔄 Loading existing progress from database...')
-
-    // Clear existing progress
-    studentProgress.value = {}
-
-    // Load progress for each student
-    for (const student of groupStudents.value) {
-      try {
-        console.log(`🔄 Loading progress for student: ${student.name} (ID: ${student.id})`)
-        const progressRecords = await progressService.getProgressByStudent(student.id)
-
-        console.log(`📊 API Response for student ${student.name}:`, progressRecords)
-
-        if (progressRecords && progressRecords.length > 0) {
-          studentProgress.value[student.id] = {}
-
-          let latestProgressAt = null
-          progressRecords.forEach(record => {
-            console.log(`📝 Processing progress record:`, record)
-            studentProgress.value[student.id][record.milestone_id] = {
-              status: record.status,
-              startDate: record.started_date,
-              endDate: record.completed_date,
-              remarks: record.teacher_notes || '',
-              updatedAt: record.updated_at,
-              id: record.id
-            }
-            const recordAt = parseValidDate(record.updated_at ?? record.completed_date ?? record.started_date)
-            if (recordAt && (!latestProgressAt || recordAt > latestProgressAt)) {
-              latestProgressAt = recordAt
-            }
-          })
-          if (latestProgressAt) {
-            student.lastUpdate = latestProgressAt
-          }
-
-          console.log(`✅ Loaded ${progressRecords.length} progress records for student ${student.name}`)
-          console.log(`📋 Student progress data:`, studentProgress.value[student.id])
-        } else {
-          console.log(`ℹ️ No progress records found for student ${student.name}`)
-        }
-      } catch (error) {
-        console.error(`❌ Error loading progress for student ${student.name}:`, error)
+    const records = await progressService.getProgressByCourse(String(courseId))
+    const allowed = new Set(groupStudents.value.map((student) => String(student.id)))
+    const latestByStudent = {}
+    for (const record of records || []) {
+      const sid = String(record.student_id)
+      if (!allowed.has(sid)) continue
+      if (!studentProgress.value[sid]) studentProgress.value[sid] = {}
+      studentProgress.value[sid][String(record.milestone_id)] = {
+        status: record.status,
+        startDate: record.started_date,
+        endDate: record.completed_date,
+        remarks: record.teacher_notes || '',
+        updatedAt: record.updated_at,
+        id: record.id,
+      }
+      const recordAt = parseValidDate(record.updated_at ?? record.completed_date ?? record.started_date)
+      if (recordAt && (!latestByStudent[sid] || recordAt > latestByStudent[sid])) {
+        latestByStudent[sid] = recordAt
       }
     }
-
-    console.log('✅ Finished loading all student progress')
-
+    for (const student of groupStudents.value) {
+      const at = latestByStudent[String(student.id)]
+      if (at) student.lastUpdate = at
+    }
   } catch (error) {
-    console.error('❌ Error loading student progress:', error)
+    console.error('Failed to load student progress:', error)
+    feedback.error(
+      isDroppedRequest(error) ? t('common.requestTimeout') : getErrorMessage(error, t('common.error')),
+    )
   }
 }
 
 const getMilestoneStatus = (studentId, milestoneId) => {
-  const status = studentProgress.value[studentId]?.[milestoneId]?.status || 'notStarted'
-  // Map old status names to new ones
-  if (status === 'not_started') return 'notStarted'
+  const status = progressCell(studentId, milestoneId)?.status || 'notStarted'
+  if (status === 'not_started' || status === 'notStarted') return 'notStarted'
   return status
 }
 
 const getStudentProgressData = (studentId, milestoneId) => {
-  const progress = studentProgress.value[studentId]?.[milestoneId]
+  const progress = progressCell(studentId, milestoneId)
 
   return {
     startDate: progress?.startDate || '',

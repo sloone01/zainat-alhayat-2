@@ -1,6 +1,7 @@
 <template>
   <div
     class="flex gap-3"
+    :dir="fullBleed ? undefined : 'ltr'"
     :class="fullBleed
       ? 'w-[calc(100%+1rem)] -mx-2 flex-col'
       : isOwn ? 'flex-row-reverse' : 'flex-row'"
@@ -46,6 +47,7 @@
       </div>
       <div
         v-if="!$slots.raw"
+        dir="auto"
         class="rounded-lg px-3 py-2 text-sm"
         :class="isOwn
           ? 'bg-primary-600 text-white'

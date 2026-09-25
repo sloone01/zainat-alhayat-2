@@ -43,7 +43,7 @@
             </p>
             <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <KanbanCard
-                v-for="p in paginatedPayments"
+                v-for="(p, index) in paginatedPayments"
                 :key="p.id"
                 :title="studentName(p)"
                 :description="`${fmt(p.amount)} OMR · ${$t(`parentFees.method_${p.method}`)}`"
@@ -56,7 +56,7 @@
                 <template #actions>
                   <RowActionsMenu
                     :open="activeMenuId === p.id"
-                    placement="up"
+                    :placement="index < 3 ? 'down' : 'up'"
                     @toggle="toggleMenu(p.id)"
                   >
                     <RowActionsItem
@@ -87,7 +87,7 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="overflow-x-auto">
+            <div v-else class="fk-table-wrap overflow-visible">
               <table class="fk-feetable min-w-full">
                 <thead>
                   <tr>
@@ -98,7 +98,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="p in paginatedPayments" :key="'list-' + p.id">
+                  <tr v-for="(p, index) in paginatedPayments" :key="'list-' + p.id">
                     <td class="font-medium">{{ studentName(p) }}</td>
                     <td class="text-end font-medium" dir="ltr">{{ fmt(p.amount) }}</td>
                     <td>
@@ -110,7 +110,7 @@
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === p.id"
-                          placement="up"
+                          :placement="index < 2 ? 'down' : 'up'"
                           @toggle="toggleMenu(p.id)"
                         >
                           <RowActionsItem

@@ -54,6 +54,7 @@
                 v-for="role in paginatedRoles"
                 :key="role.id"
                 :title="role.name"
+                :muted="role.isActive === false"
                 :description="role.code || '—'"
               >
                 <template #tags>
@@ -62,6 +63,9 @@
                   </KanbanTag>
                   <KanbanTag v-if="role.isSystem" dot="amber">
                     {{ $t('roleManagement.systemRole') }}
+                  </KanbanTag>
+                  <KanbanTag v-if="role.isActive === false" dot="gray">
+                    {{ $t('roleManagement.inactive') }}
                   </KanbanTag>
                 </template>
                 <template #actions>
@@ -77,9 +81,15 @@
                       {{ $t('roleManagement.clone') }}
                     </RowActionsItem>
                     <RowActionsItem
+                      v-if="role.systemKey !== 'super_admin'"
+                      :icon="role.isActive === false ? 'activate' : 'archive'"
+                      @click="onSetActive(role, role.isActive === false)"
+                    >
+                      {{ role.isActive === false ? $t('roleManagement.activate') : $t('roleManagement.deactivate') }}
+                    </RowActionsItem>
+                    <RowActionsItem
                       icon="delete"
                       danger
-                      :disabled="role.isSystem"
                       @click="onDelete(role)"
                     >
                       {{ $t('common.delete') }}
@@ -109,7 +119,12 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="role in paginatedRoles" :key="'list-' + role.id" class="hover:bg-fikr-pearl">
+                  <tr
+                    v-for="role in paginatedRoles"
+                    :key="'list-' + role.id"
+                    class="hover:bg-fikr-pearl"
+                    :class="role.isActive === false ? 'opacity-70' : ''"
+                  >
                     <td>
                       <div class="font-medium text-fikr-ink">{{ role.name }}</div>
                       <div class="text-xs text-fikr-ink-soft line-clamp-1">{{ role.description || '—' }}</div>
@@ -118,6 +133,12 @@
                         class="fk-chip fk-chip--amber mt-1"
                       >
                         {{ $t('roleManagement.systemRole') }}
+                      </span>
+                      <span
+                        v-if="role.isActive === false"
+                        class="fk-chip fk-chip--neutral mt-1 ms-1"
+                      >
+                        {{ $t('roleManagement.inactive') }}
                       </span>
                     </td>
                     <td class="font-mono text-xs text-fikr-ink-muted" dir="ltr">{{ role.code || '—' }}</td>
@@ -138,9 +159,15 @@
                             {{ $t('roleManagement.clone') }}
                           </RowActionsItem>
                           <RowActionsItem
+                            v-if="role.systemKey !== 'super_admin'"
+                            :icon="role.isActive === false ? 'activate' : 'archive'"
+                            @click="onSetActive(role, role.isActive === false)"
+                          >
+                            {{ role.isActive === false ? $t('roleManagement.activate') : $t('roleManagement.deactivate') }}
+                          </RowActionsItem>
+                          <RowActionsItem
                             icon="delete"
                             danger
-                            :disabled="role.isSystem"
                             @click="onDelete(role)"
                           >
                             {{ $t('common.delete') }}
@@ -362,20 +389,41 @@ function onDelete(role: RbacGroup) {
   void deleteRole(role)
 }
 
+function onSetActive(role: RbacGroup, isActive: boolean) {
+  void setRoleActive(role, isActive)
+}
+
+async function setRoleActive(role: RbacGroup, isActive: boolean) {
+  closeMenu()
+  try {
+    await rbacService.updateGroup(role.id, { isActive })
+    role.isActive = isActive
+    feedback.saved(isActive ? t('roleManagement.activated') : t('roleManagement.deactivated'))
+  } catch (e: unknown) {
+    feedback.error(apiMessage(e) || t('common.error'))
+  }
+}
+
 async function cloneRole(role: RbacGroup) {
   closeMenu()
   try {
     await rbacService.cloneGroup(role.id, { name: `${role.name} (copy)` })
     await loadAll()
   } catch (e: unknown) {
-    const err = e as Error
-    alert(err?.message || 'Clone failed')
+    feedback.error(apiMessage(e) || t('common.error'))
   }
 }
 
 async function deleteRole(role: RbacGroup) {
   closeMenu()
-  if (role.isSystem) return
+  if ((role.memberCount ?? 0) > 0) {
+    feedback.alert(t('roleManagement.deleteBlockedLinked', { name: role.name }), t('common.delete'))
+    return
+  }
+  if (role.isSystem || role.groupType === 'parent' || role.groupType === 'student') {
+    feedback.alert(t('roleManagement.deleteBlockedFixed', { name: role.name }), t('common.delete'))
+    return
+  }
   if (!(await feedback.confirm({
     title: t('common.delete'),
     message: t('roleManagement.confirmDelete', { name: role.name }),
@@ -386,9 +434,21 @@ async function deleteRole(role: RbacGroup) {
     await rbacService.deleteGroup(role.id)
     await loadAll()
   } catch (e: unknown) {
-    const err = e as Error
-    alert(err?.message || 'Delete failed')
+    const ax = e as { response?: { status?: number } }
+    if (ax.response?.status === 409) {
+      feedback.alert(t('roleManagement.deleteBlockedLinked', { name: role.name }), t('common.delete'))
+      return
+    }
+    feedback.alert(apiMessage(e) || t('common.error'), t('common.delete'))
   }
+}
+
+function apiMessage(e: unknown): string {
+  const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
+  const raw = ax.response?.data?.message
+  if (Array.isArray(raw)) return raw.filter(Boolean).join(', ')
+  if (typeof raw === 'string' && raw.trim()) return raw.trim()
+  return typeof ax.message === 'string' ? ax.message : ''
 }
 
 onMounted(() => {

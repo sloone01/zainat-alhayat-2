@@ -92,14 +92,14 @@ let StudentProgressService = class StudentProgressService {
         return await this.progressRepository.find({
             where: { course_id: courseId },
             relations: ['student', 'milestone', 'milestone.phase', 'updater'],
-            order: { student: { first_name: 'ASC' }, milestone: { order: 'ASC' } },
+            order: { student: { firstName: 'ASC' }, milestone: { order: 'ASC' } },
         });
     }
     async findByMilestone(milestoneId) {
         return await this.progressRepository.find({
             where: { milestone_id: milestoneId },
             relations: ['student', 'course', 'updater'],
-            order: { student: { first_name: 'ASC' } },
+            order: { student: { firstName: 'ASC' } },
         });
     }
     async findByStudentAndCourse(studentId, courseId) {

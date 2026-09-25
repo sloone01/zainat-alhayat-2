@@ -18,7 +18,10 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         </div>
-        <label class="absolute -bottom-1 -end-1 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary-600 text-white shadow-sm transition hover:bg-primary-700">
+        <label
+          class="absolute -bottom-1 -end-1 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary-600 text-white shadow-sm transition hover:bg-primary-700"
+          :class="{ 'pointer-events-none opacity-60': photoUploading }"
+        >
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812-1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -170,6 +173,7 @@ import { NATIONALITIES, normaliseNationality } from '@/utils/nationalities'
 import { isArabicName, isEnglishName, isIdNumber, isNotFutureDate, localDateInputValue, toLocalDateInputValue, type ValidationKey } from '@/utils/validation'
 import { studentService, type StudentCivilLookupResult } from '@/services/student.service'
 import { enrollmentService } from '@/services/enrollment.service'
+import attachmentService from '@/services/attachment.service'
 
 type StudentModel = {
   fullName: string
@@ -220,6 +224,15 @@ const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const photoInput = ref<HTMLInputElement>()
 const photoPreview = ref<string | null>(null)
+const photoUploading = ref(false)
+let photoObjectUrl: string | null = null
+
+function revokePhotoObjectUrl() {
+  if (photoObjectUrl) {
+    URL.revokeObjectURL(photoObjectUrl)
+    photoObjectUrl = null
+  }
+}
 
 const localData = ref<StudentModel>({
   ...props.modelValue,
@@ -559,37 +572,73 @@ function onCivilIdInput() {
   civilTimer = setTimeout(runCivilLookup, 450)
 }
 
-const handlePhotoUpload = (event: Event) => {
+const handlePhotoUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
+  if (!file) return
 
-  if (file) {
-    localData.value.photo = file
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      photoPreview.value = e.target?.result as string
+  revokePhotoObjectUrl()
+  photoObjectUrl = URL.createObjectURL(file)
+  photoPreview.value = photoObjectUrl
+
+  const isImage = /^image\/(jpeg|png|webp|gif)$/i.test(file.type) || /\.(jpe?g|png|webp|gif)$/i.test(file.name)
+  if (!isImage || file.size > 5 * 1024 * 1024) {
+    revokePhotoObjectUrl()
+    photoPreview.value = null
+    localData.value.photo = null
+    target.value = ''
+    return
+  }
+
+  photoUploading.value = true
+  try {
+    if (props.mode === 'public') {
+      if (!props.schoolId?.trim()) {
+        throw new Error(t('enrollment.schoolRequired'))
+      }
+      const row = await enrollmentService.uploadPublicAttachment(
+        file,
+        props.schoolId,
+        'enrollment_photo',
+      )
+      localData.value.photo = row.url
+    } else {
+      const row = await attachmentService.uploadFile(file, { purpose: 'enrollment_photo' })
+      localData.value.photo = row.url
     }
-    reader.readAsDataURL(file)
+  } catch (err) {
+    console.error(err)
+    revokePhotoObjectUrl()
+    photoPreview.value = null
+    localData.value.photo = null
+  } finally {
+    photoUploading.value = false
+    target.value = ''
   }
 }
 
 const setPhotoPreview = (photo: File | string | null) => {
+  revokePhotoObjectUrl()
   if (!photo) {
     photoPreview.value = null
     return
   }
   if (typeof photo === 'string') {
+    // Attachment download paths need JWT; keep local object URL after upload.
+    // Draft resume with /api/attachments/… may not render until staff opens it signed-in.
+    if (photo.startsWith('/api/attachments/')) {
+      photoPreview.value = null
+      return
+    }
     photoPreview.value = photo
     return
   }
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    photoPreview.value = e.target?.result as string
-  }
-  reader.readAsDataURL(photo)
+  photoObjectUrl = URL.createObjectURL(photo)
+  photoPreview.value = photoObjectUrl
 }
 
 const removePhoto = () => {
+  revokePhotoObjectUrl()
   localData.value.photo = null
   photoPreview.value = null
   if (photoInput.value) {

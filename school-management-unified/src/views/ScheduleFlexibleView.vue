@@ -18,51 +18,12 @@
                 {{ group.name }}<template v-if="group.ageRangeLabel"> ({{ group.ageRangeLabel }})</template>
               </option>
             </select>
-            <div v-if="selectedGroup" class="relative" data-export-menu>
-              <button
-                type="button"
-                class="fk-tt-icon"
-                :aria-label="$t('scheduleManagement.exportMenu')"
-                :aria-expanded="showExportMenu"
-                aria-haspopup="true"
-                @click="toggleExportMenu"
-              >
-                <IconDownload />
-              </button>
-              <div
-                v-if="showExportMenu"
-                role="menu"
-                class="absolute end-0 z-30 mt-1 w-44 rounded-md border border-gray-200 bg-white py-1 text-start shadow-lg"
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  @click="onExport('word')"
-                >
-                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-sky-100 text-[10px] font-bold text-sky-800">W</span>
-                  {{ $t('scheduleManagement.exportAsWord') }}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  @click="onExport('pdf')"
-                >
-                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-red-100 text-[10px] font-bold text-red-800">PDF</span>
-                  {{ $t('scheduleManagement.exportAsPdf') }}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  @click="onExport('excel')"
-                >
-                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-emerald-100 text-[10px] font-bold text-emerald-800">XLS</span>
-                  {{ $t('scheduleManagement.exportAsExcel') }}
-                </button>
-              </div>
-            </div>
+            <TimetableDownloadMenu
+              :label="$t('scheduleManagement.downloadTable')"
+              :word-label="$t('scheduleManagement.exportAsWord')"
+              :pdf-label="$t('scheduleManagement.exportAsPdf')"
+              @download="downloadTimetable"
+            />
         </template>
       </FikrPageHeader>
       <section class="fk-tt-board">
@@ -78,12 +39,12 @@
           <p class="text-sm font-semibold">{{ $t('scheduleManagement.noGroupSelected') }}</p>
         </div>
 
+        <template v-else>
         <FlexibleTimeline
-          v-else
           :slots="timelineSlots"
           :days="timelineDays"
-          :start-hour="timelineBounds.startHour"
-          :end-hour="timelineBounds.endHour"
+          :start-minutes="timelineBounds.startMinutes"
+          :end-minutes="timelineBounds.endMinutes"
           :rtl="isRTL"
           :busy="loading"
           @select="onTimelineSelect"
@@ -91,6 +52,7 @@
           @move="onTimelineMove"
           @reject="onTimelineReject"
         />
+        </template>
       </section>
     </div>
 
@@ -114,14 +76,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
-import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
-import IconDownload from '@/components/icons/IconDownload.vue'
+import TimetableDownloadMenu from '@/components/TimetableDownloadMenu.vue'
 import ClassModal from '@/components/ClassModal.vue'
 import FlexibleTimeline from '@/components/FlexibleTimeline.vue'
 import { useFeedback } from '@/composables/useFeedback'
@@ -144,10 +103,13 @@ import {
 } from '@/utils/schedule-display'
 import { isCourseSchedulable } from '@/utils/course-status'
 import { resolveFeeLevelId } from '@/utils/fee-level'
+import { downloadPrintableTimetable, type PrintableTimetable } from '@/utils/printable-timetable'
+import { useSchoolBrand } from '@/composables/useSchoolBrand'
 
 const { locale, t } = useI18n()
 const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
+const { schoolName } = useSchoolBrand()
 
 const SESSION_COLORS = ['#2563eb', '#059669', '#7c3aed', '#ea580c', '#0f766e', '#db2777', '#ca8a04']
 
@@ -160,14 +122,6 @@ function sessionColor(courseId: string | null, raw?: string) {
   return SESSION_COLORS[index]
 }
 
-function escapeHtml(text: string): string {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
 function sanitizeFilenameSegment(name: string): string {
   return (
     String(name || 'schedule')
@@ -177,15 +131,8 @@ function sanitizeFilenameSegment(name: string): string {
   )
 }
 
-function applyRtlToExcel(wb: XLSX.WorkBook, ws: XLSX.WorkSheet, rtl: boolean) {
-  if (!rtl) return
-  ;(ws as XLSX.WorkSheet & { '!views'?: { RTL?: boolean }[] })['!views'] = [{ RTL: true }]
-  wb.Workbook = { ...(wb.Workbook || {}), Views: [{ RTL: true }] }
-}
-
 const selectedGroupId = ref('')
 const showClassModal = ref(false)
-const showExportMenu = ref(false)
 const selectedClass = ref(null)
 const selectedDay = ref('')
 const selectedTime = ref('')
@@ -369,17 +316,42 @@ const weekDays = [
 
 const todayDayKey = weekDays[schoolWeekdayIndex()]?.key || 'sunday'
 
+const schoolStartTime = ref('07:30')
+const schoolEndTime = ref('')
 const firstClassTime = ref('08:00')
+const periodsPerDay = ref(6)
+const defaultDurationMinutes = ref(45)
+const breakMinutesTotal = ref(0)
 
-const loadFirstClassTime = async () => {
+function sliceHm(value: unknown): string {
+  const text = String(value || '').slice(0, 5)
+  return /^\d{2}:\d{2}$/.test(text) ? text : ''
+}
+
+const loadSchoolDay = async () => {
   try {
     const saved = localStorage.getItem('classSettings')
     if (saved) {
       const settings = JSON.parse(saved)
-      if (settings.firstClassTime) firstClassTime.value = settings.firstClassTime
+      const start = sliceHm(settings.schoolStartTime)
+      const end = sliceHm(settings.schoolEndTime)
+      const first = sliceHm(settings.firstClassTime)
+      if (start) schoolStartTime.value = start
+      if (end) schoolEndTime.value = end
+      if (first) firstClassTime.value = first
+      if (Number(settings.periodsPerDay) > 0) periodsPerDay.value = Number(settings.periodsPerDay)
+      const durations = Array.isArray(settings.classDurations) ? settings.classDurations : []
+      const preferred = durations.find((row: { isDefault?: boolean; minutes?: number }) => row?.isDefault)
+      if (Number(preferred?.minutes) > 0) defaultDurationMinutes.value = Number(preferred.minutes)
+      if (Array.isArray(settings.breakTimes)) {
+        breakMinutesTotal.value = settings.breakTimes.reduce(
+          (sum: number, row: { duration?: number }) => sum + (Number(row?.duration) || 0),
+          0,
+        )
+      }
     }
   } catch {
-    /* keep default */
+    /* keep defaults */
   }
   try {
     const { classSettingsService } = await import('@/services')
@@ -387,38 +359,17 @@ const loadFirstClassTime = async () => {
     const first = all.find((s: any) => s.setting_type === 'first_class_time' || s.name === 'firstClassTime')
     if (first?.time_value) firstClassTime.value = String(first.time_value).slice(0, 5)
   } catch {
-    /* keep default */
+    /* keep defaults */
   }
 }
 
 onMounted(async () => {
-  document.addEventListener('click', handleExportMenuClickOutside)
-  await loadFirstClassTime()
+  await loadSchoolDay()
   await Promise.all([fetchGroups(), fetchTeachers(), fetchCourses(), fetchRooms()])
   if (groups.value.length > 0 && !selectedGroupId.value) {
     selectedGroupId.value = String(groups.value[0].id)
   }
 })
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleExportMenuClickOutside)
-})
-
-function toggleExportMenu() {
-  showExportMenu.value = !showExportMenu.value
-}
-
-function onExport(format: 'word' | 'pdf' | 'excel') {
-  showExportMenu.value = false
-  void runExport(format)
-}
-
-function handleExportMenuClickOutside(event: Event) {
-  const target = event.target as Element
-  if (showExportMenu.value && !target.closest('[data-export-menu]')) {
-    showExportMenu.value = false
-  }
-}
 
 const selectedGroup = computed(() => {
   const sid = selectedGroupId.value
@@ -470,21 +421,29 @@ const timelineSlots = computed(() =>
   })),
 )
 
+const resolvedSchoolEnd = computed(() => {
+  const stored = hmToMinutes(schoolEndTime.value)
+  if (Number.isFinite(stored) && stored > hmToMinutes(schoolStartTime.value)) return stored
+  const duration = defaultDurationMinutes.value
+  const first = hmToMinutes(firstClassTime.value)
+  if (!Number.isFinite(first) || !duration || !periodsPerDay.value) return first + 8 * 60
+  return first + periodsPerDay.value * duration + breakMinutesTotal.value
+})
+
 const timelineBounds = computed(() => {
-  let min = hmToMinutes(firstClassTime.value)
-  if (!Number.isFinite(min)) min = 8 * 60
-  let max = min + 8 * 60
+  let min = hmToMinutes(schoolStartTime.value)
+  if (!Number.isFinite(min)) min = 7 * 60 + 30
+  let max = resolvedSchoolEnd.value
+  if (!Number.isFinite(max) || max <= min) max = min + 8 * 60
   for (const cls of currentSchedule.value) {
     const start = hmToMinutes(cls.startTime)
     const end = hmToMinutes(cls.endTime)
-    if (Number.isFinite(start)) min = Math.min(min, start)
-    if (Number.isFinite(end)) max = Math.max(max, end)
+    if (Number.isFinite(start) && start < min) min = start
+    if (Number.isFinite(end) && end > max) max = end
   }
-  const startHour = Math.max(0, Math.floor(min / 60))
-  let endHour = Math.min(24, Math.ceil(max / 60))
-  if (endHour <= startHour) endHour = Math.min(24, startHour + 8)
-  if (max >= endHour * 60) endHour = Math.min(24, endHour + 1)
-  return { startHour, endHour }
+  min = Math.max(0, Math.min(min, 24 * 60 - 60))
+  max = Math.min(24 * 60, Math.max(max, min + 60))
+  return { startMinutes: min, endMinutes: max }
 })
 
 function onTimelineSelect(id: string) {
@@ -742,178 +701,62 @@ const deleteClass = async (classItem: any) => {
   closeClassModal()
 }
 
-function exportStamp(): string {
-  try {
-    return new Date().toLocaleString(locale.value === 'ar' ? 'ar' : 'en', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
+function buildPrintableTimetable(): PrintableTimetable {
+  const slotKeys: string[] = []
+  for (const cls of currentSchedule.value) {
+    const key = `${cls.startTime}|${cls.endTime || ''}`
+    if (!slotKeys.includes(key)) slotKeys.push(key)
+  }
+  slotKeys.sort((a, b) => a.localeCompare(b))
+  const columns = slotKeys.map((key) => {
+    const [start, end] = key.split('|')
+    return end ? `${start}–${end}` : start
+  })
+  const rows = weekDays.map((day) => ({
+    day: t(`scheduleManagement.days.${day.key}`),
+    cells: (columns.length ? slotKeys : ['']).map((key) => {
+      if (!key) return { title: '', detail: '', tone: 'empty' as const }
+      const cls = sortedDayClasses(day.key).find((item) => `${item.startTime}|${item.endTime || ''}` === key)
+      if (!cls) return { title: '', detail: '', tone: 'empty' as const }
+      return {
+        title: cls.subjectLabel || cls.subject || '',
+        detail: cls.teacherLabel || cls.teacher || '',
+        tone: 'class' as const,
+      }
+    }),
+  }))
+  const notes = currentSchedule.value
+    .filter((cls) => String(cls.notes || '').trim())
+    .map((cls) => {
+      const day = t(`scheduleManagement.days.${cls.day}`)
+      const subject = cls.subjectLabel || cls.subject || ''
+      return `${day} · ${subject}: ${String(cls.notes).trim()}`
     })
-  } catch {
-    return new Date().toISOString()
+  return {
+    title: t('scheduleManagement.printableTitle'),
+    schoolName: schoolName.value,
+    groupName: selectedGroup.value?.name || '',
+    corner: t('scheduleManagement.dayTimeCorner'),
+    notesLabel: t('scheduleManagement.classModal.notes'),
+    rtl: isRTL.value,
+    columns,
+    rows,
+    notes,
   }
 }
 
-function buildExcelWorkbookRows(): (string | number)[][] {
-  const rows: (string | number)[][] = [
-    [t('scheduleManagement.title')],
-    [`${t('common.group')}: ${selectedGroup.value?.name || ''}`],
-    [`${t('scheduleManagement.exportGeneratedAt')}: ${exportStamp()}`],
-    [],
-    [
-      t('scheduleManagement.classModal.day'),
-      t('common.time'),
-      t('scheduleManagement.classModal.subject'),
-      t('scheduleManagement.classModal.teacher'),
-      t('scheduleManagement.classModal.room'),
-      t('scheduleManagement.classModal.notes'),
-    ],
-  ]
-
-  for (const day of weekDays) {
-    const list = sortedDayClasses(day.key)
-    if (!list.length) {
-      rows.push([t(`scheduleManagement.days.${day.key}`), '—', '', '', '', ''])
-      continue
-    }
-    for (const cls of list) {
-      rows.push([
-        t(`scheduleManagement.days.${cls.day}`),
-        `${cls.startTime}${cls.endTime ? `–${cls.endTime}` : ''}`,
-        cls.subjectLabel || cls.subject || '',
-        cls.teacherLabel || cls.teacher || '',
-        cls.room || '',
-        cls.notes || '',
-      ])
-    }
-  }
-
-  return rows
-}
-
-function buildExportTableHtml(): string {
-  const rtl = isRTL.value
-  const ta = rtl ? 'right' : 'left'
-
-  const dayColumns = weekDays
-    .map((day) => {
-      const list = sortedDayClasses(day.key)
-      const cards = list.length
-        ? list
-            .map((cls) => {
-              const subject = escapeHtml(cls.subjectLabel || cls.subject || '')
-              const teacher = escapeHtml(cls.teacherLabel || cls.teacher || '')
-              const room = escapeHtml(cls.room || '')
-              const time = escapeHtml(`${cls.startTime}–${cls.endTime}`)
-              const mins = sessionMinutes(cls)
-              return `<div class="card"><div class="meta">${time} · ${mins}</div><div class="subj">${subject}</div><div class="meta">${teacher}</div><div class="meta">${room}</div></div>`
-            })
-            .join('')
-        : `<div class="empty">${escapeHtml(t('scheduleManagement.noClassesDescription'))}</div>`
-      return `<td class="day-col"><div class="day-title">${escapeHtml(t(`scheduleManagement.days.${day.key}`))}</div>${cards}</td>`
-    })
-    .join('')
-
-  return `
-    <style>
-      * { box-sizing: border-box; }
-      .wrap { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #111827; }
-      h1 { font-size: 18px; margin: 0 0 6px; font-weight: 700; text-align: ${ta}; }
-      h2 { font-size: 13px; margin: 0 0 12px; font-weight: 600; color: #4b5563; text-align: ${ta}; }
-      .meta-line { font-size: 12px; color: #374151; margin-bottom: 12px; line-height: 1.5; text-align: ${ta}; }
-      table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
-      th, td { border: 1px solid #d1d5db; padding: 8px; vertical-align: top; text-align: ${ta}; }
-      .day-title { font-weight: 700; font-size: 11px; text-transform: uppercase; color: #4b5563; margin-bottom: 8px; }
-      .card { border: 1px solid #99d5d2; background: #f0fafa; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
-      .subj { font-weight: 600; color: #111827; }
-      .meta { font-size: 10px; color: #6b7280; margin-top: 2px; }
-      .empty { color: #9ca3af; font-size: 10px; }
-    </style>
-    <div class="wrap">
-      <h1>${escapeHtml(t('scheduleManagement.title'))}</h1>
-      <h2>${escapeHtml(t('scheduleManagement.weeklySchedule'))} — ${escapeHtml(selectedGroup.value?.name || '')}</h2>
-      <div class="meta-line">
-        <div><strong>${escapeHtml(t('scheduleManagement.exportGeneratedAt'))}</strong>: ${escapeHtml(exportStamp())}</div>
-      </div>
-      <table>
-        <tbody>
-          <tr>${dayColumns}</tr>
-        </tbody>
-      </table>
-    </div>
-  `
-}
-
-const runExport = async (format: 'word' | 'pdf' | 'excel') => {
+async function downloadTimetable(format: 'pdf' | 'word') {
   if (!selectedGroup.value) {
     window.alert(t('scheduleManagement.exportSelectGroupFirst'))
     return
   }
-
   const dateSeg = new Date().toISOString().slice(0, 10)
   const groupSeg = sanitizeFilenameSegment(selectedGroup.value.name)
-  const baseName = `schedule_${groupSeg}_${dateSeg}`
-
-  if (format === 'excel') {
-    const ws = XLSX.utils.aoa_to_sheet(buildExcelWorkbookRows())
-    const wb = XLSX.utils.book_new()
-    applyRtlToExcel(wb, ws, isRTL.value)
-    XLSX.utils.book_append_sheet(wb, ws, 'Schedule')
-    XLSX.writeFile(wb, `${baseName}.xlsx`)
-    return
-  }
-
-  const inner = buildExportTableHtml()
-
-  if (format === 'word') {
-    const html = `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="${locale.value}" dir="${isRTL.value ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><title>${escapeHtml(t('scheduleManagement.title'))}</title></head><body>${inner}</body></html>`
-    const blob = new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${baseName}.doc`
-    a.click()
-    URL.revokeObjectURL(url)
-    return
-  }
-
-  const host = document.createElement('div')
-  host.setAttribute('dir', isRTL.value ? 'rtl' : 'ltr')
-  host.style.cssText =
-    'position:fixed;left:-12000px;top:0;width:1100px;padding:20px;background:#ffffff;z-index:-1;'
-  host.innerHTML = inner
-  document.body.appendChild(host)
-  await nextTick()
-  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-
   try {
-    const canvas = await html2canvas(host, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-    })
-    const imgData = canvas.toDataURL('image/png')
-    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-    const pageW = pdf.internal.pageSize.getWidth()
-    const pageH = pdf.internal.pageSize.getHeight()
-    const imgW = pageW
-    const imgH = (canvas.height * imgW) / canvas.width
-    let heightLeft = imgH
-    let y = 0
-    pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
-    heightLeft -= pageH
-    while (heightLeft > 0) {
-      y -= pageH
-      pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
-      heightLeft -= pageH
-    }
-    pdf.save(`${baseName}.pdf`)
-  } catch (e) {
-    console.error('Schedule PDF export failed:', e)
-    window.alert(t('scheduleManagement.exportPdfFailed'))
-  } finally {
-    host.remove()
+    await downloadPrintableTimetable(buildPrintableTimetable(), format, `timetable_${groupSeg}_${dateSeg}`)
+  } catch (error) {
+    console.error('Timetable export failed', error)
+    window.alert(t('scheduleManagement.exportFailed'))
   }
 }
 </script>

@@ -35,7 +35,13 @@ import {
   SetChargeSheetDiscountsDto,
 } from '../dto/fees-v2.dto';
 import { moneyStr, num, splitRoundedUpToFive } from '../utils/fees-v2.util';
-import { computeInstallmentDueDate, formatDueDateYmd } from '../utils/installment-due-date.util';
+import { formatStudentDisplayName } from '../common/identity/bilingual-name';
+import {
+  classifyDueState,
+  computeInstallmentDueDate,
+  dueDateYmd,
+  formatDueDateYmd,
+} from '../utils/installment-due-date.util';
 
 type ChargeCandidate = {
   charge_type_id: string;
@@ -655,58 +661,70 @@ export class StudentChargeSheetService {
         's.id AS sheet_id',
         'st.id AS student_id',
         'st.firstName AS first_name',
+        'st.secondName AS second_name',
+        'st.secondNameEn AS second_name_en',
         'st.lastName AS last_name',
+        'st.first_name_ar AS first_name_ar',
+        'st.first_name_en AS first_name_en',
+        'st.last_name_ar AS last_name_ar',
+        'st.last_name_en AS last_name_en',
       ])
       .orderBy('i.due_date', 'ASC', 'NULLS LAST')
       .addOrderBy('st.firstName', 'ASC')
       .getRawMany();
 
-    const items = rows
-      .map((r) => {
-        const dueDate = r.due_date ? String(r.due_date).slice(0, 10) : null;
-        const amountDue = num(r.amount_due);
-        const amountPaid = num(r.amount_paid);
-        const balance = Math.max(0, amountDue - amountPaid);
-        let state: 'upcoming' | 'due' | 'late' | 'unscheduled' = 'unscheduled';
-        let days = 0;
-        if (dueDate) {
-          const dueMs = Date.parse(`${dueDate}T00:00:00Z`);
-          const asOfMs = Date.parse(`${asOf}T00:00:00Z`);
-          days = Math.round((asOfMs - dueMs) / 86400000);
-          if (days > 0) state = 'late';
-          else if (days === 0) state = 'due';
-          else state = 'upcoming';
-        }
-        return {
-          installment_id: r.installment_id,
-          student_id: r.student_id,
-          student_name: `${r.first_name || ''} ${r.last_name || ''}`.trim(),
-          sheet_id: r.sheet_id,
-          sequence: Number(r.sequence),
-          month_number: r.month_number == null ? null : Number(r.month_number),
-          label: r.label,
-          due_date: dueDate,
-          amount_due: moneyStr(amountDue),
-          amount_paid: moneyStr(amountPaid),
-          balance: moneyStr(balance),
-          status: r.status,
-          state,
-          days_overdue: Math.max(0, days),
-        };
-      })
-      .filter((row) => {
-        if (bucket === 'all') return true;
-        return row.state === bucket;
-      });
+    const classified = rows.map((r) => {
+      const dueDate = dueDateYmd(r.due_date);
+      const amountDue = num(r.amount_due);
+      const amountPaid = num(r.amount_paid);
+      const balance = Math.max(0, amountDue - amountPaid);
+      const bucketState = classifyDueState(dueDate, asOf);
+      return {
+        installment_id: r.installment_id,
+        student_id: r.student_id,
+        student_name: formatStudentDisplayName({
+          firstName: r.first_name,
+          secondName: r.second_name,
+          secondNameEn: r.second_name_en,
+          lastName: r.last_name,
+          first_name_ar: r.first_name_ar,
+          first_name_en: r.first_name_en,
+          last_name_ar: r.last_name_ar,
+          last_name_en: r.last_name_en,
+        }),
+        first_name: r.first_name,
+        second_name: r.second_name,
+        second_name_en: r.second_name_en,
+        last_name: r.last_name,
+        first_name_ar: r.first_name_ar,
+        first_name_en: r.first_name_en,
+        last_name_ar: r.last_name_ar,
+        last_name_en: r.last_name_en,
+        sheet_id: r.sheet_id,
+        sequence: Number(r.sequence),
+        month_number: r.month_number == null ? null : Number(r.month_number),
+        label: r.label,
+        due_date: dueDate,
+        amount_due: moneyStr(amountDue),
+        amount_paid: moneyStr(amountPaid),
+        balance: moneyStr(balance),
+        status: r.status,
+        state: bucketState.state,
+        days_overdue: bucketState.daysOverdue,
+      };
+    });
+
+    const items =
+      bucket === 'all' ? classified : classified.filter((row) => row.state === bucket);
 
     const summary = {
       as_of: asOf,
-      total: items.length,
-      upcoming: items.filter((i) => i.state === 'upcoming').length,
-      due: items.filter((i) => i.state === 'due').length,
-      late: items.filter((i) => i.state === 'late').length,
-      unscheduled: items.filter((i) => i.state === 'unscheduled').length,
-      balance_total: moneyStr(items.reduce((s, i) => s + num(i.balance), 0)),
+      total: classified.length,
+      upcoming: classified.filter((i) => i.state === 'upcoming').length,
+      due: classified.filter((i) => i.state === 'due').length,
+      late: classified.filter((i) => i.state === 'late').length,
+      unscheduled: classified.filter((i) => i.state === 'unscheduled').length,
+      balance_total: moneyStr(classified.reduce((s, i) => s + num(i.balance), 0)),
     };
     return { summary, items };
   }
@@ -1205,6 +1223,42 @@ export class StudentChargeSheetService {
   }
 
   /**
+   * Sheet to settle a receipt against. Prefer the sheet stored on the receipt.
+   * Fall back to the active year's sheet, then the student's latest sheet, so
+   * confirm does not fail when no year is flagged active.
+   */
+  private async sheetForSettlement(
+    student: Student,
+    sheetId?: string | null,
+  ): Promise<StudentChargeSheet> {
+    if (sheetId) {
+      const byId = await this.sheetRepo.findOne({ where: { id: sheetId } });
+      if (byId) {
+        if (byId.student_id !== student.id) {
+          throw new BadRequestException('Charge sheet does not belong to this student');
+        }
+        return byId;
+      }
+    }
+    const active = await this.yearRepo.findOne({
+      where: { school_id: student.school_id, is_active: true },
+      order: { start_date: 'DESC' },
+    });
+    if (active) {
+      const current = await this.sheetRepo.findOne({
+        where: { student_id: student.id, academic_year_id: active.id },
+      });
+      if (current) return current;
+    }
+    const latest = await this.sheetRepo.findOne({
+      where: { student_id: student.id, school_id: student.school_id },
+      order: { created_at: 'DESC' },
+    });
+    if (!latest) throw new NotFoundException('Charge sheet not found');
+    return latest;
+  }
+
+  /**
    * Apply a confirmed payment to the charge sheet (no role check — caller must authorize).
    */
   private async applyAmountToInstallments(
@@ -1299,20 +1353,7 @@ export class StudentChargeSheetService {
     const student = await this.studentRepo.findOne({ where: { id: opts.studentId } });
     if (!student) throw new NotFoundException('Student not found');
 
-    let sheet: StudentChargeSheet | null = null;
-    if (opts.sheetId) {
-      sheet = await this.sheetRepo.findOne({ where: { id: opts.sheetId } });
-      if (sheet && sheet.student_id !== opts.studentId) {
-        throw new BadRequestException('Charge sheet does not belong to this student');
-      }
-    }
-    if (!sheet) {
-      const year = await this.resolveYear(student.school_id);
-      sheet = await this.sheetRepo.findOne({
-        where: { student_id: opts.studentId, academic_year_id: year.id },
-      });
-    }
-    if (!sheet) throw new NotFoundException('Charge sheet not found');
+    const sheet = await this.sheetForSettlement(student, opts.sheetId);
 
     const amount = num(opts.amount);
     if (!(amount > 0)) throw new BadRequestException('Payment amount must be greater than zero');
@@ -1370,20 +1411,7 @@ export class StudentChargeSheetService {
     const student = await this.studentRepo.findOne({ where: { id: opts.studentId } });
     if (!student) throw new NotFoundException('Student not found');
 
-    let sheet: StudentChargeSheet | null = null;
-    if (opts.sheetId) {
-      sheet = await this.sheetRepo.findOne({ where: { id: opts.sheetId } });
-      if (sheet && sheet.student_id !== opts.studentId) {
-        throw new BadRequestException('Charge sheet does not belong to this student');
-      }
-    }
-    if (!sheet) {
-      const year = await this.resolveYear(student.school_id);
-      sheet = await this.sheetRepo.findOne({
-        where: { student_id: opts.studentId, academic_year_id: year.id },
-      });
-    }
-    if (!sheet) throw new NotFoundException('Charge sheet not found');
+    const sheet = await this.sheetForSettlement(student, opts.sheetId);
 
     const total = num(opts.totalAmount);
     if (!(total > 0)) throw new BadRequestException('Payment amount must be greater than zero');
@@ -1442,11 +1470,7 @@ export class StudentChargeSheetService {
   ): Promise<{ sheet: StudentChargeSheet; remaining: number }> {
     const student = await this.studentRepo.findOne({ where: { id: studentId } });
     if (!student) throw new NotFoundException('Student not found');
-    const year = await this.resolveYear(student.school_id);
-    const sheet = await this.sheetRepo.findOne({
-      where: { student_id: studentId, academic_year_id: year.id },
-    });
-    if (!sheet) throw new NotFoundException('Charge sheet not found');
+    const sheet = await this.sheetForSettlement(student, null);
 
     if (targetType === 'installment') {
       if (!installmentId) throw new BadRequestException('Installment is required');

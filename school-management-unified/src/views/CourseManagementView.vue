@@ -13,7 +13,7 @@
         {{ errorMessage }}
       </div>
 
-      <section class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ listHeading }}</h2>
@@ -32,15 +32,6 @@
               @click="showFilters = true"
             />
             <ListViewModeToggle v-model="viewMode" />
-            <button
-              v-if="courseKind === 'milestone'"
-              type="button"
-              class="fk-iconbtn"
-              :aria-label="$t('courseManagement.exportCourse')"
-              @click="exportCourses"
-            >
-              <IconDownload />
-            </button>
             <button
               v-if="canCreateCourse"
               type="button"
@@ -137,39 +128,39 @@
             </div>
 
             <!-- List -->
-            <div v-else class="fk-table-wrap overflow-visible">
-              <Table>
-                <TableHeader>
-                  <TableRow class="hover:bg-transparent">
-                    <TableHead>{{ $t('courseManagement.courseTitle') }}</TableHead>
-                    <TableHead>{{ $t('courseManagement.category') }}</TableHead>
-                    <TableHead>{{ $t('courseManagement.status') }}</TableHead>
-                    <TableHead>{{ $t('courseManagement.phases') }}</TableHead>
-                    <TableHead>{{ $t('courseManagement.milestones') }}</TableHead>
-                    <TableHead class="text-end">{{ $t('common.actions') }}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
+                  <tr>
+                    <th>{{ $t('courseManagement.courseTitle') }}</th>
+                    <th>{{ $t('courseManagement.category') }}</th>
+                    <th>{{ $t('courseManagement.status') }}</th>
+                    <th>{{ $t('courseManagement.phases') }}</th>
+                    <th>{{ $t('courseManagement.milestones') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
                     v-for="course in paginatedCourses"
                     :key="'list-' + course.id"
                   >
-                    <TableCell>
+                    <td>
                       <div class="font-medium text-gray-900">{{ course.title }}</div>
                       <div v-if="course.description" class="mt-0.5 line-clamp-1 text-xs text-gray-500">{{ course.description }}</div>
-                    </TableCell>
-                    <TableCell class="text-xs text-gray-500">
+                    </td>
+                    <td class="text-xs text-gray-500">
                       {{ course.category ? $t(`courseManagement.${course.category}`) : $t('courseManagement.general') }}
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td>
                       <span
                         class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold"
                         :class="getCourseDisplayBadge(course)"
                       >
                         {{ courseDisplayLabel(course) }}
                       </span>
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td>
                       <div class="flex items-center gap-2">
                         <div class="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
                           <div
@@ -179,8 +170,8 @@
                         </div>
                         <span class="w-6 text-end text-xs tabular-nums text-gray-500">{{ phaseCount(course) }}</span>
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td>
                       <div class="flex items-center gap-2">
                         <div class="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
                           <div
@@ -190,10 +181,12 @@
                         </div>
                         <span class="w-6 text-end text-xs tabular-nums text-gray-500">{{ milestoneCount(course) }}</span>
                       </div>
-                    </TableCell>
-                    <TableCell class="text-end">
+                    </td>
+                    <td>
+                      <div class="flex justify-end">
                       <RowActionsMenu
                         :open="activeDropdown === course.id"
+                        placement="up"
                         @toggle="toggleCourseActions(course.id)"
                       >
                         <RowActionsItem
@@ -233,10 +226,11 @@
                           {{ $t('common.delete') }}
                         </RowActionsItem>
                       </RowActionsMenu>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
             <FikrPagination
@@ -340,7 +334,6 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import FikrToolbarSearch from '@/components/FikrToolbarSearch.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import IconPlus from '@/components/icons/IconPlus.vue'
-import IconDownload from '@/components/icons/IconDownload.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
@@ -349,14 +342,6 @@ import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { useClaims } from '@/composables/useClaims'
 import { useFeedback } from '@/composables/useFeedback'
@@ -616,10 +601,6 @@ const deleteDraftCourse = async (course: Course) => {
   } catch (err: any) {
     feedback.error(err?.message || t('courseManagement.deleteFailed'), t('common.error'))
   }
-}
-
-const exportCourses = () => {
-  console.log('Exporting courses...')
 }
 
 const handleClickOutside = (event: Event) => {

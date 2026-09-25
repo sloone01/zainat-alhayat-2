@@ -1,7 +1,6 @@
 import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { Capacitor } from '@capacitor/core'
 import { getApiBaseUrl } from '@/config/public-config'
-import { reportApiFailure } from '@/utils/error-reporting'
 import {
   getSessionPersona,
   getStoredSchoolId,
@@ -29,6 +28,7 @@ import {
   shouldSkipClientBizLog,
 } from '@/utils/client-biz-log'
 import { notePageInitRequest, notePageInitSettled } from '@/router/page-init'
+import { isDroppedRequest } from '@/utils/error-reporting'
 
 /** School staff are scoped from the JWT. Do not send client `school_id`. */
 function isSchoolSwitchRequest(config: InternalAxiosRequestConfig): boolean {
@@ -92,7 +92,7 @@ function stripClientSchoolId(config: InternalAxiosRequestConfig): void {
   }
 }
 
-type RetryConfig = InternalAxiosRequestConfig & { _authRetry?: boolean }
+type RetryConfig = InternalAxiosRequestConfig & { _authRetry?: boolean; _netRetry?: boolean }
 
 const refreshClient = axios.create({ timeout: 15000 })
 let refreshInFlight: Promise<string | null> | null = null
@@ -299,6 +299,36 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
+    // Timeout / offline: no status, so this must not open /error or mint a ticket.
+    // Replay a read once. Refresh first only when this session is already expired
+    // or inside the normal refresh window — the new JWT keeps the same role and claims.
+    if (
+      isDroppedRequest(error) &&
+      original &&
+      !original._netRetry &&
+      !isReportCall &&
+      !isAuthCredentialUrl(url)
+    ) {
+      const method = String(original.method || 'get').toUpperCase()
+      const token = getStoredToken()
+      if (token && (method === 'GET' || method === 'HEAD')) {
+        original._netRetry = true
+        const stale = isTokenExpired(token, 0) || isTokenExpiringSoon(token)
+        let next = token
+        if (stale) {
+          next = (await queuedRefresh().catch(() => null)) || ''
+          if (!next && isTokenExpired(token, 0)) {
+            notePageInitSettled(original)
+            return Promise.reject(error)
+          }
+          if (!next) next = token
+        }
+        original.headers = original.headers || {}
+        original.headers.Authorization = `Bearer ${next}`
+        return apiClient(original)
+      }
+    }
+
     if (status === 401 && original && !original._authRetry && !isAuthCredentialUrl(url)) {
       original._authRetry = true
       const nextToken = await queuedRefresh().catch(() => null)
@@ -337,13 +367,8 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    if (!isReportCall && !isAuthCredentialUrl(url)) {
-      if (status != null && status >= 500) {
-        maybeOpenErrorPage(ticket)
-      } else if (!error.response) {
-        const opened = await reportApiFailure(error)
-        maybeOpenErrorPage(opened)
-      }
+    if (!isReportCall && !isAuthCredentialUrl(url) && status != null && status >= 500) {
+      maybeOpenErrorPage(ticket)
     }
 
     return Promise.reject(error)

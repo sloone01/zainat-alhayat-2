@@ -11,6 +11,8 @@ import { getSessionPersona } from '@/utils/auth-token'
  * calls on `hasClaim()` instead of firing them and swallowing the failure.
  */
 const CLAIMS_TTL_MS = 45_000
+/** After a dropped request, wait before the next navigation tries again. */
+const CLAIMS_RETRY_MS = 20_000
 
 const claims = ref<Set<string> | null>(null)
 const isPlatform = ref(false)
@@ -18,9 +20,11 @@ const schoolStatus = ref<string | null>(null)
 /** route -> page key, so a nav link can be checked against the user's claims. */
 const routeToPage = ref<Map<string, string>>(new Map())
 let loadedAt = 0
+let backoffUntil = 0
 let inFlight: Promise<void> | null = null
 
 function isFresh(): boolean {
+  if (Date.now() < backoffUntil) return true
   return claims.value != null && Date.now() - loadedAt < CLAIMS_TTL_MS
 }
 
@@ -31,10 +35,11 @@ async function load(force = false): Promise<void> {
     return
   }
   if (force) {
-    claims.value = null
     loadedAt = 0
+    backoffUntil = 0
   }
   if (!inFlight) {
+    const snapshot = claims.value
     inFlight = rbacService
       .getMyClaims()
       .then((res) => {
@@ -43,6 +48,7 @@ async function load(force = false): Promise<void> {
         schoolStatus.value = res.schoolStatus ?? null
         routeToPage.value = new Map((res.pages || []).map((p) => [p.route, p.key]))
         loadedAt = Date.now()
+        backoffUntil = 0
       })
       .catch((err: { response?: { status?: number } }) => {
         console.error('Error loading claims:', err)
@@ -53,11 +59,12 @@ async function load(force = false): Promise<void> {
           claims.value = new Set()
           isPlatform.value = getSessionPersona() === 'platform'
           loadedAt = Date.now()
+          backoffUntil = 0
           return
         }
-        // Network / 5xx: fail open so an outage does not blank every screen.
-        claims.value = null
-        loadedAt = 0
+        // Network / 5xx: keep the last claims and wait before the next try.
+        claims.value = snapshot
+        backoffUntil = Date.now() + CLAIMS_RETRY_MS
       })
       .finally(() => {
         inFlight = null
@@ -73,6 +80,7 @@ export function resetClaims(): void {
   schoolStatus.value = null
   routeToPage.value = new Map()
   loadedAt = 0
+  backoffUntil = 0
   inFlight = null
 }
 

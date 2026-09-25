@@ -4,13 +4,14 @@ import { Repository } from 'typeorm';
 import { Enrollment } from '../entities/enrollment.entity';
 import { School } from '../entities/school.entity';
 import { InstallmentPlan } from '../entities/installment-plan.entity';
-import { CreateEnrollmentDto, UpdateEnrollmentDto, SavePublicEnrollmentDraftDto } from '../dto/enrollment.dto';
+import { CreateEnrollmentDto, UpdateEnrollmentDto, SavePublicEnrollmentDraftDto, StudentDetailsDto, FatherInfoDto, MotherInfoDto } from '../dto/enrollment.dto';
 import { StudentService, CreateStudentDto } from './student.service';
 import { ParentService, CreateParentDto } from './parent.service';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { assertSameSchool } from '../common/security/school-access';
 import { buildPage, clampPage, likeTerm, parsePageQuery, type PageQuery, type PageResult } from '../common/pagination';
+import { AttachmentService } from './attachment.service';
 
 export type EnrollmentStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'enrolled';
 
@@ -40,7 +41,37 @@ export class EnrollmentService {
     private notifications: NotificationDispatcherService,
     private enrollmentFeePreview: EnrollmentFeePreviewService,
     private chargeSheets: StudentChargeSheetService,
+    private attachments: AttachmentService,
   ) {}
+
+  private parseAttachmentId(url: string | null | undefined): string | null {
+    const m = String(url || '').match(
+      /^\/api\/attachments\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/download$/i,
+    );
+    return m?.[1] ?? null;
+  }
+
+  /** Bind uploaded files to the enrollment row (binaries already in AttachmentStorage). */
+  private async linkEnrollmentDocuments(enrollment: Enrollment, schoolId: string): Promise<void> {
+    const items: { url?: string | null; purpose: string }[] = [
+      ...(enrollment.parentIdDocuments || []).map((url) => ({
+        url,
+        purpose: 'enrollment_parent_id',
+      })),
+      { url: enrollment.birthCertificate, purpose: 'enrollment_birth_certificate' },
+      { url: enrollment.childIdDocument, purpose: 'enrollment_child_id' },
+      { url: enrollment.photo, purpose: 'enrollment_photo' },
+    ];
+    for (const { url, purpose } of items) {
+      const id = this.parseAttachmentId(url);
+      if (!id) continue;
+      const att = await this.attachments.findOne(id);
+      if (att.school_id && String(att.school_id) !== String(schoolId)) {
+        throw new BadRequestException('Attachment does not belong to this school');
+      }
+      await this.attachments.addLink(id, 'enrollment', enrollment.id, purpose);
+    }
+  }
 
   private composeStudentFullName(student: {
     fullName?: string;
@@ -65,6 +96,109 @@ export class EnrollmentService {
         .join(' ') ||
       '—'
     );
+  }
+
+  private blankName(value?: string | null): string | null {
+    const next = (value ?? '').trim();
+    return next ? next : null;
+  }
+
+  private composeParentFullName(info: {
+    fullName?: string;
+    first_name_ar?: string | null;
+    last_name_ar?: string | null;
+    first_name_en?: string | null;
+    last_name_en?: string | null;
+  }): string {
+    return (
+      (info.fullName || '').trim() ||
+      [info.first_name_ar, info.last_name_ar].map((p) => (p || '').trim()).filter(Boolean).join(' ') ||
+      [info.first_name_en, info.last_name_en].map((p) => (p || '').trim()).filter(Boolean).join(' ') ||
+      ''
+    );
+  }
+
+  private applyStudentIdentity(enrollment: Enrollment, student: Partial<StudentDetailsDto>): void {
+    if (student.first_name_ar !== undefined) enrollment.first_name_ar = this.blankName(student.first_name_ar);
+    if (student.first_name_en !== undefined) enrollment.first_name_en = this.blankName(student.first_name_en);
+    if (student.last_name_ar !== undefined) enrollment.last_name_ar = this.blankName(student.last_name_ar);
+    if (student.last_name_en !== undefined) enrollment.last_name_en = this.blankName(student.last_name_en);
+    if (student.secondName !== undefined) enrollment.secondName = this.blankName(student.secondName);
+    if (student.thirdName !== undefined) enrollment.thirdName = this.blankName(student.thirdName);
+    if (student.secondNameEn !== undefined) enrollment.secondNameEn = this.blankName(student.secondNameEn);
+    if (student.thirdNameEn !== undefined) enrollment.thirdNameEn = this.blankName(student.thirdNameEn);
+
+    const composed = this.composeStudentFullName({
+      fullName: typeof student.fullName === 'string' ? student.fullName : undefined,
+      first_name_ar: enrollment.first_name_ar ?? undefined,
+      secondName: enrollment.secondName ?? undefined,
+      thirdName: enrollment.thirdName ?? undefined,
+      last_name_ar: enrollment.last_name_ar ?? undefined,
+      first_name_en: enrollment.first_name_en ?? undefined,
+      secondNameEn: enrollment.secondNameEn ?? undefined,
+      thirdNameEn: enrollment.thirdNameEn ?? undefined,
+      last_name_en: enrollment.last_name_en ?? undefined,
+    });
+    if (composed && composed !== '—') enrollment.fullName = composed;
+    else if (typeof student.fullName === 'string' && student.fullName.trim()) {
+      enrollment.fullName = student.fullName.trim();
+    }
+
+    if (student.tribe !== undefined) enrollment.tribe = student.tribe;
+    if (student.idNumber !== undefined) enrollment.idNumber = student.idNumber;
+    if (student.gender !== undefined) enrollment.gender = student.gender;
+    if (student.nationality !== undefined) enrollment.nationality = student.nationality;
+    if (student.religion !== undefined) enrollment.religion = student.religion;
+    if (student.dateOfBirth !== undefined) {
+      enrollment.dateOfBirth = student.dateOfBirth ? new Date(student.dateOfBirth) : undefined;
+    }
+    if (student.age !== undefined) enrollment.age = student.age;
+    if (student.hasSiblings !== undefined) enrollment.hasSiblings = student.hasSiblings || false;
+    if (student.photo !== undefined) enrollment.photo = student.photo;
+  }
+
+  private applyFatherIdentity(enrollment: Enrollment, info: Partial<FatherInfoDto>): void {
+    if (info.first_name_ar !== undefined) enrollment.father_first_name_ar = this.blankName(info.first_name_ar);
+    if (info.first_name_en !== undefined) enrollment.father_first_name_en = this.blankName(info.first_name_en);
+    if (info.last_name_ar !== undefined) enrollment.father_last_name_ar = this.blankName(info.last_name_ar);
+    if (info.last_name_en !== undefined) enrollment.father_last_name_en = this.blankName(info.last_name_en);
+    if (info.civil_id !== undefined) enrollment.father_civil_id = this.blankName(info.civil_id);
+    enrollment.fatherFullName =
+      this.composeParentFullName({
+        fullName: info.fullName,
+        first_name_ar: enrollment.father_first_name_ar,
+        last_name_ar: enrollment.father_last_name_ar,
+        first_name_en: enrollment.father_first_name_en,
+        last_name_en: enrollment.father_last_name_en,
+      }) || enrollment.fatherFullName;
+    if (info.tribe !== undefined) enrollment.fatherTribe = info.tribe;
+    if (info.workplace !== undefined) enrollment.fatherWorkplace = info.workplace;
+    if (info.workPhone !== undefined) enrollment.fatherWorkPhone = info.workPhone;
+    if (info.mobile !== undefined) enrollment.fatherMobile = info.mobile;
+    if (info.email !== undefined) enrollment.fatherEmail = info.email;
+    if (info.maritalStatus !== undefined) enrollment.fatherMaritalStatus = info.maritalStatus;
+  }
+
+  private applyMotherIdentity(enrollment: Enrollment, info: Partial<MotherInfoDto>): void {
+    if (info.first_name_ar !== undefined) enrollment.mother_first_name_ar = this.blankName(info.first_name_ar);
+    if (info.first_name_en !== undefined) enrollment.mother_first_name_en = this.blankName(info.first_name_en);
+    if (info.last_name_ar !== undefined) enrollment.mother_last_name_ar = this.blankName(info.last_name_ar);
+    if (info.last_name_en !== undefined) enrollment.mother_last_name_en = this.blankName(info.last_name_en);
+    if (info.civil_id !== undefined) enrollment.mother_civil_id = this.blankName(info.civil_id);
+    enrollment.motherFullName =
+      this.composeParentFullName({
+        fullName: info.fullName,
+        first_name_ar: enrollment.mother_first_name_ar,
+        last_name_ar: enrollment.mother_last_name_ar,
+        first_name_en: enrollment.mother_first_name_en,
+        last_name_en: enrollment.mother_last_name_en,
+      }) || enrollment.motherFullName;
+    if (info.tribe !== undefined) enrollment.motherTribe = info.tribe;
+    if (info.workplace !== undefined) enrollment.motherWorkplace = info.workplace;
+    if (info.workPhone !== undefined) enrollment.motherWorkPhone = info.workPhone;
+    if (info.mobile !== undefined) enrollment.motherMobile = info.mobile;
+    if (info.email !== undefined) enrollment.motherEmail = info.email;
+    if (info.maritalStatus !== undefined) enrollment.motherMaritalStatus = info.maritalStatus;
   }
 
   /**
@@ -140,28 +274,39 @@ export class EnrollmentService {
     row.idNumber = civil;
     row.school_id = schoolId;
     row.draft_payload = payload;
-    row.fullName = this.composeStudentFullName({
+    this.applyStudentIdentity(row, {
       fullName: typeof student.fullName === 'string' ? student.fullName : undefined,
       first_name_ar: typeof student.first_name_ar === 'string' ? student.first_name_ar : undefined,
+      first_name_en: typeof student.first_name_en === 'string' ? student.first_name_en : undefined,
+      last_name_ar: typeof student.last_name_ar === 'string' ? student.last_name_ar : undefined,
+      last_name_en: typeof student.last_name_en === 'string' ? student.last_name_en : undefined,
       secondName: typeof student.secondName === 'string' ? student.secondName : undefined,
       thirdName: typeof student.thirdName === 'string' ? student.thirdName : undefined,
-      last_name_ar: typeof student.last_name_ar === 'string' ? student.last_name_ar : undefined,
-      first_name_en: typeof student.first_name_en === 'string' ? student.first_name_en : undefined,
       secondNameEn: typeof student.secondNameEn === 'string' ? student.secondNameEn : undefined,
       thirdNameEn: typeof student.thirdNameEn === 'string' ? student.thirdNameEn : undefined,
-      last_name_en: typeof student.last_name_en === 'string' ? student.last_name_en : undefined,
-    });
-    if (student.gender === 'female' || student.gender === 'male') {
-      row.gender = student.gender;
+      gender: student.gender === 'female' || student.gender === 'male' ? student.gender : undefined,
+      nationality: typeof student.nationality === 'string' ? student.nationality : undefined,
+      religion: typeof student.religion === 'string' ? student.religion : undefined,
+      photo: typeof student.photo === 'string' ? student.photo : undefined,
+      dateOfBirth: typeof student.dateOfBirth === 'string' ? student.dateOfBirth : undefined,
+      age: typeof student.age === 'number' ? student.age : undefined,
+      hasSiblings: typeof student.hasSiblings === 'boolean' ? student.hasSiblings : undefined,
+      tribe: typeof student.tribe === 'string' ? student.tribe : undefined,
+      idNumber: civil,
+    } as Partial<StudentDetailsDto>);
+
+    const guardian = (payload.guardian && typeof payload.guardian === 'object'
+      ? payload.guardian
+      : {}) as Record<string, unknown>;
+    if (guardian.type === 'father' || guardian.type === 'mother' || guardian.type === 'other') {
+      row.guardianType = guardian.type;
     }
-    if (typeof student.nationality === 'string') row.nationality = student.nationality;
-    if (typeof student.religion === 'string') row.religion = student.religion;
-    if (typeof student.photo === 'string') row.photo = student.photo;
-    if (typeof student.dateOfBirth === 'string' && student.dateOfBirth) {
-      row.dateOfBirth = new Date(student.dateOfBirth);
+    if (guardian.fatherInfo && typeof guardian.fatherInfo === 'object') {
+      this.applyFatherIdentity(row, guardian.fatherInfo as Partial<FatherInfoDto>);
     }
-    if (typeof student.age === 'number') row.age = student.age;
-    if (typeof student.hasSiblings === 'boolean') row.hasSiblings = student.hasSiblings;
+    if (guardian.motherInfo && typeof guardian.motherInfo === 'object') {
+      this.applyMotherIdentity(row, guardian.motherInfo as Partial<MotherInfoDto>);
+    }
 
     const academic = (payload.academic && typeof payload.academic === 'object'
       ? payload.academic
@@ -219,8 +364,30 @@ export class EnrollmentService {
     }
 
     const civil = normalizeCivilId(createEnrollmentDto.student?.idNumber);
+    const fatherCivil = normalizeCivilId(createEnrollmentDto.guardian?.fatherInfo?.civil_id);
+    const motherCivil = normalizeCivilId(createEnrollmentDto.guardian?.motherInfo?.civil_id);
+    // A civil ID identifies one person — student and parents must not reuse the same value.
+    const partyCivils = [
+      { label: 'student', value: civil },
+      { label: 'father', value: fatherCivil },
+      { label: 'mother', value: motherCivil },
+    ].filter((p): p is { label: string; value: string } => !!p.value);
+    for (let i = 0; i < partyCivils.length; i++) {
+      for (let j = i + 1; j < partyCivils.length; j++) {
+        if (partyCivils[i].value === partyCivils[j].value) {
+          throw new BadRequestException(
+            'Student, father, and mother must each have a different civil ID',
+          );
+        }
+      }
+    }
+
     let enrollment: Enrollment | null = null;
     if (civil) {
+      const submitted = await this.findSubmittedApplicationByCivilId(civil, schoolId);
+      if (submitted) {
+        throw new BadRequestException('An enrollment application for this civil ID already exists');
+      }
       enrollment = await this.enrollmentRepository.findOne({
         where: { school_id: schoolId, idNumber: civil, status: 'draft' },
       });
@@ -231,37 +398,7 @@ export class EnrollmentService {
     enrollment.school_id = schoolId;
 
     // Map student information
-    enrollment.fullName =
-      createEnrollmentDto.student.fullName ||
-      [
-        createEnrollmentDto.student.first_name_ar,
-        createEnrollmentDto.student.secondName,
-        createEnrollmentDto.student.thirdName,
-        createEnrollmentDto.student.last_name_ar,
-      ]
-        .map((p) => (p || '').trim())
-        .filter(Boolean)
-        .join(' ') ||
-      [
-        createEnrollmentDto.student.first_name_en,
-        createEnrollmentDto.student.secondNameEn,
-        createEnrollmentDto.student.thirdNameEn,
-        createEnrollmentDto.student.last_name_en,
-      ]
-        .map((p) => (p || '').trim())
-        .filter(Boolean)
-        .join(' ');
-    enrollment.tribe = createEnrollmentDto.student.tribe;
-    enrollment.idNumber = createEnrollmentDto.student.idNumber;
-    enrollment.gender = createEnrollmentDto.student.gender;
-    enrollment.nationality = createEnrollmentDto.student.nationality;
-    enrollment.religion = createEnrollmentDto.student.religion;
-    enrollment.dateOfBirth = createEnrollmentDto.student.dateOfBirth
-      ? new Date(createEnrollmentDto.student.dateOfBirth)
-      : undefined;
-    enrollment.age = createEnrollmentDto.student.age;
-    enrollment.hasSiblings = createEnrollmentDto.student.hasSiblings || false;
-    enrollment.photo = createEnrollmentDto.student.photo;
+    this.applyStudentIdentity(enrollment, createEnrollmentDto.student);
 
     // Map academic information
     enrollment.enrollmentStatus = createEnrollmentDto.academic.enrollmentStatus;
@@ -285,30 +422,12 @@ export class EnrollmentService {
 
     // Map father info
     if (createEnrollmentDto.guardian.fatherInfo) {
-      enrollment.fatherFullName =
-        createEnrollmentDto.guardian.fatherInfo.fullName ||
-        `${createEnrollmentDto.guardian.fatherInfo.first_name_ar || ''} ${createEnrollmentDto.guardian.fatherInfo.last_name_ar || ''}`.trim() ||
-        `${createEnrollmentDto.guardian.fatherInfo.first_name_en || ''} ${createEnrollmentDto.guardian.fatherInfo.last_name_en || ''}`.trim();
-      enrollment.fatherTribe = createEnrollmentDto.guardian.fatherInfo.tribe;
-      enrollment.fatherWorkplace = createEnrollmentDto.guardian.fatherInfo.workplace;
-      enrollment.fatherWorkPhone = createEnrollmentDto.guardian.fatherInfo.workPhone;
-      enrollment.fatherMobile = createEnrollmentDto.guardian.fatherInfo.mobile;
-      enrollment.fatherEmail = createEnrollmentDto.guardian.fatherInfo.email;
-      enrollment.fatherMaritalStatus = createEnrollmentDto.guardian.fatherInfo.maritalStatus;
+      this.applyFatherIdentity(enrollment, createEnrollmentDto.guardian.fatherInfo);
     }
 
     // Map mother info
     if (createEnrollmentDto.guardian.motherInfo) {
-      enrollment.motherFullName =
-        createEnrollmentDto.guardian.motherInfo.fullName ||
-        `${createEnrollmentDto.guardian.motherInfo.first_name_ar || ''} ${createEnrollmentDto.guardian.motherInfo.last_name_ar || ''}`.trim() ||
-        `${createEnrollmentDto.guardian.motherInfo.first_name_en || ''} ${createEnrollmentDto.guardian.motherInfo.last_name_en || ''}`.trim();
-      enrollment.motherTribe = createEnrollmentDto.guardian.motherInfo.tribe;
-      enrollment.motherWorkplace = createEnrollmentDto.guardian.motherInfo.workplace;
-      enrollment.motherWorkPhone = createEnrollmentDto.guardian.motherInfo.workPhone;
-      enrollment.motherMobile = createEnrollmentDto.guardian.motherInfo.mobile;
-      enrollment.motherEmail = createEnrollmentDto.guardian.motherInfo.email;
-      enrollment.motherMaritalStatus = createEnrollmentDto.guardian.motherInfo.maritalStatus;
+      this.applyMotherIdentity(enrollment, createEnrollmentDto.guardian.motherInfo);
     }
 
     // Map other guardian info
@@ -361,6 +480,7 @@ export class EnrollmentService {
     enrollment.draft_payload = null;
 
     const saved = await this.enrollmentRepository.save(enrollment);
+    await this.linkEnrollmentDocuments(saved, schoolId);
     void this.notifyEnrollment(saved, 'submitted');
     return saved;
   }
@@ -455,7 +575,7 @@ export class EnrollmentService {
 
     // Update student information
     if (updateEnrollmentDto.student) {
-      Object.assign(enrollment, updateEnrollmentDto.student);
+      this.applyStudentIdentity(enrollment, updateEnrollmentDto.student);
     }
 
     // Update academic information
@@ -482,23 +602,11 @@ export class EnrollmentService {
       enrollment.guardianType = updateEnrollmentDto.guardian.type ?? enrollment.guardianType;
 
       if (updateEnrollmentDto.guardian.fatherInfo) {
-        enrollment.fatherFullName = updateEnrollmentDto.guardian.fatherInfo.fullName ?? enrollment.fatherFullName;
-        enrollment.fatherTribe = updateEnrollmentDto.guardian.fatherInfo.tribe ?? enrollment.fatherTribe;
-        enrollment.fatherWorkplace = updateEnrollmentDto.guardian.fatherInfo.workplace ?? enrollment.fatherWorkplace;
-        enrollment.fatherWorkPhone = updateEnrollmentDto.guardian.fatherInfo.workPhone ?? enrollment.fatherWorkPhone;
-        enrollment.fatherMobile = updateEnrollmentDto.guardian.fatherInfo.mobile ?? enrollment.fatherMobile;
-        enrollment.fatherEmail = updateEnrollmentDto.guardian.fatherInfo.email ?? enrollment.fatherEmail;
-        enrollment.fatherMaritalStatus = updateEnrollmentDto.guardian.fatherInfo.maritalStatus ?? enrollment.fatherMaritalStatus;
+        this.applyFatherIdentity(enrollment, updateEnrollmentDto.guardian.fatherInfo);
       }
 
       if (updateEnrollmentDto.guardian.motherInfo) {
-        enrollment.motherFullName = updateEnrollmentDto.guardian.motherInfo.fullName ?? enrollment.motherFullName;
-        enrollment.motherTribe = updateEnrollmentDto.guardian.motherInfo.tribe ?? enrollment.motherTribe;
-        enrollment.motherWorkplace = updateEnrollmentDto.guardian.motherInfo.workplace ?? enrollment.motherWorkplace;
-        enrollment.motherWorkPhone = updateEnrollmentDto.guardian.motherInfo.workPhone ?? enrollment.motherWorkPhone;
-        enrollment.motherMobile = updateEnrollmentDto.guardian.motherInfo.mobile ?? enrollment.motherMobile;
-        enrollment.motherEmail = updateEnrollmentDto.guardian.motherInfo.email ?? enrollment.motherEmail;
-        enrollment.motherMaritalStatus = updateEnrollmentDto.guardian.motherInfo.maritalStatus ?? enrollment.motherMaritalStatus;
+        this.applyMotherIdentity(enrollment, updateEnrollmentDto.guardian.motherInfo);
       }
 
       if (updateEnrollmentDto.guardian.otherInfo) {
@@ -564,7 +672,11 @@ export class EnrollmentService {
       enrollment.notes = updateEnrollmentDto.notes;
     }
 
-    return this.enrollmentRepository.save(enrollment);
+    const saved = await this.enrollmentRepository.save(enrollment);
+    if (saved.school_id && (updateEnrollmentDto.documents || updateEnrollmentDto.student?.photo)) {
+      await this.linkEnrollmentDocuments(saved, saved.school_id);
+    }
+    return saved;
   }
 
   async remove(id: string): Promise<void> {
@@ -721,7 +833,11 @@ export class EnrollmentService {
 
   // Map enrollment data to Student creation DTO
   private mapEnrollmentToStudent(enrollment: Enrollment): CreateStudentDto {
-    const nameInfo = this.splitArabicName(enrollment.fullName);
+    const split = this.splitArabicName(enrollment.fullName);
+    const firstAr = enrollment.first_name_ar || split.firstName;
+    const lastAr = enrollment.last_name_ar || split.lastName;
+    const firstEn = enrollment.first_name_en || firstAr;
+    const lastEn = enrollment.last_name_en || lastAr;
 
     // Build medical info from health data
     const medicalInfo: string[] = [];
@@ -751,11 +867,19 @@ export class EnrollmentService {
 
     return {
       ...applyBilingualName({
-        first_name_ar: nameInfo.firstName,
-        last_name_ar: nameInfo.lastName,
-        firstName: nameInfo.firstName,
-        lastName: nameInfo.lastName,
+        first_name_ar: firstAr,
+        last_name_ar: lastAr,
+        first_name_en: firstEn,
+        last_name_en: lastEn,
+        firstName: firstEn || firstAr,
+        lastName: lastEn || lastAr,
       }),
+      secondName: enrollment.secondName || undefined,
+      thirdName: enrollment.thirdName || undefined,
+      secondNameEn: enrollment.secondNameEn || undefined,
+      thirdNameEn: enrollment.thirdNameEn || undefined,
+      civil_id: enrollment.idNumber || undefined,
+      tribe: enrollment.tribe || undefined,
       dateOfBirth: enrollment.dateOfBirth || new Date(),
       gender: enrollment.gender,
       address: addressParts.join(', ') || 'غير محدد',
@@ -773,6 +897,10 @@ export class EnrollmentService {
   // Map father info to Parent creation DTO
   private mapFatherToParent(enrollment: Enrollment, studentName: string): CreateParentDto {
     const nameInfo = this.splitArabicName(enrollment.fatherFullName || '');
+    const firstAr = enrollment.father_first_name_ar || nameInfo.firstName;
+    const lastAr = enrollment.father_last_name_ar || nameInfo.lastName;
+    const firstEn = enrollment.father_first_name_en || firstAr;
+    const lastEn = enrollment.father_last_name_en || lastAr;
 
     // Build address for father
     const addressParts: string[] = [];
@@ -782,11 +910,14 @@ export class EnrollmentService {
 
     return {
       ...applyBilingualName({
-        first_name_ar: nameInfo.firstName,
-        last_name_ar: nameInfo.lastName,
-        firstName: nameInfo.firstName,
-        lastName: nameInfo.lastName,
+        first_name_ar: firstAr,
+        last_name_ar: lastAr,
+        first_name_en: firstEn,
+        last_name_en: lastEn,
+        firstName: firstEn || firstAr,
+        lastName: lastEn || lastAr,
       }),
+      civil_id: enrollment.father_civil_id || undefined,
       email: enrollment.fatherEmail,
       phone: enrollment.fatherMobile,
       address: addressParts.join(', ') || 'غير محدد'
@@ -796,6 +927,10 @@ export class EnrollmentService {
   // Map mother info to Parent creation DTO
   private mapMotherToParent(enrollment: Enrollment, studentName: string): CreateParentDto {
     const nameInfo = this.splitArabicName(enrollment.motherFullName || '');
+    const firstAr = enrollment.mother_first_name_ar || nameInfo.firstName;
+    const lastAr = enrollment.mother_last_name_ar || nameInfo.lastName;
+    const firstEn = enrollment.mother_first_name_en || firstAr;
+    const lastEn = enrollment.mother_last_name_en || lastAr;
 
     // Build address for mother
     const addressParts: string[] = [];
@@ -805,11 +940,14 @@ export class EnrollmentService {
 
     return {
       ...applyBilingualName({
-        first_name_ar: nameInfo.firstName,
-        last_name_ar: nameInfo.lastName,
-        firstName: nameInfo.firstName,
-        lastName: nameInfo.lastName,
+        first_name_ar: firstAr,
+        last_name_ar: lastAr,
+        first_name_en: firstEn,
+        last_name_en: lastEn,
+        firstName: firstEn || firstAr,
+        lastName: lastEn || lastAr,
       }),
+      civil_id: enrollment.mother_civil_id || undefined,
       email: enrollment.motherEmail,
       phone: enrollment.motherMobile,
       address: addressParts.join(', ') || 'غير محدد'

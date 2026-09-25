@@ -29,7 +29,7 @@
             </button>
           </div>
         </header>
-        <div class="p-4 sm:p-6">
+        <div class="p-6">
 
         <div
           v-if="groups.length === 0"
@@ -105,7 +105,7 @@
             </div>
 
             <!-- List -->
-            <div v-else class="fk-table-wrap">
+            <div v-else class="overflow-visible">
               <table class="fk-table">
                 <thead>
                   <tr>

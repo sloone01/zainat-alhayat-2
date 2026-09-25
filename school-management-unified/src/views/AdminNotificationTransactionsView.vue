@@ -8,7 +8,7 @@
 
       <div v-if="flashError" class="fk-alert fk-alert--error">{{ flashError }}</div>
 
-      <div class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('notificationTransactions.listHeading') }}</h2>
@@ -16,77 +16,91 @@
               {{ $t('notificationTransactions.count', { count: total }) }}
             </p>
           </div>
-          <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <select v-model="filters.channel" class="fk-input h-9 min-w-[7rem] text-sm" @change="applyFilters">
-              <option value="">{{ $t('notificationTransactions.allChannels') }}</option>
-              <option value="email">{{ $t('notificationTransactions.channelEmail') }}</option>
-              <option value="sms">{{ $t('notificationTransactions.channelSms') }}</option>
-            </select>
-            <select v-model="filters.status" class="fk-input h-9 min-w-[7rem] text-sm" @change="applyFilters">
-              <option value="">{{ $t('notificationTransactions.allStatuses') }}</option>
-              <option value="sent">{{ $t('notificationTransactions.statusSent') }}</option>
-              <option value="failed">{{ $t('notificationTransactions.statusFailed') }}</option>
-              <option value="skipped">{{ $t('notificationTransactions.statusSkipped') }}</option>
-            </select>
-            <input
-              v-model="filters.search"
-              type="search"
-              class="fk-input h-9 w-40 text-sm sm:w-52"
-              :placeholder="$t('common.search')"
-              @keyup.enter="applyFilters"
+          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <FikrFilterButton
+              :expanded="showFilters"
+              :count="hasActiveFilters ? 1 : 0"
+              @click="showFilters = true"
             />
-            <button type="button" class="fk-iconbtn" :aria-label="$t('common.search')" @click="applyFilters">
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
+            <ListViewModeToggle v-model="viewMode" />
           </div>
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <FikrLoader />
-            <span class="text-sm">{{ $t('common.loading') }}</span>
+          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
+            <template v-if="!routePageLoading">
+              <FikrLoader />
+              <span class="text-sm">{{ $t('common.loading') }}</span>
+            </template>
           </div>
 
           <div
             v-else-if="!rows.length"
             class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
           >
-            <h3 class="text-sm font-semibold text-gray-800">{{ $t('notificationTransactions.empty') }}</h3>
+            <h3 class="text-sm font-semibold text-navy-800">
+              {{ hasActiveFilters ? $t('notificationTransactions.noFilterResults') : $t('notificationTransactions.empty') }}
+            </h3>
           </div>
 
           <template v-else>
-            <div class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-if="isCards" class="fk-grid">
+              <KanbanCard
+                v-for="row in rows"
+                :key="'card-' + row.id"
+                :title="row.to_address"
+                :description="row.subject || row.template_key || '—'"
+              >
+                <template #tags>
+                  <KanbanTag :dot="statusDot(row.status)">{{ statusLabel(row.status) }}</KanbanTag>
+                  <KanbanTag :dot="row.channel === 'sms' ? 'amber' : 'sky'">
+                    {{ channelLabel(row.channel) }}
+                  </KanbanTag>
+                </template>
+                <template #actions>
+                  <RowActionsMenu
+                    :open="activeMenuId === row.id"
+                    placement="up"
+                    @toggle="toggleMenu(row.id)"
+                  >
+                    <RowActionsItem icon="view" @click="runMenu(() => openRow(row.id))">
+                      {{ $t('common.view') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </template>
+                <template #meta>
+                  <KanbanMeta icon="calendar">{{ formatDate(row.created_at) }}</KanbanMeta>
+                </template>
+              </KanbanCard>
+            </div>
+
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('notificationTransactions.colTime') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('notificationTransactions.colChannel') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('notificationTransactions.colTo') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('notificationTransactions.colSubject') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('notificationTransactions.colStatus') }}</th>
-                    <th class="px-4 py-3 text-center font-semibold whitespace-nowrap">{{ $t('common.actions') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('notificationTransactions.colTime') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('notificationTransactions.colChannel') }}</th>
+                    <th>{{ $t('notificationTransactions.colTo') }}</th>
+                    <th>{{ $t('notificationTransactions.colSubject') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('notificationTransactions.colStatus') }}</th>
+                    <th class="whitespace-nowrap !text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="row in rows" :key="row.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 text-gray-600 whitespace-nowrap tabular-nums">{{ formatDate(row.created_at) }}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">{{ channelLabel(row.channel) }}</td>
-                    <td class="px-4 py-3 text-gray-800" dir="ltr">{{ row.to_address }}</td>
-                    <td class="px-4 py-3 text-gray-800 max-w-[14rem] truncate" :title="row.subject || ''">
+                <tbody>
+                  <tr v-for="row in rows" :key="row.id">
+                    <td class="whitespace-nowrap tabular-nums">{{ formatDate(row.created_at) }}</td>
+                    <td class="whitespace-nowrap">{{ channelLabel(row.channel) }}</td>
+                    <td dir="ltr">{{ row.to_address }}</td>
+                    <td class="max-w-[14rem] truncate" :title="row.subject || ''">
                       {{ row.subject || row.template_key || '—' }}
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap">
-                      <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                        :class="statusClass(row.status)"
-                      >
+                    <td class="whitespace-nowrap">
+                      <span class="fk-pill" :class="statusClass(row.status)">
                         {{ statusLabel(row.status) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
-                      <div class="flex justify-center">
+                    <td>
+                      <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === row.id"
                           placement="up"
@@ -106,27 +120,96 @@
             <FikrPagination
               :page="page"
               :pages="pages"
-              :show="rows.length > 0"
+              :show="total > 0"
               :disabled="loading"
               @update:page="goToPage"
             />
           </template>
         </div>
-      </div>
+      </section>
+    </div>
+
+    <div
+      v-if="showFilters"
+      class="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="$t('notificationTransactions.filtersTitle')"
+    >
+      <div class="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" @click="closeFilters" />
+      <aside class="fk-drawer" :dir="isRTL ? 'rtl' : 'ltr'">
+        <div class="fk-drawer__header items-start">
+          <div>
+            <h3 class="fk-form__title">{{ $t('notificationTransactions.filtersTitle') }}</h3>
+          </div>
+          <button
+            type="button"
+            class="fk-modal__close"
+            :aria-label="$t('common.close')"
+            @click="closeFilters"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="fk-drawer__body">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="ntx-search"><span>{{ $t('common.search') }}</span></label>
+            <input
+              id="ntx-search"
+              v-model="draftFilters.search"
+              type="search"
+              class="fk-field"
+              :placeholder="$t('notificationTransactions.searchPlaceholder')"
+            >
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="ntx-channel"><span>{{ $t('notificationTransactions.colChannel') }}</span></label>
+            <select id="ntx-channel" v-model="draftFilters.channel" class="fk-field">
+              <option value="">{{ $t('notificationTransactions.allChannels') }}</option>
+              <option value="email">{{ $t('notificationTransactions.channelEmail') }}</option>
+              <option value="sms">{{ $t('notificationTransactions.channelSms') }}</option>
+            </select>
+          </div>
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="ntx-status"><span>{{ $t('notificationTransactions.colStatus') }}</span></label>
+            <select id="ntx-status" v-model="draftFilters.status" class="fk-field">
+              <option value="">{{ $t('notificationTransactions.allStatuses') }}</option>
+              <option value="sent">{{ $t('notificationTransactions.statusSent') }}</option>
+              <option value="failed">{{ $t('notificationTransactions.statusFailed') }}</option>
+              <option value="skipped">{{ $t('notificationTransactions.statusSkipped') }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="px-4 pb-4">
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" class="fk-btn fk-btn--pearl" @click="clearFilters">{{ $t('common.clear') }}</button>
+            <button type="button" class="fk-btn fk-btn--primary" @click="applyAndCloseFilters">{{ $t('common.close') }}</button>
+          </div>
+        </div>
+      </aside>
     </div>
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
+import FikrFilterButton from '@/components/FikrFilterButton.vue'
+import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
+import KanbanCard from '@/components/ui/kanban-card.vue'
+import KanbanTag from '@/components/ui/kanban-tag.vue'
+import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { useListViewMode } from '@/composables/useListViewMode'
+import { routePageLoading } from '@/router/route-loading'
 import {
   notificationTransactionService,
   type NotificationTransactionRow,
@@ -137,6 +220,7 @@ const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const route = useRoute()
 const router = useRouter()
+const { viewMode, isCards } = useListViewMode()
 
 const isPlatform = computed(() => route.path.startsWith('/platform/'))
 const listBase = computed(() =>
@@ -151,7 +235,22 @@ const page = ref(1)
 const pages = ref(1)
 const pageSize = 20
 const activeMenuId = ref<string | null>(null)
+const showFilters = ref(false)
+
 const filters = reactive({ channel: '', status: '', search: '' })
+const draftFilters = reactive({ channel: '', status: '', search: '' })
+
+const hasActiveFilters = computed(
+  () => Boolean(filters.channel || filters.status || filters.search.trim()),
+)
+
+watch(showFilters, (open) => {
+  if (open) {
+    draftFilters.channel = filters.channel
+    draftFilters.status = filters.status
+    draftFilters.search = filters.search
+  }
+})
 
 function channelLabel(channel: string) {
   return channel === 'sms'
@@ -166,9 +265,15 @@ function statusLabel(status: NotificationTransactionStatus) {
 }
 
 function statusClass(status: NotificationTransactionStatus) {
-  if (status === 'failed') return 'bg-red-100 text-red-800'
-  if (status === 'skipped') return 'bg-slate-100 text-slate-700'
-  return 'bg-emerald-100 text-emerald-800'
+  if (status === 'failed') return 'fk-pill--navy'
+  if (status === 'skipped') return 'fk-pill--mist'
+  return 'fk-pill--teal'
+}
+
+function statusDot(status: NotificationTransactionStatus): 'emerald' | 'red' | 'gray' {
+  if (status === 'failed') return 'red'
+  if (status === 'skipped') return 'gray'
+  return 'emerald'
 }
 
 function formatDate(iso: string) {
@@ -223,6 +328,29 @@ async function load() {
 function applyFilters() {
   page.value = 1
   void load()
+}
+
+function applyAndCloseFilters() {
+  filters.channel = draftFilters.channel
+  filters.status = draftFilters.status
+  filters.search = draftFilters.search
+  showFilters.value = false
+  applyFilters()
+}
+
+function closeFilters() {
+  showFilters.value = false
+}
+
+function clearFilters() {
+  draftFilters.channel = ''
+  draftFilters.status = ''
+  draftFilters.search = ''
+  filters.channel = ''
+  filters.status = ''
+  filters.search = ''
+  showFilters.value = false
+  applyFilters()
 }
 
 function goToPage(p: number) {

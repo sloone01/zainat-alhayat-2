@@ -6,7 +6,7 @@
         :subtitle="$t('gradedCourses.subtitle')"
       />
 
-      <div class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('gradedCourses.listHeading') }}</h2>
@@ -101,23 +101,23 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('gradedCourses.courseName') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('gradedCourses.courseLevel') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('gradedCourses.aggregation') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('common.status') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('gradedCourses.courseName') }}</th>
+                    <th>{{ $t('gradedCourses.courseLevel') }}</th>
+                    <th>{{ $t('gradedCourses.aggregation') }}</th>
+                    <th>{{ $t('common.status') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="course in paginatedCourses" :key="'list-' + course.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ course.name || course.title }}</td>
-                    <td class="px-4 py-3 text-xs text-gray-600">{{ courseLevelLabel(course) }}</td>
-                    <td class="px-4 py-3 text-xs text-gray-600">{{ courseSecondary(course) }}</td>
-                    <td class="px-4 py-3">
+                <tbody>
+                  <tr v-for="course in paginatedCourses" :key="'list-' + course.id">
+                    <td class="font-medium">{{ course.name || course.title }}</td>
+                    <td class="text-xs text-gray-600">{{ courseLevelLabel(course) }}</td>
+                    <td class="text-xs text-gray-600">{{ courseSecondary(course) }}</td>
+                    <td>
                       <span
                         class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold"
                         :class="courseStatusClass(course)"
@@ -125,7 +125,7 @@
                         {{ courseStatusLabel(course) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
+                    <td>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeDropdown === course.id"
@@ -186,7 +186,7 @@
             <p class="text-sm font-medium text-gray-600">{{ $t('gradedCourses.noCourses') }}</p>
           </div>
         </div>
-      </div>
+      </section>
 
       <div
         v-if="showFilters"

@@ -47,6 +47,8 @@ export interface PaymentCatalogRow {
   sort_order: number
   is_active: boolean
   billing_occurrence?: PaymentChargeBillingOccurrence
+  package_names?: string[]
+  used_on_charges?: boolean
   created_at: string
   updated_at: string
 }
@@ -177,6 +179,10 @@ class PaymentConfigService extends BaseApiService {
     return this.patch<PaymentCatalogRow>(`/payment-config/charge-types/${id}`, body)
   }
 
+  packagesUsingChargeType(id: string) {
+    return this.get<string[]>(`/payment-config/charge-types/${id}/packages`)
+  }
+
   deleteChargeType(id: string) {
     return this.delete(`/payment-config/charge-types/${id}`)
   }
@@ -191,6 +197,10 @@ class PaymentConfigService extends BaseApiService {
 
   updateDiscountType(id: string, body: Partial<{ code: string; label: string; value: string | null; sort_order: number; is_active: boolean }>) {
     return this.patch<PaymentCatalogRow>(`/payment-config/discount-types/${id}`, body)
+  }
+
+  packagesUsingDiscountType(id: string) {
+    return this.get<string[]>(`/payment-config/discount-types/${id}/packages`)
   }
 
   deleteDiscountType(id: string) {
@@ -223,6 +233,10 @@ class PaymentConfigService extends BaseApiService {
 
   updateInclusionType(id: string, body: Partial<{ code: string; label: string; value: string | null; sort_order: number; is_active: boolean }>) {
     return this.patch<PaymentCatalogRow>(`/payment-config/inclusion-types/${id}`, body)
+  }
+
+  packagesUsingInclusionType(id: string) {
+    return this.get<string[]>(`/payment-config/inclusion-types/${id}/packages`)
   }
 
   deleteInclusionType(id: string) {

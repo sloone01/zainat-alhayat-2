@@ -69,6 +69,7 @@ import { useRoute } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import { getApiBaseUrl } from '@/config/public-config'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { useFeedback } from '@/composables/useFeedback'
 
 type LetterApprovalView = {
   subject: string
@@ -78,6 +79,7 @@ type LetterApprovalView = {
 }
 
 const { t, locale } = useI18n()
+const feedback = useFeedback()
 const route = useRoute()
 const isRTL = computed(() => locale.value === 'ar')
 
@@ -135,6 +137,17 @@ async function loadPreview(): Promise<void> {
 
 async function decide(decision: 'approve' | 'reject'): Promise<void> {
   if (!token.value || submitting.value) return
+  const ok = await feedback.confirm({
+    title: t('common.confirm'),
+    message: decision === 'approve'
+      ? t('messageLetters.confirmApproveLetter')
+      : t('messageLetters.confirmRejectLetter'),
+    confirmLabel: decision === 'approve'
+      ? t('messageLetters.approveLetter')
+      : t('messageLetters.rejectLetter'),
+    danger: decision === 'reject',
+  })
+  if (!ok) return
   submitting.value = true
   submitError.value = ''
   try {

@@ -1,4 +1,9 @@
 import {
+  DEFAULT_DUE_INSTALLMENT_EXPORT_COLUMNS,
+  DUE_INSTALLMENT_EXPORT_COLUMN_KEYS,
+  normalizeDueInstallmentExportColumns,
+} from './due-installment-export-columns';
+import {
   DEFAULT_STUDENT_EXPORT_COLUMNS,
   STUDENT_EXPORT_COLUMN_KEYS,
   normalizeStudentExportColumns,
@@ -24,6 +29,15 @@ export const REPORT_EXPORT_DEFINITIONS: ReportExportDefinition[] = [
     availableColumns: STUDENT_EXPORT_COLUMN_KEYS,
     defaultColumns: DEFAULT_STUDENT_EXPORT_COLUMNS,
     normalizeColumns: (raw) => normalizeStudentExportColumns(raw) as string[],
+  },
+  {
+    key: 'due-installments',
+    nameEn: 'Due and late payments',
+    nameAr: 'المستحق والمتأخر',
+    sourcePath: '/reports/financial',
+    availableColumns: DUE_INSTALLMENT_EXPORT_COLUMN_KEYS,
+    defaultColumns: DEFAULT_DUE_INSTALLMENT_EXPORT_COLUMNS,
+    normalizeColumns: (raw) => normalizeDueInstallmentExportColumns(raw) as string[],
   },
 ];
 

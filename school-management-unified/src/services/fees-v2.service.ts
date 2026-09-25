@@ -109,6 +109,14 @@ export interface DueInstallmentRow {
   installment_id: string
   student_id: string
   student_name: string
+  first_name?: string | null
+  second_name?: string | null
+  second_name_en?: string | null
+  last_name?: string | null
+  first_name_ar?: string | null
+  first_name_en?: string | null
+  last_name_ar?: string | null
+  last_name_en?: string | null
   sheet_id: string
   sequence: number
   month_number: number | null

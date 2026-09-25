@@ -37,7 +37,7 @@
                 class="fk-field w-full"
               >
                 <option value="">{{ $t('weeklySessionPlans.selectGroupPlaceholder') }}</option>
-                <option v-for="group in groups" :key="group.id" :value="group.id">
+                <option v-for="group in groups" :key="group.id" :value="String(group.id)">
                   {{ group.name }}
                 </option>
               </select>
@@ -127,6 +127,7 @@
           compact
           :show-search="false"
           :show-new-event="false"
+          ignore-empty-days
           @select-day="onCalendarSelectDay"
           @month-change="onCalendarMonthChange"
           @event-click="onCalendarEventClick"
@@ -164,7 +165,6 @@ import TaskDetailsModal from '@/components/TaskDetailsModal.vue'
 import { authService } from '@/services'
 import {
   weeklySessionPlanService,
-  groupService,
   scheduleService,
   type WeeklySessionPlan,
   type Group,
@@ -192,11 +192,6 @@ import {
 const { t, locale } = useI18n()
 const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
-
-const schoolId = computed(() => {
-  const u = authService.getStoredUser() as { school_id?: string } | null
-  return u?.school_id != null ? Number(u.school_id) : 1
-})
 
 const groups = ref<Group[]>([])
 const schedules = ref<Schedule[]>([])
@@ -232,7 +227,9 @@ const defaultTimeSlots = [
 const timeSlots = ref([...defaultTimeSlots])
 const currentSchedule = ref<any[]>([])
 
-const selectedGroup = computed(() => groups.value.find((g) => g.id === selectedGroupId.value))
+const selectedGroup = computed(() =>
+  groups.value.find((g) => String(g.id) === String(selectedGroupId.value)),
+)
 
 const hasAnyTasks = computed(() => weeklyPlans.value.length > 0)
 
@@ -261,7 +258,9 @@ const loadClassSettings = () => {
 
 const loadGroups = async () => {
   try {
-    groups.value = await groupService.getAll(schoolId.value)
+    const user = authService.getStoredUser() as { id?: string } | null
+    const uid = user?.id ? String(user.id) : ''
+    groups.value = uid ? await scheduleService.getGroupsForTeacher(uid) : []
   } catch (error) {
     console.error('Failed to load groups:', error)
     groups.value = []
@@ -276,7 +275,12 @@ const loadSchedules = async () => {
   }
 
   try {
-    schedules.value = await scheduleService.getSchedulesByGroup(selectedGroupId.value)
+    const user = authService.getStoredUser() as { id?: string } | null
+    const uid = user?.id ? String(user.id).trim() : ''
+    const rows = await scheduleService.getSchedulesByGroup(selectedGroupId.value)
+    schedules.value = uid
+      ? rows.filter((schedule) => schedule.teacher_id != null && String(schedule.teacher_id).trim() === uid)
+      : []
     currentSchedule.value = schedules.value
       .map((schedule) => {
         const dayKey = normalizeScheduleDayKey(schedule.day_of_week)
@@ -343,7 +347,7 @@ onMounted(async () => {
   loadClassSettings()
   await loadGroups()
   if (groups.value.length && !selectedGroupId.value) {
-    selectedGroupId.value = groups.value[0].id
+    selectedGroupId.value = String(groups.value[0].id)
   }
 })
 

@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
+  SchoolReportExportConfig,
   SchoolReportExportTemplate,
 } from '../entities/school-report-export.entity';
 import { User } from '../entities/user.entity';
@@ -13,9 +14,15 @@ import { resolveActorSchoolId } from '../common/security/school-access';
 import {
   applyEmailLayout,
   brandingVariables,
-  defaultNotificationLayoutHtml,
   ensureDocumentLocale,
 } from '../notifications/school-notification-branding';
+import {
+  defaultReportExportLayoutHtml,
+  dueInstallmentsReportLayoutHtml,
+  isLegacyEmailReportShell,
+  isOutdatedReportShell,
+  reportOrientationFromHtml,
+} from '../reports/default-report-export-layout';
 import { NotificationTemplateService } from './notification-template.service';
 
 export type UpsertReportExportTemplateDto = {
@@ -26,11 +33,21 @@ export type UpsertReportExportTemplateDto = {
   is_default?: boolean;
 };
 
+/** Filled in for {{date}} when a report is previewed or exported. */
+function reportGeneratedAt(locale: 'en' | 'ar'): string {
+  return new Date().toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+
 @Injectable()
 export class ReportExportTemplateService {
   constructor(
     @InjectRepository(SchoolReportExportTemplate)
     private readonly repo: Repository<SchoolReportExportTemplate>,
+    @InjectRepository(SchoolReportExportConfig)
+    private readonly configRepo: Repository<SchoolReportExportConfig>,
     private readonly templateService: NotificationTemplateService,
   ) {}
 
@@ -57,35 +74,106 @@ export class ReportExportTemplateService {
       .execute();
   }
 
+  /** Starter print layout for due and late payments. Safe to call more than once. */
+  async ensureDueInstallmentsTemplate(schoolId: string): Promise<SchoolReportExportTemplate> {
+    const marker = 'data-rpt-vars="student installment dueDate balance status"';
+    const existing = await this.repo
+      .createQueryBuilder('t')
+      .where('t.school_id = :schoolId', { schoolId })
+      .andWhere(
+        '(t.name = :name OR t.name_ar = :nameAr OR t.html_en LIKE :marker)',
+        {
+          name: 'Due and late payments',
+          nameAr: 'المستحق والمتأخر',
+          marker: `%${marker}%`,
+        },
+      )
+      .getOne();
+    if (existing) return existing;
+
+    const saved = await this.repo.save(
+      this.repo.create({
+        school_id: schoolId,
+        name: 'Due and late payments',
+        name_ar: 'المستحق والمتأخر',
+        html_en: dueInstallmentsReportLayoutHtml('en'),
+        html_ar: dueInstallmentsReportLayoutHtml('ar'),
+        is_default: false,
+      }),
+    );
+    await this.configRepo
+      .createQueryBuilder()
+      .update(SchoolReportExportConfig)
+      .set({ template_id: saved.id })
+      .where('school_id = :schoolId', { schoolId })
+      .andWhere('report_key = :key', { key: 'due-installments' })
+      .andWhere('template_id IS NULL')
+      .execute();
+    return saved;
+  }
+
   async ensureDefault(schoolId: string): Promise<SchoolReportExportTemplate> {
     const existing = await this.repo.findOne({
       where: { school_id: schoolId, is_default: true },
     });
-    if (existing) return existing;
-    const any = await this.repo.findOne({ where: { school_id: schoolId } });
-    if (any) {
-      any.is_default = true;
-      return this.repo.save(any);
+    let fallback = existing;
+    if (!fallback) {
+      const any = await this.repo.findOne({ where: { school_id: schoolId } });
+      if (any) {
+        any.is_default = true;
+        fallback = await this.repo.save(any);
+      } else {
+        fallback = await this.repo.save(
+          this.repo.create({
+            school_id: schoolId,
+            name: 'Default report layout',
+            name_ar: 'التصميم الافتراضي للتقرير',
+            html_en: defaultReportExportLayoutHtml('en', 'portrait'),
+            html_ar: defaultReportExportLayoutHtml('ar', 'portrait'),
+            is_default: true,
+          }),
+        );
+      }
     }
-    return this.repo.save(
-      this.repo.create({
-        school_id: schoolId,
-        name: 'Default report layout',
-        name_ar: 'التصميم الافتراضي للتقرير',
-        html_en: defaultNotificationLayoutHtml('en'),
-        html_ar: defaultNotificationLayoutHtml('ar'),
-        is_default: true,
-      }),
-    );
+    await this.ensureDueInstallmentsTemplate(schoolId);
+    return fallback;
+  }
+
+  /** Replace leftover email-card shells with the print page (keeps custom HTML). */
+  private async present(row: SchoolReportExportTemplate): Promise<SchoolReportExportTemplate> {
+    let changed = false;
+    const enOrient = isLegacyEmailReportShell(row.html_en)
+      ? 'portrait'
+      : reportOrientationFromHtml(row.html_en);
+    if (isLegacyEmailReportShell(row.html_en) || isOutdatedReportShell(row.html_en)) {
+      row.html_en = defaultReportExportLayoutHtml('en', enOrient);
+      changed = true;
+    }
+    const arSource = row.html_ar?.trim() ? row.html_ar : row.html_en;
+    const arOrient = isLegacyEmailReportShell(arSource)
+      ? 'portrait'
+      : reportOrientationFromHtml(arSource);
+    if (
+      !row.html_ar?.trim() ||
+      isLegacyEmailReportShell(row.html_ar) ||
+      isOutdatedReportShell(row.html_ar)
+    ) {
+      if (changed || row.html_ar?.trim()) {
+        row.html_ar = defaultReportExportLayoutHtml('ar', changed ? enOrient : arOrient);
+        changed = true;
+      }
+    }
+    return changed ? this.repo.save(row) : row;
   }
 
   async list(user: User, requestedSchoolId?: string | null) {
     const schoolId = this.schoolOf(user, requestedSchoolId);
     await this.ensureDefault(schoolId);
-    return this.repo.find({
+    const rows = await this.repo.find({
       where: { school_id: schoolId },
       order: { is_default: 'DESC', name: 'ASC' },
     });
+    return Promise.all(rows.map((row) => this.present(row)));
   }
 
   async listOptions(schoolId: string) {
@@ -106,7 +194,7 @@ export class ReportExportTemplateService {
     const schoolId = this.schoolOf(user, requestedSchoolId);
     const row = await this.repo.findOne({ where: { id, school_id: schoolId } });
     if (!row) throw new NotFoundException('Template not found');
-    return row;
+    return this.present(row);
   }
 
   async create(
@@ -175,6 +263,7 @@ export class ReportExportTemplateService {
       row = await this.repo.findOne({ where: { school_id: schoolId, is_default: true } });
     }
     if (!row) return null;
+    row = await this.present(row);
     if (locale === 'ar') return row.html_ar?.trim() || row.html_en;
     return row.html_en;
   }
@@ -193,6 +282,7 @@ export class ReportExportTemplateService {
       schoolLogo: branding.schoolLogo,
       schoolLogoHtml: branding.schoolLogoHtml,
       footerText: branding.footerText,
+      date: reportGeneratedAt(locale),
     };
     return html.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key: string) => {
       if (String(key).toLowerCase() === 'content') return match;
@@ -226,8 +316,9 @@ export class ReportExportTemplateService {
           schoolLogo: branding.schoolLogo,
           schoolLogoHtml: branding.schoolLogoHtml,
           footerText: branding.footerText,
+          date: reportGeneratedAt(locale),
         }
-      : {};
+      : { date: reportGeneratedAt(locale) };
     const shell = applyEmailLayout(dto.html, sample);
     const withVars = shell.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) =>
       vars[key] != null ? String(vars[key]) : '',

@@ -312,7 +312,10 @@ export class ActivityService {
 
   async remove(id: string): Promise<void> {
     const activity = await this.findOneEntity(id);
-    await this.activityRepository.remove(activity);
+    if (!activity.is_active) return;
+    activity.is_active = false;
+    await this.activityRepository.save(activity);
+    void this.notifyActivityWithdrawn(activity);
   }
 
   private async notifyActivityScheduled(activity: Activity): Promise<void> {
@@ -336,6 +339,52 @@ export class ActivityService {
       },
       recipients,
     });
+  }
+
+  private async notifyActivityWithdrawn(activity: Activity): Promise<void> {
+    const recipients = await this.withdrawRecipients(activity);
+    if (!recipients.length) return;
+    const date =
+      activity.activity_date instanceof Date
+        ? activity.activity_date.toISOString().slice(0, 10)
+        : String(activity.activity_date).slice(0, 10);
+    const location = activity.location ? ` — ${activity.location}` : '';
+    await this.notifications.notifySafe({
+      schoolId: activity.school_id ?? null,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.ACTIVITY_WITHDRAWN,
+      locale: 'ar',
+      variables: {
+        title: activity.title,
+        date,
+        location,
+        recipientName: recipients[0]?.name || 'ولي الأمر',
+      },
+      recipients,
+    });
+  }
+
+  private async withdrawRecipients(activity: Activity) {
+    if (activity.group_id) {
+      const { recipients: parents } = await this.audience.parentsOfGroup(activity.group_id);
+      const students = await this.audience.studentsOfGroup(activity.group_id);
+      return this.dedupeRecipients([...parents, ...students]);
+    }
+    if (!activity.school_id) return [];
+    return this.audience.peopleOfSchool(activity.school_id);
+  }
+
+  private dedupeRecipients(
+    recipients: Array<{ email?: string | null; phone?: string | null; userId?: string | null; name?: string | null }>,
+  ) {
+    const seen = new Set<string>();
+    const out: typeof recipients = [];
+    for (const recipient of recipients) {
+      const key = `${recipient.userId ?? ''}|${recipient.email ?? ''}|${recipient.phone ?? ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(recipient);
+    }
+    return out;
   }
 
   private async notifyActivityUpdated(activity: Activity): Promise<void> {

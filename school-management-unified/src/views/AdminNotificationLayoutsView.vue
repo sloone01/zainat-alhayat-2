@@ -10,8 +10,8 @@
       <div v-if="flashOk" class="fk-alert fk-alert--ok">{{ flashOk }}</div>
 
       <div v-if="loading" class="rounded-xl border border-gray-200 bg-white py-16 text-center shadow-sm">
-        <FikrLoader />
-        <p class="mt-4 text-sm text-gray-600">{{ $t('common.loading') }}…</p>
+        <FikrLoader v-if="!routePageLoading" />
+        <p v-if="!routePageLoading" class="mt-4 text-sm text-gray-600">{{ $t('common.loading') }}…</p>
       </div>
 
       <template v-else>
@@ -305,6 +305,14 @@
                         {{ $t('notificationTemplates.langAr') }}
                       </button>
                     </div>
+                    <button
+                      type="button"
+                      class="fk-btn fk-btn--pearl fk-btn--sm shrink-0"
+                      :disabled="!activeHtml.trim()"
+                      @click="formatAdvancedHtml"
+                    >
+                      {{ $t('notificationLayouts.formatHtml') }}
+                    </button>
                     <p class="ms-auto text-[11px] text-gray-500">{{ $t('notificationLayouts.htmlHint') }}</p>
                   </div>
                   <div
@@ -317,15 +325,12 @@
                       @insert="insertLayoutVar"
                     />
                   </div>
-                  <textarea
-                    id="nl-html"
-                    ref="htmlRef"
+                  <HtmlCodeEditor
+                    :key="`nl-html-${langTab}-${selectedId || 'new'}`"
+                    ref="htmlEditorRef"
                     v-model="activeHtml"
-                    rows="12"
-                    spellcheck="false"
-                    class="block min-h-[14rem] w-full resize-y border-0 bg-transparent px-3 py-2 font-mono text-xs leading-relaxed text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500/30"
-                    :dir="langTab === 'ar' ? 'rtl' : 'ltr'"
-                    @input="onAdvancedHtmlInput"
+                    height="22rem"
+                    @update:model-value="onAdvancedHtmlInput"
                   />
                 </div>
               </div>
@@ -425,6 +430,7 @@ import { useDebounceFn } from '@vueuse/core'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import NotificationInsertFieldsBar from '@/components/NotificationInsertFieldsBar.vue'
+import HtmlCodeEditor from '@/components/HtmlCodeEditor.vue'
 import { authService } from '@/services'
 import notificationLayoutService, {
   type NotificationLayout,
@@ -439,6 +445,7 @@ import {
 } from '@/utils/notification-layout-builder'
 import { docxFileToHtmlFragment, isDocxFile, wrapDocxHtmlAsLayout } from '@/utils/docx-to-html'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t, te } = useI18n()
 const feedback = useFeedback()
@@ -470,7 +477,7 @@ const previewHtml = ref('')
 const sampleContent = ref(
   '<p style="margin:0 0 8px;"><strong>Welcome</strong></p><p style="margin:0;color:#374151;">This is how your notification message will look inside the layout.</p>',
 )
-const htmlRef = ref<HTMLTextAreaElement | null>(null)
+const htmlEditorRef = ref<InstanceType<typeof HtmlCodeEditor> | null>(null)
 const previewIframeRef = ref<HTMLIFrameElement | null>(null)
 const advancedOpen = ref(false)
 const legacyHtmlMode = ref(false)
@@ -653,6 +660,11 @@ function onAdvancedHtmlInput() {
   legacyHtmlMode.value = !parseLayoutBuilderConfig(activeHtml.value)
 }
 
+function formatAdvancedHtml() {
+  const next = htmlEditorRef.value?.formatDocument() ?? activeHtml.value
+  legacyHtmlMode.value = !parseLayoutBuilderConfig(next)
+}
+
 const runPreview = useDebounceFn(async () => {
   const html = (previewSourceHtml.value || '').trim()
   if (!html) {
@@ -678,18 +690,15 @@ const runPreview = useDebounceFn(async () => {
 
 function insertLayoutVar(name: string) {
   const token = `{{${name}}}`
-  const el = htmlRef.value
-  const { next, caret } = insertIntoStringAtCursor(
-    activeHtml.value,
-    el?.selectionStart ?? null,
-    el?.selectionEnd ?? null,
-    token,
-  )
+  const editor = htmlEditorRef.value
+  if (editor) {
+    const { next } = editor.insertAtCursor(token)
+    legacyHtmlMode.value = !parseLayoutBuilderConfig(next)
+    return
+  }
+  const { next } = insertIntoStringAtCursor(activeHtml.value, null, null, token)
   activeHtml.value = next
   legacyHtmlMode.value = !parseLayoutBuilderConfig(next)
-  nextTick(() => {
-    if (el) el.setSelectionRange(caret, caret)
-  })
 }
 
 function syncPreviewIframeHeight() {

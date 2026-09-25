@@ -178,7 +178,7 @@ let AuthService = class AuthService {
                 return;
             }
             if (phones.length) {
-                w.where(`regexp_replace(COALESCE(user.phone, ''), '\\D', '', 'g') IN (:...phones)`, { phones });
+                w.where(`regexp_replace(COALESCE(user.phone, ''), '\\D', '', 'g') IN (:...phones)`, { phones }).orWhere(`regexp_replace(COALESCE(user.civil_id, ''), '\\D', '', 'g') IN (:...phones)`, { phones });
                 return;
             }
             if (email) {

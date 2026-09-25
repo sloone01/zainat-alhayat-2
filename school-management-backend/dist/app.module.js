@@ -10,6 +10,7 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const typeorm_1 = require("@nestjs/typeorm");
+const schedule_1 = require("@nestjs/schedule");
 const activity_log_module_1 = require("./activity-log/activity-log.module");
 const biz_logging_module_1 = require("./common/logging/biz-logging.module");
 const activity_log_middleware_1 = require("./activity-log/activity-log.middleware");
@@ -27,6 +28,8 @@ const student_entity_1 = require("./entities/student.entity");
 const staff_entity_1 = require("./entities/staff.entity");
 const parent_entity_1 = require("./entities/parent.entity");
 const activity_entity_1 = require("./entities/activity.entity");
+const support_request_entity_1 = require("./entities/support-request.entity");
+const attachment_entity_1 = require("./entities/attachment.entity");
 const reminder_entity_1 = require("./entities/reminder.entity");
 const group_entity_1 = require("./entities/group.entity");
 const course_entity_1 = require("./entities/course.entity");
@@ -112,6 +115,7 @@ const school_message_letter_file_entity_1 = require("./entities/school-message-l
 const direct_chat_message_entity_1 = require("./entities/direct-chat-message.entity");
 const adhoc_chat_message_entity_1 = require("./entities/adhoc-chat-message.entity");
 const school_landing_page_entity_1 = require("./entities/school-landing-page.entity");
+const attention_service_1 = require("./services/attention.service");
 const user_service_1 = require("./services/user.service");
 const student_service_1 = require("./services/student.service");
 const parent_service_1 = require("./services/parent.service");
@@ -132,14 +136,19 @@ const statistics_service_1 = require("./services/statistics.service");
 const weekly_session_plan_service_1 = require("./services/weekly-session-plan.service");
 const session_media_service_1 = require("./services/session-media.service");
 const enrollment_service_1 = require("./services/enrollment.service");
+const enrollment_draft_cleanup_service_1 = require("./services/enrollment-draft-cleanup.service");
 const enrollment_fee_preview_service_1 = require("./services/enrollment-fee-preview.service");
 const enrollment_responsibility_service_1 = require("./services/enrollment-responsibility.service");
 const document_generator_service_1 = require("./services/document-generator.service");
 const grade_service_1 = require("./services/grade.service");
 const activity_service_1 = require("./services/activity.service");
+const support_request_service_1 = require("./services/support-request.service");
+const attachment_service_1 = require("./services/attachment.service");
+const attachment_storage_1 = require("./services/attachment-storage");
 const online_session_service_1 = require("./services/online-session.service");
 const user_controller_1 = require("./controllers/user.controller");
 const student_controller_1 = require("./controllers/student.controller");
+const student_medical_report_controller_1 = require("./controllers/student-medical-report.controller");
 const parent_controller_1 = require("./controllers/parent.controller");
 const group_controller_1 = require("./controllers/group.controller");
 const course_controller_1 = require("./controllers/course.controller");
@@ -157,9 +166,12 @@ const file_upload_controller_1 = require("./controllers/file-upload.controller")
 const statistics_controller_1 = require("./controllers/statistics.controller");
 const weekly_session_plan_controller_1 = require("./controllers/weekly-session-plan.controller");
 const session_media_controller_1 = require("./controllers/session-media.controller");
+const attention_controller_1 = require("./controllers/attention.controller");
 const enrollment_controller_1 = require("./controllers/enrollment.controller");
 const grade_controller_1 = require("./controllers/grade.controller");
 const activity_controller_1 = require("./controllers/activity.controller");
+const support_request_controller_1 = require("./controllers/support-request.controller");
+const attachment_controller_1 = require("./controllers/attachment.controller");
 const online_session_controller_1 = require("./controllers/online-session.controller");
 const graded_assessment_controller_1 = require("./controllers/graded-assessment.controller");
 const graded_criterion_task_controller_1 = require("./controllers/graded-criterion-task.controller");
@@ -178,8 +190,10 @@ const course_fee_link_service_1 = require("./services/course-fee-link.service");
 const student_charge_sheet_service_1 = require("./services/student-charge-sheet.service");
 const fee_payment_service_1 = require("./services/fee-payment.service");
 const thawani_service_1 = require("./services/thawani.service");
+const platform_settings_controller_1 = require("./controllers/platform-settings.controller");
 const student_payment_controller_1 = require("./controllers/student-payment.controller");
 const school_system_setting_controller_1 = require("./controllers/school-system-setting.controller");
+const report_export_controller_1 = require("./controllers/report-export.controller");
 const message_letter_controller_1 = require("./controllers/message-letter.controller");
 const public_message_letter_file_controller_1 = require("./controllers/public-message-letter-file.controller");
 const outbound_message_transaction_controller_1 = require("./controllers/outbound-message-transaction.controller");
@@ -197,6 +211,8 @@ const school_landing_page_controller_1 = require("./controllers/school-landing-p
 const public_school_landing_controller_1 = require("./controllers/public-school-landing.controller");
 const public_enrollment_fees_controller_1 = require("./controllers/public-enrollment-fees.controller");
 const public_enrollment_responsibilities_controller_1 = require("./controllers/public-enrollment-responsibilities.controller");
+const public_students_controller_1 = require("./controllers/public-students.controller");
+const public_enrollments_controller_1 = require("./controllers/public-enrollments.controller");
 const enrollment_responsibility_controller_1 = require("./controllers/enrollment-responsibility.controller");
 const public_branding_controller_1 = require("./controllers/public-branding.controller");
 const school_landing_page_service_1 = require("./services/school-landing-page.service");
@@ -215,6 +231,9 @@ const fee_package_service_1 = require("./services/fee-package.service");
 const student_payment_service_1 = require("./services/student-payment.service");
 const student_payment_ledger_service_1 = require("./services/student-payment-ledger.service");
 const school_system_setting_service_1 = require("./services/school-system-setting.service");
+const report_export_config_service_1 = require("./services/report-export-config.service");
+const report_export_template_service_1 = require("./services/report-export-template.service");
+const school_report_export_entity_1 = require("./entities/school-report-export.entity");
 const notifications_module_1 = require("./notifications/notifications.module");
 const message_letter_service_1 = require("./services/message-letter.service");
 const message_letter_render_service_1 = require("./services/message-letter-render.service");
@@ -239,6 +258,7 @@ exports.AppModule = AppModule = __decorate([
         imports: [
             activity_log_module_1.ActivityLogModule,
             biz_logging_module_1.BizLoggingModule,
+            schedule_1.ScheduleModule.forRoot(),
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
                 envFilePath: ['.env', '.env.local'],
@@ -271,6 +291,9 @@ exports.AppModule = AppModule = __decorate([
                 staff_entity_1.Staff,
                 parent_entity_1.Parent,
                 activity_entity_1.Activity,
+                support_request_entity_1.SupportRequest,
+                attachment_entity_1.Attachment,
+                attachment_entity_1.AttachmentLink,
                 reminder_entity_1.Reminder,
                 group_entity_1.Group,
                 course_entity_1.Course,
@@ -354,6 +377,8 @@ exports.AppModule = AppModule = __decorate([
                 payment_transaction_entity_1.PaymentTransaction,
                 payment_transaction_allocation_entity_1.PaymentTransactionAllocation,
                 school_system_setting_entity_1.SchoolSystemSetting,
+                school_report_export_entity_1.SchoolReportExportTemplate,
+                school_report_export_entity_1.SchoolReportExportConfig,
                 school_message_letter_entity_1.SchoolMessageLetter,
                 school_message_letter_file_entity_1.SchoolMessageLetterFile,
                 direct_chat_message_entity_1.DirectChatMessage,
@@ -368,6 +393,7 @@ exports.AppModule = AppModule = __decorate([
             simple_health_controller_1.SimpleHealthController,
             user_controller_1.UserController,
             student_controller_1.StudentController,
+            student_medical_report_controller_1.StudentMedicalReportController,
             parent_controller_1.ParentController,
             group_controller_1.GroupController,
             course_controller_1.CourseController,
@@ -377,6 +403,7 @@ exports.AppModule = AppModule = __decorate([
             schedule_auto_controller_1.ScheduleAutoController,
             attendance_controller_1.AttendanceController,
             absence_excuse_controller_1.AbsenceExcuseController,
+            platform_settings_controller_1.PlatformSettingsController,
             student_progress_controller_1.StudentProgressController,
             class_settings_controller_1.ClassSettingsController,
             academic_year_controller_1.AcademicYearController,
@@ -385,9 +412,12 @@ exports.AppModule = AppModule = __decorate([
             statistics_controller_1.StatisticsController,
             weekly_session_plan_controller_1.WeeklySessionPlanController,
             session_media_controller_1.SessionMediaController,
+            attention_controller_1.AttentionController,
             enrollment_controller_1.EnrollmentController,
             grade_controller_1.GradeController,
             activity_controller_1.ActivityController,
+            support_request_controller_1.SupportRequestController,
+            attachment_controller_1.AttachmentController,
             online_session_controller_1.OnlineSessionController,
             graded_assessment_controller_1.GradedAssessmentController,
             graded_criterion_task_controller_1.GradedCriterionTaskController,
@@ -400,6 +430,7 @@ exports.AppModule = AppModule = __decorate([
             fees_v2_controller_1.FeesV2Controller,
             student_payment_controller_1.StudentPaymentController,
             school_system_setting_controller_1.SchoolSystemSettingController,
+            report_export_controller_1.ReportExportController,
             message_letter_controller_1.MessageLetterController,
             public_message_letter_file_controller_1.PublicMessageLetterFileController,
             outbound_message_transaction_controller_1.OutboundMessageTransactionController,
@@ -413,6 +444,8 @@ exports.AppModule = AppModule = __decorate([
             school_landing_page_controller_1.SchoolLandingPageController,
             public_school_landing_controller_1.PublicSchoolLandingController,
             public_enrollment_fees_controller_1.PublicEnrollmentFeesController,
+            public_students_controller_1.PublicStudentsController,
+            public_enrollments_controller_1.PublicEnrollmentsController,
             public_enrollment_responsibilities_controller_1.PublicEnrollmentResponsibilitiesController,
             enrollment_responsibility_controller_1.EnrollmentResponsibilityController,
             public_branding_controller_1.PublicBrandingController,
@@ -422,6 +455,7 @@ exports.AppModule = AppModule = __decorate([
             { provide: core_1.APP_GUARD, useClass: claim_guard_1.ClaimGuard },
             { provide: core_1.APP_GUARD, useClass: throttler_1.ThrottlerGuard },
             app_service_1.AppService,
+            attention_service_1.AttentionService,
             user_service_1.UserService,
             student_service_1.StudentService,
             parent_service_1.ParentService,
@@ -442,11 +476,15 @@ exports.AppModule = AppModule = __decorate([
             weekly_session_plan_service_1.WeeklySessionPlanService,
             session_media_service_1.SessionMediaService,
             enrollment_service_1.EnrollmentService,
+            enrollment_draft_cleanup_service_1.EnrollmentDraftCleanupService,
             enrollment_fee_preview_service_1.EnrollmentFeePreviewService,
             enrollment_responsibility_service_1.EnrollmentResponsibilityService,
             document_generator_service_1.DocumentGeneratorService,
             grade_service_1.GradeService,
             activity_service_1.ActivityService,
+            support_request_service_1.SupportRequestService,
+            attachment_service_1.AttachmentService,
+            attachment_storage_1.AttachmentStorage,
             online_session_service_1.OnlineSessionService,
             online_session_student_attendance_service_1.OnlineSessionStudentAttendanceService,
             graded_assessment_service_1.GradedAssessmentService,
@@ -470,6 +508,8 @@ exports.AppModule = AppModule = __decorate([
             student_payment_service_1.StudentPaymentService,
             student_payment_ledger_service_1.StudentPaymentLedgerService,
             school_system_setting_service_1.SchoolSystemSettingService,
+            report_export_config_service_1.ReportExportConfigService,
+            report_export_template_service_1.ReportExportTemplateService,
             message_letter_service_1.MessageLetterService,
             message_letter_render_service_1.MessageLetterRenderService,
             student_course_enrollment_service_1.StudentCourseEnrollmentService,

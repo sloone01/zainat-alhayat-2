@@ -4,23 +4,10 @@
       <FikrPageHeader
         :title="$t('gradedMarksGrid.title')"
         :subtitle="marksHeaderSubtitle"
-      >
-        <template v-if="selectedGroup" #leading>
-          <button
-            type="button"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('common.back')"
-            @click="goBack"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        </template>
-      </FikrPageHeader>
+      />
 
       <!-- Step 1: groups -->
-      <div v-if="!selectedGroup" class="fk-card">
+      <section v-if="!selectedGroup" class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('progressTracking.selectGroup') }}</h2>
@@ -39,7 +26,7 @@
           </div>
           <div v-else-if="teacherGroups.length && isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <KanbanCard
-              v-for="group in teacherGroups"
+              v-for="group in paginatedGroups"
               :key="group.id"
               as="button"
               :title="group.name"
@@ -54,8 +41,8 @@
               </template>
             </KanbanCard>
           </div>
-          <div v-else-if="teacherGroups.length" class="fk-table-wrap">
-            <table class="fk-table">
+          <div v-else-if="teacherGroups.length" class="overflow-visible">
+            <table class="fk-feetable min-w-full">
               <thead>
                 <tr>
                   <th>{{ $t('progressTracking.groupName') }}</th>
@@ -66,7 +53,7 @@
               </thead>
               <tbody>
                 <tr
-                  v-for="group in teacherGroups"
+                  v-for="group in paginatedGroups"
                   :key="'list-' + group.id"
                   class="cursor-pointer hover:bg-fikr-pearl"
                   @click="selectGroup(group)"
@@ -80,15 +67,33 @@
             </table>
           </div>
           <div v-else class="py-16 text-center text-sm text-gray-500">{{ $t('progressTracking.noGroups') }}</div>
+          <FikrPagination
+            :page="groupsPage"
+            :pages="groupsTotalPages"
+            :show="!loadingGroups && teacherGroups.length > 0"
+            @update:page="goToGroupsPage"
+          />
         </div>
-      </div>
+      </section>
 
       <!-- Step 2: graded courses -->
-      <div v-else-if="selectedGroup && !selectedCourse" class="fk-card">
+      <section v-else-if="selectedGroup && !selectedCourse" class="fk-elev p-0">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('gradedMarksGrid.selectCourse') }}</h2>
-            <p class="fk-card__meta">{{ selectedGroup.name }}</p>
+          <div class="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+              :aria-label="$t('common.back')"
+              @click="goBack"
+            >
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('gradedMarksGrid.selectCourse') }}</h2>
+              <p class="fk-card__meta">{{ selectedGroup.name }}</p>
+            </div>
           </div>
           <button type="button" class="text-sm font-medium text-primary-700 hover:text-primary-900" @click="selectedGroup = null">
             {{ $t('progressTracking.changeGroup') }}
@@ -108,7 +113,7 @@
           </div>
           <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <KanbanCard
-              v-for="course in groupGradedCourses"
+              v-for="course in paginatedCourses"
               :key="course.id"
               as="button"
               :title="course.title"
@@ -125,14 +130,31 @@
               </template>
             </KanbanCard>
           </div>
+          <FikrPagination
+            :page="coursesPage"
+            :pages="coursesTotalPages"
+            :show="!loadingCourses && groupGradedCourses.length > 0"
+            @update:page="goToCoursesPage"
+          />
         </div>
-      </div>
+      </section>
 
       <!-- Step 3: marks grid — students × criteria -->
       <div v-else class="space-y-4 sm:space-y-6">
-        <div class="fk-card">
+        <div class="fk-elev p-0">
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-            <div class="min-w-0">
+            <div class="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+                :aria-label="$t('common.back')"
+                @click="goBack"
+              >
+                <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div class="min-w-0">
               <h2 class="fk-card__title truncate">{{ selectedCourse?.title }}</h2>
               <p class="fk-card__meta">{{ selectedGroup?.name }}</p>
               <p v-if="gridData" class="mt-1 text-xs text-gray-500">
@@ -144,11 +166,9 @@
                 {{ $t('gradedMarksGrid.courseTotalMarks') }}: {{ gridData.total_marks }}
                 · {{ $t('gradedMarksGrid.enterByCriteria') }}
               </p>
+              </div>
             </div>
             <div class="flex shrink-0 flex-wrap items-center gap-2">
-              <button type="button" class="text-sm font-medium text-primary-700 hover:text-primary-900" @click="selectedCourse = null; resetGrid()">
-                {{ $t('gradedMarksGrid.changeCourse') }}
-              </button>
               <button
                 type="button"
                 class="fk-btn fk-btn--primary"
@@ -184,7 +204,7 @@
           <p class="mt-1 text-xs text-gray-500">{{ $t('gradedMarksGrid.noCriteriaForActiveSemesterHint') }}</p>
         </div>
 
-        <div v-else-if="gridData" class="fk-card overflow-visible">
+        <div v-else-if="gridData" class="fk-elev overflow-visible p-0">
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="min-w-0">
               <h2 class="fk-card__title truncate">
@@ -198,6 +218,7 @@
               </p>
             </div>
           </header>
+          <div class="p-6">
           <!-- Mobile -->
           <div class="block sm:hidden divide-y divide-gray-100">
             <div v-for="student in paginatedStudents" :key="student.id" class="p-4">
@@ -320,6 +341,7 @@
             :show="gradedStudents.length > 0"
             @update:page="goToGradedPage"
           />
+          </div>
         </div>
       </div>
     </div>
@@ -367,6 +389,12 @@ type GroupRow = {
 }
 
 const teacherGroups = ref<GroupRow[]>([])
+const {
+  currentPage: groupsPage,
+  paginatedItems: paginatedGroups,
+  totalPages: groupsTotalPages,
+  goToPage: goToGroupsPage,
+} = useClientPagination(teacherGroups)
 const selectedGroup = ref<GroupRow | null>(null)
 
 type CourseRow = {
@@ -378,6 +406,12 @@ type CourseRow = {
 }
 
 const groupGradedCourses = ref<CourseRow[]>([])
+const {
+  currentPage: coursesPage,
+  paginatedItems: paginatedCourses,
+  totalPages: coursesTotalPages,
+  goToPage: goToCoursesPage,
+} = useClientPagination(groupGradedCourses)
 const loadingCourses = ref(false)
 const selectedCourse = ref<CourseRow | null>(null)
 
@@ -580,7 +614,7 @@ async function loadMarksGrid() {
     marksLocal.value = next
   } catch (e: unknown) {
     gridData.value = null
-    gridError.value = (e as { message?: string })?.message || t('gradedMarksGrid.loadFailed')
+    gridError.value = apiErrorText(e, t('gradedMarksGrid.loadFailed'))
   } finally {
     loadingGrid.value = false
   }
@@ -605,30 +639,59 @@ function goBack() {
   }
 }
 
+function apiErrorText(error: unknown, fallback: string): string {
+  const ax = error as { response?: { data?: { message?: string | string[] } } }
+  const raw = ax.response?.data?.message
+  if (Array.isArray(raw)) {
+    const text = raw.map((part) => String(part)).filter(Boolean).join(' ')
+    if (text) return text
+  } else if (typeof raw === 'string' && raw.trim()) {
+    return raw.trim()
+  }
+  return fallback
+}
+
+function storedMark(studentId: string, criterionId: string): number | null {
+  const raw = gridData.value?.marks[markKey(studentId, criterionId)]
+  if (raw == null || raw === '') return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+}
+
 async function saveMarks() {
   if (!selectedGroup.value || !selectedCourse.value || !gridData.value) return
   savingMarks.value = true
   gridError.value = ''
   try {
-    const entries = []
+    const entries: { student_id: string; graded_criterion_id: string; mark: number | null }[] = []
     for (const s of gridData.value.students) {
       for (const c of gridData.value.criteria) {
+        const next = parseMarkInput(marksLocal.value[markKey(s.id, c.id)] ?? '')
+        const maxMarks = Number(c.max_marks)
+        if (next != null && (next < 0 || next > maxMarks + 0.001)) {
+          gridError.value = t('gradedMarksGrid.markOutOfRange', { label: c.label, max: c.max_marks })
+          return
+        }
+        const prev = storedMark(s.id, c.id)
+        if (next === prev) continue
         entries.push({
           student_id: s.id,
           graded_criterion_id: c.id,
-          mark: parseMarkInput(marksLocal.value[markKey(s.id, c.id)] ?? ''),
+          mark: next,
         })
       }
     }
-    await gradedCriterionMarksService.saveGrid(schoolId.value, {
-      group_id: selectedGroup.value.id,
-      course_id: selectedCourse.value.id,
-      entries,
-    })
+    if (entries.length) {
+      await gradedCriterionMarksService.saveGrid(schoolId.value, {
+        group_id: selectedGroup.value.id,
+        course_id: selectedCourse.value.id,
+        entries,
+      })
+    }
     feedback.saved(t('gradedMarksGrid.savedOk'))
     await loadMarksGrid()
   } catch (e: unknown) {
-    gridError.value = (e as { message?: string })?.message || t('gradedMarksGrid.saveFailed')
+    gridError.value = apiErrorText(e, t('gradedMarksGrid.saveFailed'))
   } finally {
     savingMarks.value = false
   }

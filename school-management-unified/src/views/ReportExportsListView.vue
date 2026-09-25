@@ -9,14 +9,6 @@
             <h2 class="fk-card__title truncate">{{ $t('reports.exportsTitle') }}</h2>
             <p class="fk-card__meta">{{ items.length }}</p>
           </div>
-          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
-            <router-link
-              to="/reports/export-templates"
-              class="fk-btn fk-btn--pearl"
-            >
-              {{ $t('reports.exportTemplatesTitle') }}
-            </router-link>
-          </div>
         </header>
 
         <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">

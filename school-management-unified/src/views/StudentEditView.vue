@@ -71,6 +71,7 @@
         v-model="formData.guardian"
         compact
         edit-mode
+        :student-civil-id="formData.student.idNumber"
         @next="handleNext"
         @back="handleBack"
       />

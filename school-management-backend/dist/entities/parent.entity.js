@@ -32,8 +32,8 @@ let Parent = class Parent {
     organizationName;
     responsiblePerson;
     responsiblePhone;
+    status;
     user_id;
-    school_id;
     createdAt;
     updatedAt;
     user;
@@ -115,13 +115,13 @@ __decorate([
     __metadata("design:type", Object)
 ], Parent.prototype, "responsiblePhone", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 24, default: 'active' }),
+    __metadata("design:type", String)
+], Parent.prototype, "status", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
     __metadata("design:type", String)
 ], Parent.prototype, "user_id", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
-    __metadata("design:type", Object)
-], Parent.prototype, "school_id", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

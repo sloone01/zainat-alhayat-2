@@ -69,11 +69,15 @@ export class ReportExportConfigService {
       where: { school_id: schoolId, report_key: key },
     });
     if (!row) {
+      const dueTemplate =
+        key === 'due-installments'
+          ? await this.templates.ensureDueInstallmentsTemplate(schoolId)
+          : null;
       row = this.configRepo.create({
         school_id: schoolId,
         report_key: key,
         columns: [...def.defaultColumns],
-        template_id: null,
+        template_id: dueTemplate?.id ?? null,
       });
       row = await this.configRepo.save(row);
     }
@@ -86,9 +90,11 @@ export class ReportExportConfigService {
       }
     }
 
-    const template_html = row.template_id
-      ? await this.templates.resolveBrandedHtml(schoolId, row.template_id, locale)
-      : null;
+    const template_html = await this.templates.resolveBrandedHtml(
+      schoolId,
+      row.template_id,
+      locale,
+    );
 
     return {
       key: def.key,

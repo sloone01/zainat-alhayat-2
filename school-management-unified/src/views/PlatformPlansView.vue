@@ -93,6 +93,12 @@
                     <RowActionsItem icon="edit" @click="onEdit(plan)">
                       {{ $t('common.edit') }}
                     </RowActionsItem>
+                    <RowActionsItem
+                      :icon="plan.is_active ? 'archive' : 'activate'"
+                      @click="onSetActive(plan, !plan.is_active)"
+                    >
+                      {{ plan.is_active ? $t('platformBilling.deactivate') : $t('platformBilling.activate') }}
+                    </RowActionsItem>
                     <RowActionsItem icon="delete" danger @click="onDelete(plan)">
                       {{ $t('common.delete') }}
                     </RowActionsItem>
@@ -163,6 +169,12 @@
                       >
                         <RowActionsItem icon="edit" @click="onEdit(plan)">
                           {{ $t('common.edit') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          :icon="plan.is_active ? 'archive' : 'activate'"
+                          @click="onSetActive(plan, !plan.is_active)"
+                        >
+                          {{ plan.is_active ? $t('platformBilling.deactivate') : $t('platformBilling.activate') }}
                         </RowActionsItem>
                         <RowActionsItem icon="delete" danger @click="onDelete(plan)">
                           {{ $t('common.delete') }}
@@ -456,6 +468,27 @@ function priceOf(plan: PlatformPlan, period: PlatformBillingPeriod) {
 function onEdit(plan: PlatformPlan) {
   activeMenuId.value = null
   router.push(`/platform/plans/${plan.code}`)
+}
+
+async function onSetActive(plan: PlatformPlan, is_active: boolean) {
+  activeMenuId.value = null
+  if (!is_active) {
+    const ok = await feedback.confirm({
+      title: t('platformBilling.deactivate'),
+      message: t('platformBilling.confirmDeactivate', { name: planDisplayName(plan) }),
+      confirmLabel: t('platformBilling.deactivate'),
+    })
+    if (!ok) return
+  }
+  try {
+    const detail = await platformBillingService.updatePlan(plan.code, { is_active })
+    const next = plans.value.find((p) => p.code === plan.code)
+    if (next) next.is_active = detail.plan.is_active
+    feedback.saved(is_active ? t('platformBilling.activated') : t('platformBilling.deactivated'))
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { message?: string } }; message?: string }
+    error.value = ax.response?.data?.message || ax.message || t('platformBilling.saveError')
+  }
 }
 
 async function onDelete(plan: PlatformPlan) {

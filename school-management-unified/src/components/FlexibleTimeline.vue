@@ -27,7 +27,7 @@
         ref="scrollRef"
         class="relative overflow-auto rounded-lg border border-gray-200 bg-white"
         @mousemove="onGridMouseMove"
-        @mouseleave="hover = null"
+        @mouseleave="hover = null; slotTip = null"
       >
         <div
           class="relative"
@@ -44,8 +44,9 @@
               <div class="relative h-12 flex-1">
                 <div
                   v-for="marker in hourMarkers"
-                  :key="marker.hour"
-                  class="absolute top-0 flex h-full items-center ps-2 text-xs text-gray-500"
+                  :key="`${marker.position}-${marker.label}`"
+                  class="absolute top-0 flex h-full items-center text-xs text-gray-500"
+                  :class="marker.edge === 'end' ? (rtl ? 'translate-x-full pe-2' : '-translate-x-full ps-2') : 'ps-2'"
                   :style="{ insetInlineStart: `${marker.position}px` }"
                 >
                   {{ marker.label }}
@@ -55,12 +56,16 @@
           </div>
 
           <div
-            v-for="day in days"
+            v-for="(day, index) in days"
             :key="day.key"
             :ref="(el) => setRowEl(day.key, el)"
-            class="flex h-14 border-b border-gray-200"
+            class="relative flex h-14"
             :class="rowClass(day.key)"
           >
+            <div
+              v-if="index > 0"
+              class="pointer-events-none absolute inset-x-0 top-0 z-20 h-0.5 bg-gray-200"
+            />
             <div class="sticky start-0 z-[5] flex w-[var(--tl-col)] items-center gap-1 border-e border-gray-200 bg-inherit px-3">
               <div class="min-w-0 flex-1 py-1">
                 <p class="truncate text-sm font-medium text-[#0A2147]">{{ day.label }}</p>
@@ -79,22 +84,22 @@
               </button>
             </div>
 
-            <div class="relative h-14 flex-1" :style="{ width: `${timelineWidth}px` }">
+            <div class="relative h-full min-h-0 flex-1" :style="{ width: `${timelineWidth}px` }">
               <div
                 v-for="(line, idx) in quarterLines"
                 :key="`q-${day.key}-${idx}`"
-                class="absolute top-0 h-full w-px bg-gray-200/40"
+                class="absolute inset-y-0 w-px bg-gray-200"
                 :style="{ insetInlineStart: `${line}px` }"
               />
               <div
                 v-for="marker in hourMarkers"
-                :key="`h-${day.key}-${marker.hour}`"
-                class="absolute top-0 h-full w-px bg-gray-200"
+                :key="`h-${day.key}-${marker.position}`"
+                class="absolute inset-y-0 w-px bg-gray-200"
                 :style="{ insetInlineStart: `${marker.position}px` }"
               />
               <div
                 v-if="endLine >= 0"
-                class="absolute top-0 h-full w-px bg-gray-200"
+                class="absolute inset-y-0 w-px bg-gray-200"
                 :style="{ insetInlineStart: `${endLine}px` }"
               />
 
@@ -103,12 +108,16 @@
                 :key="slot.id"
                 role="button"
                 tabindex="0"
+                data-tl-slot
                 class="absolute top-0 bottom-0 cursor-grab touch-none select-none"
                 :style="slotBox(slot)"
                 @pointerdown="onSlotPointerDown($event, slot)"
                 @pointermove="onSlotPointerMove"
                 @pointerup="onSlotPointerUp"
                 @pointercancel="clearDrag"
+                @mouseenter="onSlotHover($event, slot)"
+                @mousemove="onSlotHover($event, slot)"
+                @mouseleave="slotTip = null"
                 @keydown.enter.prevent="emit('select', slot.id)"
                 @keydown.space.prevent="emit('select', slot.id)"
               >
@@ -172,7 +181,7 @@
           </div>
 
           <div
-            v-else-if="hover"
+            v-else-if="hover && !slotTip"
             class="pointer-events-none absolute top-0 bottom-0 z-20"
             :style="{ left: `${hover.x}px` }"
           >
@@ -222,6 +231,19 @@
         </div>
       </div>
     </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="slotTip && !drag?.moved"
+        class="pointer-events-none fixed z-[90] max-w-xs -translate-x-1/2 -translate-y-full rounded-md bg-[#0A2147] px-3 py-2 text-start text-white shadow-md"
+        :dir="rtl ? 'rtl' : 'ltr'"
+        :style="{ left: `${slotTip.x}px`, top: `${slotTip.y - 10}px` }"
+      >
+        <p class="text-xs font-semibold leading-4">{{ slotTip.title }}</p>
+        <p class="text-xs leading-4">{{ slotTip.range }}</p>
+        <p v-if="slotTip.teacher" class="text-xs leading-4 text-white/80">{{ slotTip.teacher }}</p>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -249,8 +271,8 @@ const props = withDefaults(
   defineProps<{
     slots: FlexibleTimelineSlot[]
     days: FlexibleTimelineDay[]
-    startHour: number
-    endHour: number
+    startMinutes: number
+    endMinutes: number
     rtl?: boolean
     busy?: boolean
     snapMinutes?: number
@@ -278,6 +300,7 @@ const viewportWidth = ref(0)
 const rowEls = new Map<string, HTMLElement>()
 const now = ref(new Date())
 const hover = ref<{ x: number; time: string } | null>(null)
+const slotTip = ref<{ title: string; teacher: string; range: string; x: number; y: number } | null>(null)
 
 type DragState = {
   id: string
@@ -299,7 +322,13 @@ const drag = ref<DragState | null>(null)
 let resizeObserver: ResizeObserver | null = null
 let nowTimer = 0
 
-const totalMinutes = computed(() => Math.max(60, (props.endHour - props.startHour) * 60))
+const rangeStart = computed(() => Math.floor(props.startMinutes / 60) * 60)
+const rangeEnd = computed(() => {
+  const raw = Math.max(props.endMinutes, props.startMinutes + 60)
+  const snapped = Math.ceil(raw / 60) * 60
+  return Math.max(snapped, rangeStart.value + 60)
+})
+const totalMinutes = computed(() => rangeEnd.value - rangeStart.value)
 const pixelsPerMinute = computed(() => {
   const base = viewportWidth.value > 0 ? viewportWidth.value / totalMinutes.value : 1.2
   return base * (100 / zoom.value)
@@ -307,12 +336,15 @@ const pixelsPerMinute = computed(() => {
 const timelineWidth = computed(() => totalMinutes.value * pixelsPerMinute.value)
 
 const hourMarkers = computed(() => {
-  const markers: { hour: number; label: string; position: number }[] = []
-  for (let hour = props.startHour; hour < props.endHour; hour += 1) {
+  const markers: { label: string; position: number; edge?: 'end' }[] = []
+  const start = rangeStart.value
+  const end = rangeEnd.value
+  const ppm = pixelsPerMinute.value
+  for (let minutes = start; minutes <= end; minutes += 60) {
     markers.push({
-      hour,
-      label: minutesToHm(hour * 60),
-      position: (hour - props.startHour) * 60 * pixelsPerMinute.value,
+      label: minutesToHm(minutes),
+      position: (minutes - start) * ppm,
+      edge: minutes === end ? 'end' : undefined,
     })
   }
   return markers
@@ -339,8 +371,8 @@ const legend = computed(() => {
 
 const nowMarker = computed(() => {
   const minutes = now.value.getHours() * 60 + now.value.getMinutes()
-  const start = props.startHour * 60
-  const end = props.endHour * 60
+  const start = rangeStart.value
+  const end = rangeEnd.value
   if (minutes < start || minutes > end) return null
   return {
     position: (minutes - start) * pixelsPerMinute.value,
@@ -393,7 +425,7 @@ function durationOf(slot: FlexibleTimelineSlot) {
 
 function slotBox(slot: FlexibleTimelineSlot) {
   const start = hmToMinutes(slot.startTime)
-  const left = (start - props.startHour * 60) * pixelsPerMinute.value
+  const left = (start - rangeStart.value) * pixelsPerMinute.value
   const width = Math.max(durationOf(slot) * pixelsPerMinute.value, 60)
   return {
     insetInlineStart: `${Number.isFinite(left) ? left : 0}px`,
@@ -442,7 +474,7 @@ function rowClass(day: string) {
 
 function ghostStyle() {
   if (!drag.value) return {}
-  const left = (drag.value.newStart - props.startHour * 60) * pixelsPerMinute.value
+  const left = (drag.value.newStart - rangeStart.value) * pixelsPerMinute.value
   const width = Math.max(drag.value.duration * pixelsPerMinute.value, 60)
   return {
     insetInlineStart: `${left}px`,
@@ -454,7 +486,7 @@ function ghostStyle() {
 
 function dropRegionStyle() {
   if (!drag.value) return {}
-  const left = (drag.value.newStart - props.startHour * 60) * pixelsPerMinute.value
+  const left = (drag.value.newStart - rangeStart.value) * pixelsPerMinute.value
   const width = Math.max(drag.value.duration * pixelsPerMinute.value, 60)
   return {
     insetInlineStart: `${columnWidth.value + left}px`,
@@ -476,8 +508,22 @@ function onGridMouseMove(event: MouseEvent) {
     hover.value = null
     return
   }
-  const minutes = Math.floor(props.startHour * 60 + trackX / pixelsPerMinute.value)
+  const minutes = Math.floor(rangeStart.value + trackX / pixelsPerMinute.value)
   hover.value = { x, time: minutesToHm(minutes) }
+}
+
+function onSlotHover(event: MouseEvent, slot: FlexibleTimelineSlot) {
+  if (drag.value?.moved) {
+    slotTip.value = null
+    return
+  }
+  slotTip.value = {
+    title: slot.title,
+    teacher: slot.teacher,
+    range: `${slot.startTime} – ${slot.endTime}`,
+    x: event.clientX,
+    y: event.clientY,
+  }
 }
 
 function onSlotPointerDown(event: PointerEvent, slot: FlexibleTimelineSlot) {
@@ -512,11 +558,12 @@ function onSlotPointerMove(event: PointerEvent) {
   const dy = event.clientY - drag.value.originY
   if (!drag.value.moved && Math.hypot(dx, dy) < 8) return
   drag.value.moved = true
+  slotTip.value = null
   const sign = props.rtl ? -1 : 1
   const deltaMinutes = (dx * sign) / pixelsPerMinute.value
   let next = snap(drag.value.startMinutes + deltaMinutes)
-  const minStart = props.startHour * 60
-  const maxStart = Math.max(minStart, props.endHour * 60 - drag.value.duration)
+  const minStart = rangeStart.value
+  const maxStart = Math.max(minStart, rangeEnd.value - drag.value.duration)
   next = Math.max(minStart, Math.min(maxStart, next))
   const day = rowAt(event.clientY) || drag.value.day
   drag.value.day = day
@@ -549,7 +596,7 @@ function onSlotPointerUp() {
 }
 
 watch(
-  () => [props.startHour, props.endHour, props.columnWidth],
+  () => [props.startMinutes, props.endMinutes, props.columnWidth],
   () => measure(),
 )
 

@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const user_service_1 = require("../services/user.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
+const pagination_1 = require("../common/pagination");
 let UserController = class UserController {
     userService;
     constructor(userService) {
@@ -24,7 +25,10 @@ let UserController = class UserController {
     }
     async create(req, createUserDto) {
         try {
-            const user = await this.userService.create(createUserDto, req.user);
+            const user = await this.userService.create(createUserDto, req.user, {
+                requireParentStudentLink: true,
+                requireStudentRecordLink: true,
+            });
             return {
                 success: true,
                 data: user,
@@ -39,11 +43,39 @@ let UserController = class UserController {
             };
         }
     }
-    async findAll(req, role, audience) {
+    async lookupParent(req, email, phone, civilId, studentIds) {
+        try {
+            const data = await this.userService.lookupParent(req.user, {
+                email,
+                phone,
+                civil_id: civilId,
+                student_ids: studentIds ? studentIds.split(',').map((id) => id.trim()).filter(Boolean) : [],
+            });
+            return { success: true, data };
+        }
+        catch (error) {
+            return { success: false, message: error.message, error: error.name };
+        }
+    }
+    async findAll(req, role, audience, page, limit, q, status, createdWithin) {
         try {
             const kind = audience === 'staff' || audience === 'parent' || audience === 'student'
                 ? audience
                 : undefined;
+            if ((0, pagination_1.wantsPage)(page)) {
+                const data = await this.userService.findPage(req.user, {
+                    page,
+                    limit,
+                    audience: kind,
+                    q,
+                    role: role?.trim() || undefined,
+                    status: status === 'active' || status === 'inactive' ? status : undefined,
+                    created_within: createdWithin === 'today' || createdWithin === 'week' || createdWithin === 'month'
+                        ? createdWithin
+                        : undefined,
+                });
+                return { success: true, data };
+            }
             const users = role
                 ? await this.userService.findByRole(role, req.user)
                 : await this.userService.findAll(req.user, kind);
@@ -138,9 +170,9 @@ let UserController = class UserController {
             };
         }
     }
-    async resetPassword(id) {
+    async resetPassword(req, id) {
         try {
-            await this.userService.resetPasswordAndNotify(id);
+            await this.userService.resetPasswordAndNotify(id, req.user);
             return {
                 success: true,
                 message: 'Password reset email sent',
@@ -216,12 +248,29 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "create", null);
 __decorate([
+    (0, common_1.Get)('parents/lookup'),
+    (0, require_claim_decorator_1.RequireClaim)('users', 'create'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Query)('email')),
+    __param(2, (0, common_1.Query)('phone')),
+    __param(3, (0, common_1.Query)('civil_id')),
+    __param(4, (0, common_1.Query)('student_ids')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], UserController.prototype, "lookupParent", null);
+__decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Query)('role')),
     __param(2, (0, common_1.Query)('audience')),
+    __param(3, (0, common_1.Query)('page')),
+    __param(4, (0, common_1.Query)('limit')),
+    __param(5, (0, common_1.Query)('q')),
+    __param(6, (0, common_1.Query)('status')),
+    __param(7, (0, common_1.Query)('created_within')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "findAll", null);
 __decorate([
@@ -260,9 +309,10 @@ __decorate([
     (0, common_1.Post)(':id/reset-password'),
     (0, require_claim_decorator_1.RequireClaim)('users', 'manage'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "resetPassword", null);
 __decorate([

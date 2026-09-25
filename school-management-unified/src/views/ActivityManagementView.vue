@@ -77,8 +77,8 @@
                       >
                         {{ $t('activities.showApprovals') }}
                       </RowActionsItem>
-                      <RowActionsItem icon="delete" danger @click="removeActivity(activity.id)">
-                        {{ $t('common.delete') }}
+                      <RowActionsItem v-if="activity.is_active" icon="archive" danger @click="removeActivity(activity.id)">
+                        {{ $t('activities.withdraw') }}
                       </RowActionsItem>
                     </RowActionsMenu>
                   </div>
@@ -157,8 +157,8 @@
                       >
                         {{ $t('activities.showApprovals') }}
                       </RowActionsItem>
-                      <RowActionsItem icon="delete" danger @click="removeActivity(activity.id)">
-                        {{ $t('common.delete') }}
+                      <RowActionsItem v-if="activity.is_active" icon="archive" danger @click="removeActivity(activity.id)">
+                        {{ $t('activities.withdraw') }}
                       </RowActionsItem>
                     </RowActionsMenu>
                   </div>
@@ -280,8 +280,8 @@
                         >
                           {{ $t('activities.showApprovals') }}
                         </RowActionsItem>
-                        <RowActionsItem icon="delete" danger @click="removeActivity(activity.id)">
-                          {{ $t('common.delete') }}
+                        <RowActionsItem v-if="activity.is_active" icon="archive" danger @click="removeActivity(activity.id)">
+                          {{ $t('activities.withdraw') }}
                         </RowActionsItem>
                       </RowActionsMenu>
                     </td>
@@ -1138,9 +1138,9 @@ const saveActivity = async () => {
 
 const removeActivity = async (id: string) => {
   if (!(await feedback.confirm({
-    title: t('common.delete'),
-    message: t('activities.confirmDelete'),
-    confirmLabel: t('common.delete'),
+    title: t('activities.withdraw'),
+    message: t('activities.confirmWithdraw'),
+    confirmLabel: t('activities.withdraw'),
     danger: true,
   }))) return
   activeDropdown.value = null

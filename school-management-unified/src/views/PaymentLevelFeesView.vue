@@ -32,7 +32,7 @@
           </div>
         </header>
 
-        <div class="p-4 sm:p-6">
+        <div class="p-6">
           <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
@@ -76,7 +76,7 @@
             </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
+            <div v-else class="overflow-visible">
               <Table>
                 <TableHeader>
                   <TableRow class="hover:bg-transparent">

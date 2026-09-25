@@ -280,6 +280,8 @@ const props = withDefaults(
     showSearch?: boolean
     showNewEvent?: boolean
     newEventLabel?: string
+    /** When set, a day with no events does not select or notify the parent. */
+    ignoreEmptyDays?: boolean
   }>(),
   {
     data: () => [],
@@ -294,6 +296,7 @@ const props = withDefaults(
     showSearch: true,
     showNewEvent: true,
     newEventLabel: '',
+    ignoreEmptyDays: false,
   },
 )
 
@@ -473,9 +476,11 @@ function cellTone(day: Date) {
 }
 
 function selectDay(day: Date) {
+  const events = eventsFor(day)
+  if (props.ignoreEmptyDays && !events.length) return
   selectedDay.value = startOfDay(day)
   emit('selectDay', selectedDay.value)
-  const first = eventsFor(day)[0]
+  const first = events[0]
   if (first) emit('eventClick', first)
 }
 

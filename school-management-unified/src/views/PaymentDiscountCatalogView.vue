@@ -10,7 +10,7 @@
         {{ flashError }}
       </div>
 
-      <div class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('paymentSettings.discountItemsListHeading') }}</h2>
@@ -34,7 +34,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -57,6 +57,9 @@
                 <template #tags>
                   <KanbanTag :dot="row.is_active ? 'emerald' : 'gray'">
                     {{ row.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
+                  </KanbanTag>
+                  <KanbanTag :dot="discountIsUsed(row) ? 'amber' : 'gray'">
+                    {{ discountUsageLabel(row) }}
                   </KanbanTag>
                 </template>
                 <template #actions>
@@ -82,29 +85,31 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('paymentSettings.label') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('paymentSettings.code') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('common.status') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('paymentSettings.label') }}</th>
+                    <th>{{ $t('paymentSettings.code') }}</th>
+                    <th>{{ $t('common.status') }}</th>
+                    <th>{{ $t('paymentSettings.discountUsage') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="row in paginatedRows" :key="'list-' + row.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ row.label }}</td>
-                    <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ row.code }}</td>
-                    <td class="px-4 py-3">
+                <tbody>
+                  <tr v-for="row in paginatedRows" :key="'list-' + row.id">
+                    <td class="font-medium">{{ row.label }}</td>
+                    <td class="font-mono text-xs">{{ row.code }}</td>
+                    <td>
                       <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        :class="row.is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-100 text-gray-500'"
+                        class="fk-pill"
+                        :class="row.is_active ? 'fk-pill--teal' : 'fk-pill--mist'"
                       >
                         {{ row.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
+                    <td>{{ discountUsageLabel(row) }}</td>
+                    <td>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === row.id"
@@ -148,7 +153,7 @@
             <p class="text-sm font-medium text-gray-600">{{ $t('paymentSettings.emptyDiscounts') }}</p>
           </div>
         </div>
-      </div>
+      </section>
     </div>
 
     <div
@@ -270,6 +275,7 @@ import { useClientPagination } from '@/composables/useClientPagination'
 import { authService } from '@/services'
 import paymentConfigService, { type PaymentCatalogRow } from '@/services/payment-config.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const feedback = useFeedback()
@@ -322,6 +328,29 @@ watch([searchQuery, statusFilter], () => {
 function clearFilters() {
   searchQuery.value = ''
   statusFilter.value = 'all'
+}
+
+function discountIsUsed(row: PaymentCatalogRow) {
+  return Boolean(row.package_names?.length || row.used_on_charges)
+}
+
+function discountUsageLabel(row: PaymentCatalogRow) {
+  const names = row.package_names ?? []
+  if (names.length) return t('paymentSettings.discountUsedIn', { names: names.join(', ') })
+  if (row.used_on_charges) return t('paymentSettings.discountUsedOnCharges')
+  return t('paymentSettings.discountNotUsed')
+}
+
+function apiErrorText(error: unknown, fallback: string): string {
+  const ax = error as { response?: { data?: { message?: string | string[] } }; message?: string }
+  const raw = ax.response?.data?.message
+  if (Array.isArray(raw)) {
+    const text = raw.map((part) => String(part)).filter(Boolean).join(' ')
+    if (text) return text
+  } else if (typeof raw === 'string' && raw.trim() && !raw.startsWith('Request failed')) {
+    return raw.trim()
+  }
+  return fallback
 }
 
 function toggleMenu(id: string) {
@@ -394,10 +423,16 @@ async function saveForm() {
     if (editingRow.value) {
       const updated = await paymentConfigService.updateDiscountType(editingRow.value.id, payload)
       const i = rows.value.findIndex((x) => x.id === editingRow.value?.id)
-      if (i !== -1) rows.value[i] = updated
+      if (i !== -1) {
+        rows.value[i] = {
+          ...updated,
+          package_names: rows.value[i].package_names,
+          used_on_charges: rows.value[i].used_on_charges,
+        }
+      }
     } else {
       const row = await paymentConfigService.createDiscountType(schoolId.value, payload)
-      rows.value = [...rows.value, row]
+      rows.value = [...rows.value, { ...row, package_names: [], used_on_charges: false }]
     }
     showForm.value = false
     resetForm()
@@ -421,6 +456,16 @@ async function onSetActive(row: PaymentCatalogRow, is_active: boolean) {
 
 async function onDelete(row: PaymentCatalogRow) {
   closeMenu()
+  flashError.value = ''
+  const names = row.package_names ?? []
+  if (names.length) {
+    flashError.value = t('paymentSettings.discountUsedInPackage', { names: names.join(', ') })
+    return
+  }
+  if (row.used_on_charges) {
+    flashError.value = t('paymentSettings.discountUsedOnCharges')
+    return
+  }
   if (!(await feedback.confirm({
     title: t('common.delete'),
     message: t('paymentSettings.confirmDelete'),
@@ -431,7 +476,7 @@ async function onDelete(row: PaymentCatalogRow) {
     await paymentConfigService.deleteDiscountType(row.id)
     rows.value = rows.value.filter((x) => x.id !== row.id)
   } catch (e: unknown) {
-    flashError.value = (e as { message?: string })?.message || t('paymentSettings.saveError')
+    flashError.value = apiErrorText(e, t('paymentSettings.saveError'))
   }
 }
 

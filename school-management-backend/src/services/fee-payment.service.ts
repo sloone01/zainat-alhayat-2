@@ -199,10 +199,20 @@ export class FeePaymentService {
     if (remaining <= 0) throw new BadRequestException('Nothing is due for this item');
     await this.assertNoOpenPayment(sheet.id, input.targetType, input.installmentId);
 
-    // Attachment receipts wait for the school (not platform). Thawani is paid on confirm.
-    const schoolReceipt = user.role === 'admin' && !isPlatformOperator(user);
-    const method = schoolReceipt ? 'admin' : 'offline';
-    const status = 'pending_reconcile';
+    // Parent receipts wait for the school. An office receipt is money already in hand.
+    const office = user.role === 'admin' && !isPlatformOperator(user);
+    const method = office ? 'admin' : 'offline';
+    const status = office ? 'paid' : 'pending_reconcile';
+    if (office) {
+      await this.chargeSheets.applyConfirmedPayment({
+        studentId,
+        sheetId: sheet.id,
+        targetType: input.targetType,
+        installmentId: input.installmentId,
+        amount: remaining,
+      });
+    }
+    const now = new Date();
     const header = await this.createPaymentHeader({
       school_id: sheet.school_id,
       student_id: studentId,
@@ -229,9 +239,11 @@ export class FeePaymentService {
       remarks: input.remarks?.trim() || null,
       receipt_locale: input.locale === 'en' ? 'en' : 'ar',
       submitted_by: user.id,
+      ...(office ? { paid_at: now, reviewed_by: user.id, reviewed_at: now } : {}),
     });
     const saved = await this.paymentRepo.save(row);
-    void this.notifyOfflineSubmitted(saved);
+    if (office) void this.sendReceipt(saved);
+    else void this.notifyOfflineSubmitted(saved);
     return saved;
   }
 
@@ -287,12 +299,23 @@ export class FeePaymentService {
       await this.assertNoOpenPayment(sheet.id, 'installment', row.inst.id);
     }
 
-    const schoolReceipt = !isPlatformOperator(user);
-    const method = schoolReceipt ? 'admin' : 'offline';
-    const status = schoolReceipt ? 'pending_reconcile' : 'pending_approval';
-    const totalAmount = moneyStr(
-      cleaned.reduce((sum, a) => sum + a.amount, 0),
-    );
+    const office = !isPlatformOperator(user);
+    const method = office ? 'admin' : 'offline';
+    const status = office ? 'paid' : 'pending_approval';
+    const total = cleaned.reduce((sum, a) => sum + a.amount, 0);
+    if (office) {
+      await this.chargeSheets.applyManualAllocation({
+        studentId,
+        sheetId: sheet.id,
+        totalAmount: total,
+        allocations: cleaned.map((a) => ({
+          installmentId: a.installmentId,
+          amount: a.amount,
+        })),
+      });
+    }
+    const totalAmount = moneyStr(total);
+    const now = new Date();
     const created: StudentFeePayment[] = [];
     await this.paymentRepo.manager.transaction(async (em) => {
       const header = await this.createPaymentHeader(
@@ -329,12 +352,14 @@ export class FeePaymentService {
             remarks: input.remarks?.trim() || null,
             receipt_locale: input.locale === 'en' ? 'en' : 'ar',
             submitted_by: user.id,
+            ...(office ? { paid_at: now, reviewed_by: user.id, reviewed_at: now } : {}),
           }),
         );
         created.push(saved);
       }
     });
-    if (created[0]) void this.notifyOfflineSubmitted(created[0]);
+    if (office && created[0]) void this.sendReceipt(created[0], totalAmount);
+    else if (created[0]) void this.notifyOfflineSubmitted(created[0]);
     return created;
   }
 
@@ -857,7 +882,7 @@ export class FeePaymentService {
     return { payment, sheet };
   }
 
-  private async sendReceipt(payment: StudentFeePayment): Promise<void> {
+  private async sendReceipt(payment: StudentFeePayment, displayAmount?: string): Promise<void> {
     try {
       const [student, school] = await Promise.all([
         this.studentRepo.findOne({
@@ -877,7 +902,7 @@ export class FeePaymentService {
           schoolName: school?.name ?? 'School',
           studentName: formatStudentDisplayName(student),
           recipientName: locale === 'ar' ? 'ولي الأمر' : 'Parent',
-          amount: Number(payment.amount).toFixed(3),
+          amount: Number(displayAmount ?? payment.amount).toFixed(3),
           currency: 'OMR',
           date: (payment.paid_at ?? new Date()).toISOString().slice(0, 10),
           remarks: payment.remarks ?? '',
@@ -898,8 +923,7 @@ export class FeePaymentService {
         ]),
       });
       if (result.emailSent + result.smsSent > 0) {
-        payment.receipt_sent_at = new Date();
-        await this.paymentRepo.save(payment);
+        await this.paymentRepo.update({ id: payment.id }, { receipt_sent_at: new Date() });
       } else {
         this.logger.warn(`No receipt delivered for payment ${payment.id}`);
       }
