@@ -13,12 +13,12 @@
                   class="w-full h-full object-cover"
                 />
               </div>
-              <span class="ml-3 text-xl font-bold text-gray-900" :class="{ 'ml-3': !isRTL, 'mr-3 ml-0': isRTL }">{{ brandName }}</span>
+              <span class="ms-3 text-xl font-bold text-gray-900">{{ brandName }}</span>
             </div>
           </div>
 
           <!-- Desktop Navigation -->
-          <div class="hidden md:flex items-center space-x-8">
+          <div class="hidden md:flex items-center gap-8">
             <a href="#features" class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors" @click="closeMobileNav">
               {{ $t('nav.features') }}
             </a>
@@ -26,13 +26,14 @@
               {{ $t('nav.testimonials') }}
             </a>
             <LanguageSwitcher />
-            <router-link
-              :to="loginPath"
-              class="text-gray-600 hover:text-kindergarten-600 px-3 py-2 text-sm font-medium transition-colors"
-              @click="closeMobileNav"
+            <button
+              type="button"
+              class="px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:text-kindergarten-600 disabled:opacity-60"
+              :disabled="loginNavigating"
+              @click="navigateToLogin"
             >
               {{ $t('nav.signIn') }}
-            </router-link>
+            </button>
             <button
               data-demo="enroll"
               @click="navigateToEnrollment"
@@ -43,7 +44,7 @@
           </div>
 
           <!-- Mobile menu button -->
-          <div class="md:hidden flex items-center space-x-2">
+          <div class="md:hidden flex items-center gap-2">
             <LanguageSwitcher />
             <button
               @click="toggleMobileMenu"
@@ -69,13 +70,14 @@
           <a href="#testimonials" class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button" @click="closeMobileNav">
             {{ $t('nav.testimonials') }}
           </a>
-          <router-link
-            to="/login"
-            class="block px-3 py-2 text-gray-600 hover:text-purple-600 touch-button"
-            @click="closeMobileNav"
+          <button
+            type="button"
+            class="block w-full px-3 py-2 text-start text-gray-600 hover:text-purple-600 touch-button disabled:opacity-60"
+            :disabled="loginNavigating"
+            @click="navigateToLogin"
           >
             {{ $t('nav.signIn') }}
-          </router-link>
+          </button>
           <button
             @click="navigateToEnrollment(); closeMobileNav()"
             class="w-full mt-2 btn-primary touch-button"
@@ -90,16 +92,16 @@
     <section class="relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
-          <div class="space-y-6 md:space-y-8 text-center lg:text-left">
+          <div class="min-w-0 space-y-6 md:space-y-8 text-center lg:text-start">
             <div class="space-y-4">
               <div class="inline-block bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-medium">
                 {{ heroBadge }}
               </div>
-              <h1 class="text-3xl md:text-4xl lg:text-6xl font-bold text-gray-900 leading-tight">
+              <h1 class="text-3xl font-bold leading-snug text-gray-900 md:text-4xl lg:text-6xl lg:!leading-[1.45]">
                 <template v-if="cmsHeroTitle">{{ cmsHeroTitle }}</template>
                 <template v-else>
                   {{ $t('hero.title') }}
-                  <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+                  <span class="box-decoration-clone bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent rtl:bg-gradient-to-l">
                     {{ brandName }}
                   </span>
                 </template>
@@ -116,20 +118,21 @@
                 class="btn-primary text-lg px-6 md:px-8 py-3 md:py-4 touch-button flex items-center justify-center"
               >
                 {{ ctaPrimary }}
-                <svg class="w-5 h-5 ml-2" :class="{ 'ml-2': !isRTL, 'mr-2 ml-0': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="ms-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="isRTL ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'" />
                 </svg>
               </button>
               <button
                 type="button"
-                class="btn-secondary text-lg px-6 md:px-8 py-3 md:py-4 touch-button flex items-center justify-center"
+                class="btn-secondary text-lg px-6 md:px-8 py-3 md:py-4 touch-button flex items-center justify-center disabled:opacity-60"
+                :disabled="loginNavigating"
                 @click="navigateToLogin"
               >
                 {{ ctaSecondary }}
               </button>
             </div>
 
-            <div class="flex items-center justify-center lg:justify-start gap-8 pt-4" :class="{ 'lg:justify-end': isRTL }">
+            <div class="flex items-center justify-center lg:justify-start gap-8 pt-4">
               <div class="text-center">
                 <div class="text-xl md:text-2xl font-bold text-gray-900">200+</div>
                 <div class="text-sm text-gray-600">{{ $t('hero.stats.families') }}</div>
@@ -152,8 +155,8 @@
                 :alt="brandName"
                 class="rounded-2xl shadow-2xl w-full h-auto object-cover aspect-[4/3]"
               />
-              <div class="absolute -bottom-4 -right-4 md:-bottom-6 md:-right-6 bg-white rounded-xl p-3 md:p-4 shadow-lg">
-                <div class="flex items-center space-x-3" :class="{ 'space-x-reverse': isRTL }">
+              <div class="absolute -bottom-4 -end-4 md:-bottom-6 md:-end-6 bg-white rounded-xl p-3 md:p-4 shadow-lg">
+                <div class="flex items-center gap-3">
                   <div class="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-full flex items-center justify-center">
                     <svg class="w-5 h-5 md:w-6 md:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -168,8 +171,8 @@
             </div>
 
             <!-- Background decorations -->
-            <div class="absolute top-10 -left-10 w-16 h-16 md:w-20 md:h-20 bg-purple-200 rounded-full opacity-50"></div>
-            <div class="absolute bottom-10 -right-10 w-24 h-24 md:w-32 md:h-32 bg-pink-200 rounded-full opacity-30"></div>
+            <div class="absolute top-10 -start-10 w-16 h-16 md:w-20 md:h-20 bg-purple-200 rounded-full opacity-50"></div>
+            <div class="absolute bottom-10 -end-10 w-24 h-24 md:w-32 md:h-32 bg-pink-200 rounded-full opacity-30"></div>
           </div>
         </div>
       </div>
@@ -210,7 +213,7 @@
     <section class="py-12 md:py-20 bg-gradient-to-r from-purple-600 to-pink-600">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
-          <div class="space-y-6 text-center lg:text-left">
+          <div class="min-w-0 space-y-6 text-center lg:text-start">
             <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-white">
               {{ $t('mobileApp.title') }}
             </h2>
@@ -218,25 +221,25 @@
               {{ $t('mobileApp.description') }}
             </p>
             <div class="space-y-4">
-              <div class="flex items-center space-x-3" :class="{ 'space-x-reverse': isRTL }">
+              <div class="flex items-center gap-3">
                 <svg class="w-5 h-5 text-green-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span class="text-white">{{ $t('mobileApp.features.realTimeUpdates') }}</span>
               </div>
-              <div class="flex items-center space-x-3" :class="{ 'space-x-reverse': isRTL }">
+              <div class="flex items-center gap-3">
                 <svg class="w-5 h-5 text-green-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span class="text-white">{{ $t('mobileApp.features.photoSharing') }}</span>
               </div>
-              <div class="flex items-center space-x-3" :class="{ 'space-x-reverse': isRTL }">
+              <div class="flex items-center gap-3">
                 <svg class="w-5 h-5 text-green-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span class="text-white">{{ $t('mobileApp.features.messaging') }}</span>
               </div>
-              <div class="flex items-center space-x-3" :class="{ 'space-x-reverse': isRTL }">
+              <div class="flex items-center gap-3">
                 <svg class="w-5 h-5 text-green-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -275,27 +278,37 @@
               class="bg-white text-purple-600 hover:bg-gray-100 font-medium text-lg px-6 md:px-8 py-3 md:py-4 rounded-lg transition-colors touch-button flex items-center justify-center"
             >
               {{ $t('cta.enrollNow') }}
-              <svg class="w-5 h-5 ml-2" :class="{ 'ml-2': !isRTL, 'mr-2 ml-0': isRTL }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="ms-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="isRTL ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'" />
               </svg>
             </button>
             <button
+              type="button"
+              class="touch-button rounded-lg border-2 border-white px-6 py-3 text-lg font-medium text-white transition-colors hover:bg-white/10 disabled:opacity-60 md:px-8 md:py-4"
+              :disabled="loginNavigating"
               @click="navigateToLogin"
-              class="border-2 border-white text-white hover:bg-white/10 font-medium text-lg px-6 md:px-8 py-3 md:py-4 rounded-lg transition-colors touch-button">
+            >
               {{ $t('nav.signIn') }}
             </button>
           </div>
         </div>
       </div>
     </section>
+    <div
+      v-if="loginNavigating"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-white/75"
+    >
+      <FikrLoader />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, isNavigationFailure } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import childrenPlayingImage from '@/assets/children-playing.jpeg'
 import schoolAppImage from '@/assets/school-app.jpg'
 import {
@@ -308,6 +321,7 @@ const route = useRoute()
 const { locale, t } = useI18n()
 
 const isMobileMenuOpen = ref(false)
+const loginNavigating = ref(false)
 const isRTL = computed(() => locale.value === 'ar')
 const cms = ref<SchoolLandingContent | null>(null)
 
@@ -407,8 +421,16 @@ const landingSlug = computed(() =>
     : 'zinat-al-haya',
 )
 
-const navigateToLogin = () => {
-  router.push(loginPath.value)
+const navigateToLogin = async () => {
+  if (loginNavigating.value) return
+  closeMobileNav()
+  loginNavigating.value = true
+  try {
+    const failure = await router.push(loginPath.value)
+    if (isNavigationFailure(failure)) loginNavigating.value = false
+  } catch {
+    loginNavigating.value = false
+  }
 }
 
 const navigateToEnrollment = async () => {

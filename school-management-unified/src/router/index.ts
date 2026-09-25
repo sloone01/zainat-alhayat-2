@@ -55,6 +55,11 @@ const router = createRouter({
       redirect: '/s/zinat-al-haya',
     },
     {
+      // "login" is not a school slug — same screen as /login
+      path: '/s/login',
+      redirect: '/login',
+    },
+    {
       path: '/s/:slug',
       name: 'school-landing',
       component: LandingView,
