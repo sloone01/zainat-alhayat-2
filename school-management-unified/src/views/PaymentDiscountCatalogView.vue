@@ -253,6 +253,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
@@ -271,6 +272,7 @@ import paymentConfigService, { type PaymentCatalogRow } from '@/services/payment
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 const schoolId = computed(() => {
@@ -419,7 +421,12 @@ async function onSetActive(row: PaymentCatalogRow, is_active: boolean) {
 
 async function onDelete(row: PaymentCatalogRow) {
   closeMenu()
-  if (!confirm(t('paymentSettings.confirmDelete'))) return
+  if (!(await feedback.confirm({
+    title: t('common.delete'),
+    message: t('paymentSettings.confirmDelete'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  }))) return
   try {
     await paymentConfigService.deleteDiscountType(row.id)
     rows.value = rows.value.filter((x) => x.id !== row.id)

@@ -125,11 +125,18 @@ async function applyPendingReport() {
   if (!draft) return
   reportContext.value = { ...draft.context }
   reportUser.value = draft.user
-  await nextTick()
-  if (draft.screenshot && editorRef.value) {
-    const [url] = await editorRef.value.insertImages([draft.screenshot])
-    if (url && reportContext.value) reportContext.value.screenshot_url = url
+  if (!draft.screenshot) return
+
+  // Wait for the rich editor (and TipTap) after route navigation — one nextTick is not enough.
+  for (let i = 0; i < 50 && !editorRef.value; i++) {
+    await nextTick()
+    await new Promise((r) => setTimeout(r, 40))
   }
+  const editor = editorRef.value
+  if (!editor) return
+  await editor.waitForEditor()
+  const [url] = await editor.insertImages([draft.screenshot])
+  if (url && reportContext.value) reportContext.value.screenshot_url = url
 }
 
 function removeReport() {

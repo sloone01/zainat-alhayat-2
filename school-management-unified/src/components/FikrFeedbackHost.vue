@@ -128,36 +128,71 @@
       </template>
     </FikrDialog>
 
-    <FikrDialog
-      :show="!!confirmState"
-      elevate
-      compact
-      plain-footer
-      :title="confirmState?.title || $t('common.confirm')"
-      @close="resolveConfirm(false)"
+    <div
+      v-if="confirmState"
+      class="fixed inset-0 z-[80] flex items-center justify-center p-4"
+      role="alertdialog"
+      aria-modal="true"
+      :aria-labelledby="confirmTitleId"
+      :aria-describedby="confirmBodyId"
+      :dir="isRTL ? 'rtl' : 'ltr'"
     >
-      <p class="text-sm leading-relaxed text-gray-600">
-        {{ confirmState?.message }}
-      </p>
-      <template #footer>
-        <button type="button" class="fk-btn fk-btn--pearl" @click="resolveConfirm(false)">
-          {{ confirmState?.cancelLabel || $t('common.cancel') }}
-        </button>
+      <div class="absolute inset-0 bg-[#0A2147]/45 backdrop-blur-[2px]" @click="resolveConfirm(false)" />
+      <div class="relative w-full max-w-[400px] rounded-2xl bg-white px-6 pb-6 pt-8 text-center shadow-xl">
         <button
           type="button"
-          class="fk-btn"
-          :class="confirmState?.danger ? 'fk-btn--danger' : 'fk-btn--primary'"
-          @click="resolveConfirm(true)"
+          class="absolute end-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          :aria-label="$t('common.close')"
+          @click="resolveConfirm(false)"
         >
-          {{ confirmState?.confirmLabel || $t('common.confirm') }}
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
-      </template>
-    </FikrDialog>
+        <div
+          class="mx-auto flex size-12 items-center justify-center rounded-xl"
+          :class="confirmState.danger ? 'bg-red-100 text-red-600' : 'bg-[#0A2147]/10 text-[#0A2147]'"
+          aria-hidden="true"
+        >
+          <svg v-if="confirmState.danger" class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
+          </svg>
+          <svg v-else class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" stroke-width="2" />
+            <path stroke-linecap="round" stroke-width="2" d="M12 8h.01M11 12h1v4h1" />
+          </svg>
+        </div>
+        <h2 :id="confirmTitleId" class="mt-4 text-base font-semibold text-gray-900">
+          {{ confirmState.title || (confirmState.danger ? $t('common.delete') : $t('common.confirm')) }}
+        </h2>
+        <p :id="confirmBodyId" class="mt-2 text-sm leading-relaxed text-gray-500">
+          {{ confirmState.message }}
+        </p>
+        <div class="mt-6 flex items-center justify-center gap-2">
+          <button
+            ref="confirmCancelBtn"
+            type="button"
+            class="inline-flex min-w-[7rem] items-center justify-center rounded-xl px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            @click="resolveConfirm(false)"
+          >
+            {{ confirmState.cancelLabel || $t('common.cancel') }}
+          </button>
+          <button
+            type="button"
+            class="inline-flex min-w-[7rem] items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white"
+            :class="confirmState.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-[#0A2147] hover:bg-[#081a38]'"
+            @click="resolveConfirm(true)"
+          >
+            {{ confirmState.confirmLabel || (confirmState.danger ? $t('common.delete') : $t('common.confirm')) }}
+          </button>
+        </div>
+      </div>
+    </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import FikrDialog from '@/components/FikrDialog.vue'
 import { useFeedback } from '@/composables/useFeedback'
@@ -170,6 +205,15 @@ import {
 const { locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { toasts, confirmState, savedDialog, alertDialog, dismissToast, dismissSaved, dismissAlert, resolveConfirm } = useFeedback()
+const confirmCancelBtn = ref<HTMLButtonElement | null>(null)
+const confirmTitleId = 'fk-confirm-title'
+const confirmBodyId = 'fk-confirm-body'
+
+watch(confirmState, async (state) => {
+  if (!state) return
+  await nextTick()
+  confirmCancelBtn.value?.focus()
+})
 
 function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Escape') return

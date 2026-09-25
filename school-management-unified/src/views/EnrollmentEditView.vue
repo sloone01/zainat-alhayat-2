@@ -59,8 +59,15 @@
         @next="handleNext"
         @back="handleBack"
       />
-      <PaymentPlanStep
+      <DocumentsStep
         v-else-if="currentStep === 6"
+        v-model="formData.documents"
+        compact
+        @next="handleNext"
+        @back="handleBack"
+      />
+      <PaymentPlanStep
+        v-else-if="currentStep === 7"
         v-model="selectedPlanId"
         :school-id="schoolId"
         :grade-level="formData.academic.gradeLevel"
@@ -68,7 +75,7 @@
         @back="handleBack"
       />
       <ReviewSubmitStep
-        v-else-if="currentStep === 7"
+        v-else-if="currentStep === 8"
         :form-data="formData"
         compact
         is-editing
@@ -99,6 +106,7 @@ import AcademicInfoStep from '@/components/enrollment/AcademicInfoStep.vue'
 import HealthInfoStep from '@/components/enrollment/HealthInfoStep.vue'
 import GuardianInfoStep from '@/components/enrollment/GuardianInfoStep.vue'
 import AddressInfoStep from '@/components/enrollment/AddressInfoStep.vue'
+import DocumentsStep from '@/components/enrollment/DocumentsStep.vue'
 import PaymentPlanStep from '@/components/enrollment/PaymentPlanStep.vue'
 import ReviewSubmitStep from '@/components/enrollment/ReviewSubmitStep.vue'
 import { createEmptyStaffIntakeForm, fileToDataUrl, formatStaffIntakeDate, splitFullName } from '@/components/enrollment/staffIntake'
@@ -110,7 +118,7 @@ const router = useRouter()
 const route = useRoute()
 const enrollmentId = route.params.id as string
 const currentStep = ref(1)
-const totalSteps = 7
+const totalSteps = 8
 const loading = ref(true)
 const isSubmitting = ref(false)
 const formData = ref(createEmptyStaffIntakeForm())
@@ -123,6 +131,7 @@ const steps = computed(() => [
   { key: 'health', shortTitle: t('enrollment.steps.health'), title: t('enrollment.steps.health'), description: t('enrollment.healthDescription') },
   { key: 'guardian', shortTitle: t('enrollment.steps.guardian'), title: t('enrollment.steps.guardian'), description: t('enrollment.guardianDescription') },
   { key: 'address', shortTitle: t('enrollment.steps.address'), title: t('enrollment.steps.address'), description: t('enrollment.addressDescription') },
+  { key: 'documents', shortTitle: t('students.stepShortDocuments'), title: t('enrollment.steps.documents'), description: t('enrollment.documentsDescription') },
   { key: 'payment', shortTitle: t('enrollment.steps.payment'), title: t('enrollment.steps.payment'), description: t('enrollment.paymentPlanDescription') },
   { key: 'review', shortTitle: t('students.stepShortReview'), title: t('enrollment.steps.review'), description: t('enrollment.reviewDescription') },
 ])
@@ -141,6 +150,10 @@ const loadEnrollmentData = async () => {
         fullName: enrollment.fullName || '',
         first_name_ar: studentNames.firstName,
         first_name_en: studentNames.firstName,
+        secondName: studentNames.secondName || '',
+        thirdName: studentNames.thirdName || '',
+        secondNameEn: '',
+        thirdNameEn: '',
         last_name_ar: studentNames.lastName,
         last_name_en: studentNames.lastName,
         tribe: enrollment.tribe || '',
@@ -224,6 +237,11 @@ const loadEnrollmentData = async () => {
         buildingNumber: enrollment.buildingNumber || '',
         housingType: enrollment.housingType || 'house',
       },
+      documents: {
+        parentIdDocuments: enrollment.parentIdDocuments || [],
+        birthCertificate: enrollment.birthCertificate || null,
+        childIdDocument: enrollment.childIdDocument || null,
+      },
     }
   } catch (error) {
     console.error('Failed to load enrollment data:', error)
@@ -234,7 +252,7 @@ const loadEnrollmentData = async () => {
 }
 
 const handleNext = () => {
-  if (currentStep.value === 6 && !selectedPlanId.value) return
+  if (currentStep.value === 7 && !selectedPlanId.value) return
   if (currentStep.value < totalSteps) currentStep.value++
 }
 
@@ -246,6 +264,15 @@ const handleSubmit = async () => {
   try {
     isSubmitting.value = true
     const photo = await fileToDataUrl(formData.value.student.photo)
+    const parentIdDocuments: string[] = []
+    for (const file of formData.value.documents.parentIdDocuments) {
+      const url = await fileToDataUrl(file)
+      if (url) parentIdDocuments.push(url)
+    }
+    const birthCertificate =
+      (await fileToDataUrl(formData.value.documents.birthCertificate)) || null
+    const childIdDocument =
+      (await fileToDataUrl(formData.value.documents.childIdDocument)) || null
     const result = await enrollmentService.updateEnrollment(enrollmentId, {
       student: {
         ...formData.value.student,
@@ -256,6 +283,11 @@ const handleSubmit = async () => {
       health: formData.value.health,
       guardian: formData.value.guardian,
       address: formData.value.address,
+      documents: {
+        parentIdDocuments,
+        birthCertificate: birthCertificate || '',
+        childIdDocument: childIdDocument || '',
+      },
       installment_plan_id: selectedPlanId.value,
     })
     router.push({

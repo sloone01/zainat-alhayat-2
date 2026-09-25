@@ -361,7 +361,12 @@ async function toggleGradeStatus(grade: Grade) {
 async function deleteGrade(grade: Grade) {
   activeMenuId.value = null
   const name = isRTL.value ? grade.nameAr : grade.nameEn
-  if (!confirm(t('systemSettings.confirmDeleteGrade', { name }))) return
+  if (!(await feedback.confirm({
+    title: t('common.delete'),
+    message: t('systemSettings.confirmDeleteGrade', { name }),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  }))) return
   try {
     await gradeService.remove(grade.id)
     await loadGrades()

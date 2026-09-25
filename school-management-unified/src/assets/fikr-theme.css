@@ -1912,12 +1912,12 @@ button.mobile-bottom-nav__item {
   }
 }
 .fk-bus-rail {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  max-height: 70vh;
-  overflow: auto;
-  padding-inline-end: 0.15rem;
+  overflow: visible;
 }
 .fk-bus-card {
   position: relative;
@@ -1933,6 +1933,15 @@ button.mobile-bottom-nav__item {
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 .fk-bus-card:hover { border-color: rgba(10, 33, 71, 0.12); }
+.fk-bus-card .fk-menu-trigger {
+  background: #fff;
+  color: var(--fk-navy);
+  box-shadow: 0 0 0 1px rgba(10, 33, 71, 0.14);
+}
+.fk-bus-card--on .fk-menu-trigger {
+  background: var(--fk-mist);
+  box-shadow: none;
+}
 .fk-bus-card--on {
   background: #fff;
   border-color: var(--fk-teal);
@@ -1986,6 +1995,7 @@ button.mobile-bottom-nav__item {
 }
 .fk-bus-map {
   position: relative;
+  z-index: 1;
   min-height: 18rem;
   overflow: hidden;
   border-radius: 1.15rem;
@@ -2021,11 +2031,11 @@ button.mobile-bottom-nav__item {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  max-width: 28rem;
-  margin-inline: auto;
+  max-width: none;
+  margin-inline: 0;
 }
-@media (min-width: 768px) {
-  .fk-bus-sup { max-width: none; }
+.fk-bus-board.fk-bus-sup {
+  padding-inline: 0;
 }
 .fk-bus-sup__head {
   display: flex;

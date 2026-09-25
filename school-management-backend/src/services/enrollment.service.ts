@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { Enrollment } from '../entities/enrollment.entity';
 import { School } from '../entities/school.entity';
 import { InstallmentPlan } from '../entities/installment-plan.entity';
-import { CreateEnrollmentDto, UpdateEnrollmentDto } from '../dto/enrollment.dto';
+import { CreateEnrollmentDto, UpdateEnrollmentDto, SavePublicEnrollmentDraftDto } from '../dto/enrollment.dto';
 import { StudentService, CreateStudentDto } from './student.service';
 import { ParentService, CreateParentDto } from './parent.service';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
@@ -12,7 +12,7 @@ import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-k
 import { assertSameSchool } from '../common/security/school-access';
 import { buildPage, clampPage, likeTerm, parsePageQuery, type PageQuery, type PageResult } from '../common/pagination';
 
-export type EnrollmentStatus = 'pending' | 'approved' | 'rejected' | 'enrolled';
+export type EnrollmentStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'enrolled';
 
 export interface EnrollmentListQuery extends PageQuery {
   q?: string;
@@ -20,7 +20,7 @@ export interface EnrollmentListQuery extends PageQuery {
   grade?: string;
 }
 import { User } from '../entities/user.entity';
-import { applyBilingualName } from '../common/identity/bilingual-name';
+import { applyBilingualName, normalizeCivilId } from '../common/identity/bilingual-name';
 import { EnrollmentFeePreviewService } from './enrollment-fee-preview.service';
 import { StudentChargeSheetService } from './student-charge-sheet.service';
 
@@ -42,6 +42,172 @@ export class EnrollmentService {
     private chargeSheets: StudentChargeSheetService,
   ) {}
 
+  private composeStudentFullName(student: {
+    fullName?: string;
+    first_name_ar?: string;
+    secondName?: string;
+    thirdName?: string;
+    last_name_ar?: string;
+    first_name_en?: string;
+    secondNameEn?: string;
+    thirdNameEn?: string;
+    last_name_en?: string;
+  }): string {
+    return (
+      (student.fullName || '').trim() ||
+      [student.first_name_ar, student.secondName, student.thirdName, student.last_name_ar]
+        .map((p) => (p || '').trim())
+        .filter(Boolean)
+        .join(' ') ||
+      [student.first_name_en, student.secondNameEn, student.thirdNameEn, student.last_name_en]
+        .map((p) => (p || '').trim())
+        .filter(Boolean)
+        .join(' ') ||
+      '—'
+    );
+  }
+
+  /**
+   * Public wizard: upsert a draft application keyed by school + civil ID.
+   * Returns id + payload for the SPA to resume later via civil-ID lookup.
+   */
+  async savePublicDraft(dto: SavePublicEnrollmentDraftDto): Promise<{
+    id: string;
+    draft_payload: Record<string, unknown> | null;
+  }> {
+    const schoolId = String(dto.school_id || '').trim();
+    const civil = normalizeCivilId(dto.civil_id);
+    if (!schoolId) throw new BadRequestException('school_id is required');
+    if (!civil) throw new BadRequestException('civil_id is required');
+
+    const school = await this.schoolRepository.findOne({ where: { id: schoolId } });
+    if (!school || school.status === 'rejected' || school.status === 'suspended') {
+      throw new BadRequestException('Invalid school');
+    }
+
+    const submitted = await this.enrollmentRepository
+      .createQueryBuilder('e')
+      .where('e.school_id = :schoolId', { schoolId })
+      .andWhere('e.idNumber = :civil', { civil })
+      .andWhere('e.status IN (:...statuses)', { statuses: ['pending', 'approved', 'enrolled'] })
+      .getOne();
+    if (submitted) {
+      throw new BadRequestException('An enrollment application for this civil ID already exists');
+    }
+
+    let row: Enrollment | null = null;
+    const draftId = dto.draftEnrollmentId?.trim() || '';
+    if (draftId) {
+      row = await this.enrollmentRepository.findOne({ where: { id: draftId } });
+      if (row) {
+        if (String(row.school_id) !== schoolId) {
+          throw new BadRequestException('Draft belongs to another school');
+        }
+        if (row.status !== 'draft') {
+          throw new BadRequestException('Only a draft enrollment can be updated this way');
+        }
+      }
+    }
+    if (!row) {
+      row = await this.enrollmentRepository.findOne({
+        where: { school_id: schoolId, idNumber: civil, status: 'draft' },
+      });
+    }
+    if (!row) {
+      row = new Enrollment();
+      row.school_id = schoolId;
+      row.gender = 'male';
+      row.fullName = '—';
+      row.hasSiblings = false;
+      row.enrollmentStatus = 'new';
+      row.guardianType = 'father';
+      row.housingType = 'house';
+      row.allergies = false;
+      row.seizures = false;
+      row.surgeries = false;
+      row.chronicDiseases = false;
+    }
+
+    const payload = (dto.payload && typeof dto.payload === 'object' ? dto.payload : {}) as Record<
+      string,
+      unknown
+    >;
+    const student = (payload.student && typeof payload.student === 'object'
+      ? payload.student
+      : {}) as Record<string, unknown>;
+
+    row.status = 'draft';
+    row.idNumber = civil;
+    row.school_id = schoolId;
+    row.draft_payload = payload;
+    row.fullName = this.composeStudentFullName({
+      fullName: typeof student.fullName === 'string' ? student.fullName : undefined,
+      first_name_ar: typeof student.first_name_ar === 'string' ? student.first_name_ar : undefined,
+      secondName: typeof student.secondName === 'string' ? student.secondName : undefined,
+      thirdName: typeof student.thirdName === 'string' ? student.thirdName : undefined,
+      last_name_ar: typeof student.last_name_ar === 'string' ? student.last_name_ar : undefined,
+      first_name_en: typeof student.first_name_en === 'string' ? student.first_name_en : undefined,
+      secondNameEn: typeof student.secondNameEn === 'string' ? student.secondNameEn : undefined,
+      thirdNameEn: typeof student.thirdNameEn === 'string' ? student.thirdNameEn : undefined,
+      last_name_en: typeof student.last_name_en === 'string' ? student.last_name_en : undefined,
+    });
+    if (student.gender === 'female' || student.gender === 'male') {
+      row.gender = student.gender;
+    }
+    if (typeof student.nationality === 'string') row.nationality = student.nationality;
+    if (typeof student.religion === 'string') row.religion = student.religion;
+    if (typeof student.photo === 'string') row.photo = student.photo;
+    if (typeof student.dateOfBirth === 'string' && student.dateOfBirth) {
+      row.dateOfBirth = new Date(student.dateOfBirth);
+    }
+    if (typeof student.age === 'number') row.age = student.age;
+    if (typeof student.hasSiblings === 'boolean') row.hasSiblings = student.hasSiblings;
+
+    const academic = (payload.academic && typeof payload.academic === 'object'
+      ? payload.academic
+      : {}) as Record<string, unknown>;
+    if (academic.enrollmentStatus === 'new' || academic.enrollmentStatus === 'transfer') {
+      row.enrollmentStatus = academic.enrollmentStatus;
+    }
+    if (typeof academic.gradeLevel === 'string') row.gradeLevel = academic.gradeLevel;
+    if (typeof academic.previousSchool === 'string') row.previousSchool = academic.previousSchool;
+
+    if (typeof payload.installment_plan_id === 'string' && payload.installment_plan_id.trim()) {
+      row.installment_plan_id = payload.installment_plan_id.trim();
+    }
+
+    const saved = await this.enrollmentRepository.save(row);
+    return { id: saved.id, draft_payload: saved.draft_payload ?? null };
+  }
+
+  async findPublicDraftByCivilId(
+    civilId: string,
+    schoolId: string,
+  ): Promise<Enrollment | null> {
+    const civil = normalizeCivilId(civilId);
+    if (!civil || !schoolId?.trim()) return null;
+    return this.enrollmentRepository.findOne({
+      where: { school_id: schoolId.trim(), idNumber: civil, status: 'draft' },
+    });
+  }
+
+  /** Non-draft application already submitted for this civil ID at the school. */
+  async findSubmittedApplicationByCivilId(
+    civilId: string,
+    schoolId: string,
+  ): Promise<Enrollment | null> {
+    const civil = normalizeCivilId(civilId);
+    if (!civil || !schoolId?.trim()) return null;
+    return this.enrollmentRepository
+      .createQueryBuilder('e')
+      .where('e.school_id = :schoolId', { schoolId: schoolId.trim() })
+      .andWhere('e.idNumber = :civil', { civil })
+      .andWhere('e.status IN (:...statuses)', {
+        statuses: ['pending', 'approved', 'enrolled'],
+      })
+      .getOne();
+  }
+
   async create(createEnrollmentDto: CreateEnrollmentDto): Promise<Enrollment> {
     const schoolId = createEnrollmentDto.school_id != null ? String(createEnrollmentDto.school_id).trim() : '';
     if (!schoolId) {
@@ -52,14 +218,39 @@ export class EnrollmentService {
       throw new BadRequestException('Invalid school');
     }
 
-    const enrollment = new Enrollment();
+    const civil = normalizeCivilId(createEnrollmentDto.student?.idNumber);
+    let enrollment: Enrollment | null = null;
+    if (civil) {
+      enrollment = await this.enrollmentRepository.findOne({
+        where: { school_id: schoolId, idNumber: civil, status: 'draft' },
+      });
+    }
+    if (!enrollment) {
+      enrollment = new Enrollment();
+    }
     enrollment.school_id = schoolId;
 
     // Map student information
     enrollment.fullName =
       createEnrollmentDto.student.fullName ||
-      `${createEnrollmentDto.student.first_name_ar || ''} ${createEnrollmentDto.student.last_name_ar || ''}`.trim() ||
-      `${createEnrollmentDto.student.first_name_en || ''} ${createEnrollmentDto.student.last_name_en || ''}`.trim();
+      [
+        createEnrollmentDto.student.first_name_ar,
+        createEnrollmentDto.student.secondName,
+        createEnrollmentDto.student.thirdName,
+        createEnrollmentDto.student.last_name_ar,
+      ]
+        .map((p) => (p || '').trim())
+        .filter(Boolean)
+        .join(' ') ||
+      [
+        createEnrollmentDto.student.first_name_en,
+        createEnrollmentDto.student.secondNameEn,
+        createEnrollmentDto.student.thirdNameEn,
+        createEnrollmentDto.student.last_name_en,
+      ]
+        .map((p) => (p || '').trim())
+        .filter(Boolean)
+        .join(' ');
     enrollment.tribe = createEnrollmentDto.student.tribe;
     enrollment.idNumber = createEnrollmentDto.student.idNumber;
     enrollment.gender = createEnrollmentDto.student.gender;
@@ -147,6 +338,10 @@ export class EnrollmentService {
     enrollment.buildingNumber = createEnrollmentDto.address.buildingNumber;
     enrollment.housingType = createEnrollmentDto.address.housingType;
 
+    enrollment.parentIdDocuments = createEnrollmentDto.documents.parentIdDocuments;
+    enrollment.birthCertificate = createEnrollmentDto.documents.birthCertificate;
+    enrollment.childIdDocument = createEnrollmentDto.documents.childIdDocument;
+
     if (createEnrollmentDto.installment_plan_id) {
       const plan = await this.installmentPlanRepository.findOne({
         where: {
@@ -161,8 +356,9 @@ export class EnrollmentService {
       enrollment.installment_plan_id = plan.id;
     }
 
-    // Set initial status
+    // Promote draft → submitted application
     enrollment.status = 'pending';
+    enrollment.draft_payload = null;
 
     const saved = await this.enrollmentRepository.save(enrollment);
     void this.notifyEnrollment(saved, 'submitted');
@@ -170,11 +366,13 @@ export class EnrollmentService {
   }
 
   async findAll(schoolId?: string | null): Promise<Enrollment[]> {
-    const where = schoolId != null ? { school_id: schoolId } : {};
-    return this.enrollmentRepository.find({
-      where,
-      order: { createdAt: 'DESC' },
-    });
+    const qb = this.enrollmentRepository
+      .createQueryBuilder('e')
+      .orderBy('e.createdAt', 'DESC');
+    if (schoolId != null) qb.andWhere('e.school_id = :schoolId', { schoolId });
+    // Hide unfinished public-form drafts from the default staff inbox.
+    qb.andWhere(`e.status != 'draft'`);
+    return qb.getMany();
   }
 
   /** Server-paged applications list; search matches student, father, mother name or area. */
@@ -185,7 +383,11 @@ export class EnrollmentService {
     const { page, limit } = parsePageQuery(query);
     const qb = this.enrollmentRepository.createQueryBuilder('e');
     if (schoolId != null) qb.andWhere('e.school_id = :schoolId', { schoolId });
-    if (query.status) qb.andWhere('e.status = :status', { status: query.status });
+    if (query.status) {
+      qb.andWhere('e.status = :status', { status: query.status });
+    } else {
+      qb.andWhere(`e.status != 'draft'`);
+    }
     if (query.grade) qb.andWhere('e.gradeLevel = :grade', { grade: query.grade });
     const term = likeTerm(query.q);
     if (term) {
@@ -206,6 +408,19 @@ export class EnrollmentService {
     return buildPage(items, total, safePage, limit);
   }
 
+  /** Delete unfinished public-form drafts idle for 24+ hours. */
+  async purgeStalePublicDrafts(olderThanHours = 24): Promise<number> {
+    const cutoff = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
+    const result = await this.enrollmentRepository
+      .createQueryBuilder()
+      .delete()
+      .from(Enrollment)
+      .where(`status = 'draft'`)
+      .andWhere(`"updatedAt" < :cutoff`, { cutoff })
+      .execute();
+    return result.affected ?? 0;
+  }
+
   async findOne(id: string, actor?: User, schoolId?: string | null): Promise<Enrollment> {
     const enrollment = await this.enrollmentRepository.findOne({
       where: { id },
@@ -224,7 +439,7 @@ export class EnrollmentService {
   }
 
   async findByStatus(
-    status: 'pending' | 'approved' | 'rejected' | 'enrolled',
+    status: 'draft' | 'pending' | 'approved' | 'rejected' | 'enrolled',
     schoolId?: string | null,
   ): Promise<Enrollment[]> {
     const where: Record<string, unknown> = { status };
@@ -306,6 +521,15 @@ export class EnrollmentService {
     // Update address information
     if (updateEnrollmentDto.address) {
       Object.assign(enrollment, updateEnrollmentDto.address);
+    }
+
+    if (updateEnrollmentDto.documents) {
+      enrollment.parentIdDocuments =
+        updateEnrollmentDto.documents.parentIdDocuments ?? enrollment.parentIdDocuments;
+      enrollment.birthCertificate =
+        updateEnrollmentDto.documents.birthCertificate ?? enrollment.birthCertificate;
+      enrollment.childIdDocument =
+        updateEnrollmentDto.documents.childIdDocument ?? enrollment.childIdDocument;
     }
 
     if (updateEnrollmentDto.installment_plan_id !== undefined) {

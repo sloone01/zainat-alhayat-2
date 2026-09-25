@@ -49,7 +49,7 @@
             <div class="grid gap-4 sm:grid-cols-2">
               <div>
                 <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="bus-title">
-                  {{ $t('transportation.busTitle') }}
+                  {{ $t('transportation.busTitle') }} <span class="text-red-500" aria-hidden="true">*</span>
                 </label>
                 <input
                   id="bus-title"
@@ -62,7 +62,7 @@
               </div>
               <div>
                 <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="bus-capacity">
-                  {{ $t('transportation.capacity') }}
+                  {{ $t('transportation.capacity') }} <span class="text-red-500" aria-hidden="true">*</span>
                 </label>
                 <input
                   id="bus-capacity"
@@ -78,7 +78,7 @@
             <div class="grid gap-4 border-t border-fikr-hairline pt-6 sm:grid-cols-2">
               <div>
                 <label class="mb-1.5 block text-xs font-medium text-fikr-ink-muted" for="bus-driver">
-                  {{ $t('transportation.driverName') }}
+                  {{ $t('transportation.driverName') }} <span class="text-red-500" aria-hidden="true">*</span>
                 </label>
                 <select
                   id="bus-driver"

@@ -1,25 +1,31 @@
 ---
-description: Student edit page — tabbed editor with parents grid (father/mother/guardian)
+description: Student edit page — same wizard as /students/register
 globs: school-management-unified/src/views/StudentEditView.vue
 alwaysApply: false
 ---
 
 # Student edit (`/students/:id/edit`)
 
-Separate from the `/students/register` wizard. Use bus-editor-style chrome with segmented tabs.
+Must match **`/students/register`** exactly: same `EnrollmentWizardChrome` stepper, same step order, same step components (`StudentDetailsStep`, `AcademicInfoStep`, `HealthInfoStep`, `GuardianInfoStep`, `AddressInfoStep`, review).
+
+## Steps (same as register)
+
+1. Student  
+2. Academic (group required; bus select may appear in Academic `#after` only — not a separate tab)  
+3. Health  
+4. Guardian (`GuardianInfoStep` with `edit-mode`)  
+5. Address  
+6. Review → Save (not Register)
 
 ## Keep
 
-- `FikrPageHeader` title + subtitle; brand **back** to `/students`.
-- Tabs: Student · Parents · Class · Bus (primary active pill is fine).
-- **Class** tab: optional **Level**, then pick a group filtered to that level.
-- **Parents** tab: card **grid** of linked parents + **Add**.
-  - Types: father / mother / guardian (type-specific create fields; enrollment-style).
-  - Add flow: select **existing** (search) **or** **create new**, then save with `relationship`.
-- Fields: `fk-field` + gray `text-xs` labels.
-- Success / validation: `useFeedback()` mixin toasts (via `FikrFeedbackHost`) — not `SuccessFlashDialog`.
+- Brand **back** to `/students` in `#leading`
+- `compact` on step bodies
+- Per-step persist on Next; final Save on review
+- `existingStudentId` on `StudentDetailsStep` so the student’s own civil ID does not lock the form
 
 ## Do not
 
-- Do not merge this into `/students/register`.
-- Do not drop relationship types or the existing-vs-create add flow.
+- Do not use pill tabs (Student · Parents · Class · Bus)
+- Do not invent a different step order or field set from register
+- Do not drop guardian / academic / health / address

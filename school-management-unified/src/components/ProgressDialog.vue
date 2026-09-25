@@ -36,11 +36,11 @@
             </div>
             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left" :class="isRTL ? 'sm:mr-4 sm:ml-0 sm:text-right' : 'sm:ml-4 sm:text-left'">
               <h3 class="text-lg leading-6 font-medium text-gray-900">
-                {{ successTitle || $t('common.success') }}
+                {{ successTitle || title || $t('common.success') }}
               </h3>
               <div class="mt-2">
                 <p class="text-sm text-gray-500">
-                  {{ successMessage }}
+                  {{ successMessage || message }}
                 </p>
               </div>
             </div>
@@ -57,11 +57,11 @@
             </div>
             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left" :class="isRTL ? 'sm:mr-4 sm:ml-0 sm:text-right' : 'sm:ml-4 sm:text-left'">
               <h3 class="text-lg leading-6 font-medium text-gray-900">
-                {{ errorTitle || $t('common.error') }}
+                {{ errorTitle || title || $t('common.error') }}
               </h3>
               <div class="mt-2">
                 <p class="text-sm text-gray-500">
-                  {{ errorMessage }}
+                  {{ errorMessage || message }}
                 </p>
               </div>
             </div>

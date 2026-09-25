@@ -342,6 +342,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -366,6 +367,7 @@ import {
 } from '@/services/platform-billing.service'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
 const isRTL = computed(() => locale.value === 'ar')
@@ -458,7 +460,12 @@ function onEdit(plan: PlatformPlan) {
 
 async function onDelete(plan: PlatformPlan) {
   activeMenuId.value = null
-  if (!window.confirm(t('platformBilling.confirmDeletePlan', { name: planDisplayName(plan) }))) {
+  if (!(await feedback.confirm({
+    title: t('common.delete'),
+    message: t('platformBilling.confirmDeletePlan', { name: planDisplayName(plan) }),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  }))) {
     return
   }
   try {

@@ -577,6 +577,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
@@ -605,6 +606,7 @@ import FikrLoader from '@/components/FikrLoader.vue'
 import { fetchAuthenticatedMediaObjectUrl } from '@/utils/authenticated-media'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const { viewMode, isCards } = useListViewMode()
 
 const loading = ref(false)
@@ -1135,7 +1137,12 @@ const saveActivity = async () => {
 }
 
 const removeActivity = async (id: string) => {
-  if (!window.confirm('Are you sure you want to delete this activity?')) return
+  if (!(await feedback.confirm({
+    title: t('common.delete'),
+    message: t('activities.confirmDelete'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  }))) return
   activeDropdown.value = null
   try {
     await activityService.deleteActivity(id)

@@ -94,7 +94,7 @@ function dismissAlert() {
 }
 
 /**
- * App-wide feedback: confirm as a modal, validation/success as mixin toasts.
+ * App-wide feedback: confirm as one centered alert, validation/success as mixin toasts.
  * Mount `<FikrFeedbackHost />` once (App.vue) so toasts survive route changes.
  */
 export function useFeedback() {

@@ -222,7 +222,6 @@ export const pageDemos: DemoTopic[] = [
   pageTopic('daily-log', 'staff', '/transportation/daily-log'),
   pageTopic('academic-reports', 'staff', '/reports/academic'),
   pageTopic('financial-reports', 'staff', '/reports/financial'),
-  pageTopic('landing-editor', 'staff', '/settings/landing-page'),
   pageTopic('public-enrollment', 'staff', `/s/${DEMO_SCHOOL_SLUG}`, [
     { action: 'wait', ms: 500 },
     { action: 'waitFor', target: '[data-demo="enroll"]', ms: 8000 },

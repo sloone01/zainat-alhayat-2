@@ -6,7 +6,7 @@ export interface EnrollmentListParams {
   page?: number
   limit?: number
   q?: string
-  status?: 'pending' | 'approved' | 'rejected' | 'enrolled' | ''
+  status?: 'draft' | 'pending' | 'approved' | 'rejected' | 'enrolled' | ''
   grade?: string
 }
 import axios, { type AxiosInstance } from 'axios'
@@ -97,6 +97,12 @@ export interface AddressInfo {
   housingType: 'house' | 'apartment'
 }
 
+export interface EnrollmentDocuments {
+  parentIdDocuments: (File | string)[]
+  birthCertificate: File | string | null
+  childIdDocument: File | string | null
+}
+
 export interface EnrollmentFormData {
   /** Target school for the application (required by API) */
   school_id: string
@@ -105,6 +111,7 @@ export interface EnrollmentFormData {
   health: HealthInfo
   guardian: GuardianInfo
   address: AddressInfo
+  documents: EnrollmentDocuments
   /** Selected fees v2 installment plan (optional until payment step). */
   installment_plan_id?: string | null
 }
@@ -134,6 +141,9 @@ export interface Enrollment {
   chronicDiseasesDetails?: string
   otherHealthInfo?: string
   medicalReports?: string[]
+  parentIdDocuments?: string[]
+  birthCertificate?: string | null
+  childIdDocument?: string | null
   guardianType: 'father' | 'mother' | 'other'
   fatherFullName?: string
   fatherTribe?: string
@@ -168,12 +178,30 @@ export interface Enrollment {
   housingType: 'house' | 'apartment'
   school_id?: string
   installment_plan_id?: string | null
-  status: 'pending' | 'approved' | 'rejected' | 'enrolled'
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'enrolled'
+  /** Present on public-form drafts only — wizard snapshot. */
+  draft_payload?: Record<string, unknown> | null
   notes?: string
   studentId?: string
   parentId?: string
   createdAt: Date
   updatedAt: Date
+}
+
+export type EnrollmentDraftSource = 'public_enrollment'
+
+export interface PublicEnrollmentDraftLookup {
+  exists: boolean
+  same_school: boolean
+  status: 'draft' | 'pending' | 'approved' | 'enrolled' | null
+  already_registered: boolean
+  allow_new: boolean
+  source: EnrollmentDraftSource
+  enrollment_draft: {
+    id: string
+    payload: Record<string, unknown> | null
+    updatedAt?: string | Date
+  } | null
 }
 
 class EnrollmentService extends BaseApiService {
@@ -196,6 +224,35 @@ class EnrollmentService extends BaseApiService {
     return client
   })()
 
+  async savePublicDraft(options: {
+    school_id: string
+    civil_id: string
+    draftEnrollmentId?: string | null
+    payload: Record<string, unknown>
+  }): Promise<{ id: string; draft_payload: Record<string, unknown> | null; source: EnrollmentDraftSource }> {
+    const response = await this.publicClient.post<{
+      success: boolean
+      data: { id: string; draft_payload: Record<string, unknown> | null; source: EnrollmentDraftSource }
+    }>('/public/enrollments/draft', {
+      school_id: options.school_id,
+      civil_id: options.civil_id,
+      draftEnrollmentId: options.draftEnrollmentId || undefined,
+      payload: options.payload,
+    })
+    if (!response.data?.success) throw new Error('Failed to save enrollment draft')
+    return response.data.data
+  }
+
+  async lookupPublicDraft(civilId: string, schoolId: string): Promise<PublicEnrollmentDraftLookup> {
+    const response = await this.publicClient.get<{
+      success: boolean
+      data: PublicEnrollmentDraftLookup
+    }>('/public/enrollments/lookup', {
+      params: { civil_id: civilId.trim(), school_id: schoolId.trim() },
+    })
+    return response.data.data
+  }
+
   private sanitizeEnrollmentPayload(data: EnrollmentFormData): EnrollmentFormData {
     // File / Blob cannot be structuredClone'd — strip media first, then JSON-clone.
     const safe = {
@@ -216,6 +273,15 @@ class EnrollmentService extends BaseApiService {
       },
       guardian: data.guardian,
       address: { ...data.address },
+      documents: {
+        parentIdDocuments: (data.documents?.parentIdDocuments || []).filter(
+          (f): f is string => typeof f === 'string',
+        ),
+        birthCertificate:
+          typeof data.documents?.birthCertificate === 'string' ? data.documents.birthCertificate : null,
+        childIdDocument:
+          typeof data.documents?.childIdDocument === 'string' ? data.documents.childIdDocument : null,
+      },
     }
     const out = JSON.parse(JSON.stringify(safe)) as EnrollmentFormData
 
@@ -264,6 +330,32 @@ class EnrollmentService extends BaseApiService {
     // Convert photo to base64 if exists
     if (enrollmentData.student.photo && enrollmentData.student.photo instanceof File) {
       processedData.student.photo = await this.fileToBase64(enrollmentData.student.photo as any)
+    }
+
+    const docs = enrollmentData.documents || {
+      parentIdDocuments: [],
+      birthCertificate: null,
+      childIdDocument: null,
+    }
+    const parentDocs: string[] = []
+    for (const file of docs.parentIdDocuments || []) {
+      if (typeof file === 'string') parentDocs.push(file)
+      else if (file instanceof File) parentDocs.push(await this.fileToBase64(file))
+    }
+    let birthCertificate: string | null = null
+    if (typeof docs.birthCertificate === 'string') birthCertificate = docs.birthCertificate
+    else if (docs.birthCertificate instanceof File) {
+      birthCertificate = await this.fileToBase64(docs.birthCertificate)
+    }
+    let childIdDocument: string | null = null
+    if (typeof docs.childIdDocument === 'string') childIdDocument = docs.childIdDocument
+    else if (docs.childIdDocument instanceof File) {
+      childIdDocument = await this.fileToBase64(docs.childIdDocument)
+    }
+    processedData.documents = {
+      parentIdDocuments: parentDocs,
+      birthCertificate,
+      childIdDocument,
     }
 
     // Use the public client for enrollment submission (no auth required)

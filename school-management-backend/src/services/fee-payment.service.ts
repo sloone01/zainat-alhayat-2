@@ -17,6 +17,7 @@ import { FeeTransfer } from '../entities/fee-transfer.entity';
 import { FeeTransferLine } from '../entities/fee-transfer-line.entity';
 import { StudentChargeSheetService } from './student-charge-sheet.service';
 import { ThawaniService } from './thawani.service';
+import { formatStudentDisplayName } from '../common/identity/bilingual-name';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { moneyStr, num } from '../utils/fees-v2.util';
@@ -723,7 +724,7 @@ export class FeePaymentService {
     await this.assertNoOpenPayment(sheet.id, input.targetType, input.installmentId);
 
     const student = await this.studentRepo.findOne({ where: { id: studentId } });
-    const studentName = student ? `${student.firstName} ${student.lastName}`.trim() : 'Student';
+    const studentName = student ? formatStudentDisplayName(student) : 'Student';
 
     const header = await this.createPaymentHeader({
       school_id: sheet.school_id,
@@ -874,7 +875,7 @@ export class FeePaymentService {
         locale,
         variables: {
           schoolName: school?.name ?? 'School',
-          studentName: `${student.firstName} ${student.lastName}`.trim(),
+          studentName: formatStudentDisplayName(student),
           recipientName: locale === 'ar' ? 'ولي الأمر' : 'Parent',
           amount: Number(payment.amount).toFixed(3),
           currency: 'OMR',
@@ -919,7 +920,7 @@ export class FeePaymentService {
       locale: payment.receipt_locale === 'en' ? 'en' : 'ar',
       variables: {
         schoolName: school.name ?? 'School',
-        studentName: student ? `${student.firstName} ${student.lastName}`.trim() : payment.student_id,
+        studentName: student ? formatStudentDisplayName(student) : payment.student_id,
         amount: Number(payment.amount).toFixed(3),
         currency: 'OMR',
       },
@@ -943,7 +944,7 @@ export class FeePaymentService {
       locale,
       variables: {
         schoolName: school?.name ?? 'School',
-        studentName: `${student.firstName} ${student.lastName}`.trim(),
+        studentName: formatStudentDisplayName(student),
         recipientName: locale === 'ar' ? 'ولي الأمر' : 'Parent',
         amount: Number(payment.amount).toFixed(3),
         currency: 'OMR',
@@ -973,7 +974,7 @@ export class FeePaymentService {
       locale: 'ar',
       variables: {
         schoolName: school?.name ?? 'School',
-        studentName: student ? `${student.firstName} ${student.lastName}`.trim() : payment.student_id,
+        studentName: student ? formatStudentDisplayName(student) : payment.student_id,
         amount: Number(payment.amount).toFixed(3),
         currency: 'OMR',
       },

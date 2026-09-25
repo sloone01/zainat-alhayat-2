@@ -419,7 +419,7 @@ const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const route = useRoute()
 const router = useRouter()
-const { error: showError, success: showSuccess } = useFeedback()
+const { error: showError, success: showSuccess, confirm: confirmFeedback } = useFeedback()
 
 const courseId = computed(() => String(route.params.id || ''))
 const selectedStudentFilter = ref('all')
@@ -710,22 +710,26 @@ const saveStudentNotes = (data: { studentId: string | number; milestoneId: strin
   closeNotesModal()
 }
 
-const bulkMarkCompleted = () => {
+const bulkMarkCompleted = async () => {
   if (selectedStudents.value.length === 0) return
 
-  if (confirm(t('progressTracking.messages.confirmBulkUpdate'))) {
-    selectedStudents.value.forEach(studentId => {
-      filteredMilestones.value.forEach(milestone => {
-        updateMilestoneStatus({
-          studentId,
-          milestoneId: milestone.id,
-          status: 'completed',
-        })
+  const ok = await confirmFeedback({
+    title: t('common.confirm'),
+    message: t('progressTracking.messages.confirmBulkUpdate'),
+    confirmLabel: t('common.confirm'),
+  })
+  if (!ok) return
+  selectedStudents.value.forEach(studentId => {
+    filteredMilestones.value.forEach(milestone => {
+      updateMilestoneStatus({
+        studentId,
+        milestoneId: milestone.id,
+        status: 'completed',
       })
     })
-    selectedStudents.value = []
-    selectAll.value = false
-  }
+  })
+  selectedStudents.value = []
+  selectAll.value = false
 }
 
 const saveAllProgress = async () => {

@@ -27,7 +27,7 @@ import { User } from '../entities/user.entity';
 import { resolveActorSchoolId } from '../common/security/school-access';
 import { wantsPage } from '../common/pagination';
 
-const ENROLLMENT_STATUSES = new Set(['pending', 'approved', 'rejected', 'enrolled']);
+const ENROLLMENT_STATUSES = new Set(['draft', 'pending', 'approved', 'rejected', 'enrolled']);
 
 @Controller('enrollments')
 export class EnrollmentController {
@@ -58,7 +58,7 @@ export class EnrollmentController {
   @RequireClaim('enrollments', 'view')
   async findAll(
     @Request() req: { user: User },
-    @Query('status') status?: 'pending' | 'approved' | 'rejected' | 'enrolled',
+    @Query('status') status?: 'draft' | 'pending' | 'approved' | 'rejected' | 'enrolled',
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('q') q?: string,
@@ -138,10 +138,11 @@ export class EnrollmentController {
     @Param('id') id: string,
     @Body('notes') notes: string,
   ) {
-    if (!notes) {
+    const reason = typeof notes === 'string' ? notes.trim() : '';
+    if (!reason) {
       throw new BadRequestException('Rejection reason is required');
     }
-    const enrollment = await this.enrollmentService.rejectEnrollment(id, notes, req.user);
+    const enrollment = await this.enrollmentService.rejectEnrollment(id, reason, req.user);
     return {
       success: true,
       data: enrollment,

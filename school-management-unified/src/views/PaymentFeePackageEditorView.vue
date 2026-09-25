@@ -1382,6 +1382,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { authService } from '@/services'
 import paymentConfigService, {
@@ -1400,6 +1401,7 @@ const LEVEL_BILLING_PERIODS: FeePackageLevelBillingPeriod[] = ['monthly', 'semes
 const route = useRoute()
 const router = useRouter()
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
 const packageId = computed(() => (route.params.packageId as string) || '')
@@ -2481,7 +2483,12 @@ async function save() {
 
 async function removePackage() {
   if (isNew.value || !packageId.value) return
-  if (!window.confirm(t('paymentSettings.confirmDeleteFeePackage'))) return
+  if (!(await feedback.confirm({
+    title: t('common.delete'),
+    message: t('paymentSettings.confirmDeleteFeePackage'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  }))) return
   saving.value = true
   try {
     await feePackageService.remove(packageId.value)

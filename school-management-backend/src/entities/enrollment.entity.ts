@@ -84,6 +84,18 @@ export class Enrollment {
   @Column({ type: 'json', nullable: true })
   medicalReports?: string[]; // Array of file paths or base64 strings
 
+  /** Parent civil ID / passport scans (base64 data URLs). */
+  @Column({ name: 'parent_id_documents', type: 'json', nullable: true })
+  parentIdDocuments?: string[];
+
+  /** Child birth certificate scan (base64 data URL). */
+  @Column({ name: 'birth_certificate', type: 'text', nullable: true })
+  birthCertificate?: string | null;
+
+  /** Child civil ID / passport scan (base64 data URL). */
+  @Column({ name: 'child_id_document', type: 'text', nullable: true })
+  childIdDocument?: string | null;
+
   // Guardian Information
   @Column({
     type: 'enum',
@@ -196,11 +208,15 @@ export class Enrollment {
 
   // Application Status
   @Column({
-    type: 'enum',
-    enum: ['pending', 'approved', 'rejected', 'enrolled'],
-    default: 'pending'
+    type: 'varchar',
+    length: 24,
+    default: 'pending',
   })
-  status: 'pending' | 'approved' | 'rejected' | 'enrolled';
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'enrolled';
+
+  /** Wizard snapshot for public draft resume (civil-ID lookup). Cleared on submit. */
+  @Column({ name: 'draft_payload', type: 'jsonb', nullable: true })
+  draft_payload?: Record<string, unknown> | null;
 
   @Column({ type: 'text', nullable: true })
   notes?: string;

@@ -239,6 +239,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -263,6 +264,7 @@ import { authService } from '@/services'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
@@ -410,7 +412,12 @@ async function tryDelete(plan: { id: string; name: string }) {
       return
     }
 
-    const ok = window.confirm(t('feesV2.confirmDeletePlan', { name: plan.name }))
+    const ok = await feedback.confirm({
+      title: t('common.delete'),
+      message: t('feesV2.confirmDeletePlan', { name: plan.name }),
+      confirmLabel: t('common.delete'),
+      danger: true,
+    })
     if (!ok) return
 
     await feesV2Service.deleteInstallmentPlan(plan.id)

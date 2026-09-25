@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ActivityLogModule } from './activity-log/activity-log.module';
 import { BizLoggingModule } from './common/logging/biz-logging.module';
 import { ActivityLogMiddleware } from './activity-log/activity-log.middleware';
@@ -109,6 +110,7 @@ import { AdhocChatMessage } from './entities/adhoc-chat-message.entity';
 import { SchoolLandingPage } from './entities/school-landing-page.entity';
 
 // Services
+import { AttentionService } from './services/attention.service';
 import { UserService } from './services/user.service';
 import { StudentService } from './services/student.service';
 import { ParentService } from './services/parent.service';
@@ -129,6 +131,7 @@ import { StatisticsService } from './services/statistics.service';
 import { WeeklySessionPlanService } from './services/weekly-session-plan.service';
 import { SessionMediaService } from './services/session-media.service';
 import { EnrollmentService } from './services/enrollment.service';
+import { EnrollmentDraftCleanupService } from './services/enrollment-draft-cleanup.service';
 import { EnrollmentFeePreviewService } from './services/enrollment-fee-preview.service';
 import { EnrollmentResponsibilityService } from './services/enrollment-responsibility.service';
 import { DocumentGeneratorService } from './services/document-generator.service';
@@ -160,6 +163,7 @@ import { FileUploadController } from './controllers/file-upload.controller';
 import { StatisticsController } from './controllers/statistics.controller';
 import { WeeklySessionPlanController } from './controllers/weekly-session-plan.controller';
 import { SessionMediaController } from './controllers/session-media.controller';
+import { AttentionController } from './controllers/attention.controller';
 import { EnrollmentController } from './controllers/enrollment.controller';
 import { GradeController } from './controllers/grade.controller';
 import { ActivityController } from './controllers/activity.controller';
@@ -186,6 +190,7 @@ import { ThawaniService } from './services/thawani.service';
 import { PlatformSettingsController } from './controllers/platform-settings.controller';
 import { StudentPaymentController } from './controllers/student-payment.controller';
 import { SchoolSystemSettingController } from './controllers/school-system-setting.controller';
+import { ReportExportController } from './controllers/report-export.controller';
 import { MessageLetterController } from './controllers/message-letter.controller';
 import { PublicMessageLetterFileController } from './controllers/public-message-letter-file.controller';
 import { OutboundMessageTransactionController } from './controllers/outbound-message-transaction.controller';
@@ -203,6 +208,8 @@ import { SchoolLandingPageController } from './controllers/school-landing-page.c
 import { PublicSchoolLandingController } from './controllers/public-school-landing.controller';
 import { PublicEnrollmentFeesController } from './controllers/public-enrollment-fees.controller';
 import { PublicEnrollmentResponsibilitiesController } from './controllers/public-enrollment-responsibilities.controller';
+import { PublicStudentsController } from './controllers/public-students.controller';
+import { PublicEnrollmentsController } from './controllers/public-enrollments.controller';
 import { EnrollmentResponsibilityController } from './controllers/enrollment-responsibility.controller';
 import { PublicBrandingController } from './controllers/public-branding.controller';
 import { SchoolLandingPageService } from './services/school-landing-page.service';
@@ -221,6 +228,12 @@ import { FeePackageService } from './services/fee-package.service';
 import { StudentPaymentService } from './services/student-payment.service';
 import { StudentPaymentLedgerService } from './services/student-payment-ledger.service';
 import { SchoolSystemSettingService } from './services/school-system-setting.service';
+import { ReportExportConfigService } from './services/report-export-config.service';
+import { ReportExportTemplateService } from './services/report-export-template.service';
+import {
+  SchoolReportExportConfig,
+  SchoolReportExportTemplate,
+} from './entities/school-report-export.entity';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MessageLetterService } from './services/message-letter.service';
 import { MessageLetterRenderService } from './services/message-letter-render.service';
@@ -241,6 +254,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
   imports: [
     ActivityLogModule,
     BizLoggingModule,
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       // Load `.env` then `.env.local` so local secrets (e.g. DAILY_API_KEY) can live in `.env.local`.
@@ -362,6 +376,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       PaymentTransaction,
       PaymentTransactionAllocation,
       SchoolSystemSetting,
+      SchoolReportExportTemplate,
+      SchoolReportExportConfig,
       SchoolMessageLetter,
       SchoolMessageLetterFile,
       DirectChatMessage,
@@ -395,6 +411,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     StatisticsController,
     WeeklySessionPlanController,
     SessionMediaController,
+    AttentionController,
     EnrollmentController,
     GradeController,
     ActivityController,
@@ -412,6 +429,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     FeesV2Controller,
     StudentPaymentController,
     SchoolSystemSettingController,
+    ReportExportController,
     MessageLetterController,
     PublicMessageLetterFileController,
     OutboundMessageTransactionController,
@@ -425,6 +443,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     SchoolLandingPageController,
     PublicSchoolLandingController,
     PublicEnrollmentFeesController,
+    PublicStudentsController,
+    PublicEnrollmentsController,
     PublicEnrollmentResponsibilitiesController,
     EnrollmentResponsibilityController,
     PublicBrandingController,
@@ -434,6 +454,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     { provide: APP_GUARD, useClass: ClaimGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     AppService,
+    AttentionService,
     UserService,
     StudentService,
     ParentService,
@@ -454,6 +475,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     WeeklySessionPlanService,
     SessionMediaService,
     EnrollmentService,
+    EnrollmentDraftCleanupService,
     EnrollmentFeePreviewService,
     EnrollmentResponsibilityService,
     DocumentGeneratorService,
@@ -485,6 +507,8 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     StudentPaymentService,
     StudentPaymentLedgerService,
     SchoolSystemSettingService,
+    ReportExportConfigService,
+    ReportExportTemplateService,
     MessageLetterService,
     MessageLetterRenderService,
     StudentCourseEnrollmentService,

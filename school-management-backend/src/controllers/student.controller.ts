@@ -18,7 +18,7 @@ import {
 import { StudentService } from '../services/student.service';
 import { BizLog } from '../common/logging/biz-log.decorator';
 import type { CreateStudentDto, UpdateStudentDto } from '../services/student.service';
-import { RegisterStudentInAppDto } from '../dto/student-register.dto';
+import { RegisterStudentInAppDto, SaveStudentRegisterDraftDto, SaveStudentRegisterDraftParentsDto } from '../dto/student-register.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
@@ -90,6 +90,56 @@ export class StudentController {
     };
   }
 
+  @Post('register/draft')
+  @RequireClaim('students', 'create')
+  @HttpCode(HttpStatus.CREATED)
+  @BizLog('start saving a student register draft')
+  async saveRegisterDraft(
+    @Request() req: { user: User },
+    @Body() dto: SaveStudentRegisterDraftDto,
+  ) {
+    const student = await this.studentService.saveRegisterDraft(dto, req.user);
+    return {
+      success: true,
+      data: student,
+      message: 'Student draft saved',
+    };
+  }
+
+  @Post('register/draft/parents')
+  @RequireClaim('students', 'create')
+  @HttpCode(HttpStatus.CREATED)
+  @BizLog('start linking draft parents on student register')
+  async saveRegisterDraftParents(
+    @Request() req: { user: User },
+    @Body() dto: SaveStudentRegisterDraftParentsDto,
+  ) {
+    const student = await this.studentService.saveRegisterDraftParents(dto, req.user);
+    return {
+      success: true,
+      data: student,
+      message: 'Parent draft links saved',
+    };
+  }
+
+  @Get('lookup')
+  @RequireClaim('students', 'create')
+  @BizLog('start looking up a student by civil id')
+  async lookupByCivilId(
+    @Request() req: { user: User },
+    @Query('civil_id') civilId?: string,
+  ) {
+    if (!civilId?.trim()) {
+      throw new BadRequestException('civil_id is required');
+    }
+    const schoolId = this.schoolOf(req);
+    const data = await this.studentService.lookupByCivilId(civilId, {
+      schoolId,
+      publicMode: false,
+    });
+    return { success: true, data };
+  }
+
   @Get()
   @BizLog('start fetching students')
   async findAll(
@@ -101,6 +151,7 @@ export class StudentController {
     @Query('group_id') groupId?: string,
     @Query('bus_id') busId?: string,
     @Query('age_group') ageGroup?: string,
+    @Query('status') status?: string,
   ) {
     const schoolId = this.schoolOf(req);
     // Paginated mode when `page` is present (students list, /students/payments).
@@ -118,6 +169,10 @@ export class StudentController {
         age_group:
           ageGroup === 'toddlers' || ageGroup === 'preschool' || ageGroup === 'kindergarten'
             ? ageGroup
+            : undefined,
+        status:
+          status === 'draft' || status === 'active' || status === 'inactive'
+            ? status
             : undefined,
       });
       return { success: true, data };

@@ -173,7 +173,7 @@
           </div>
         </div>
 
-        <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-12 text-sm text-fikr-ink-soft">
+        <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-12 text-sm text-fikr-ink-soft">
           <FikrLoader />
           <span>{{ $t('common.loading') }}</span>
         </div>
@@ -615,9 +615,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import IconPlus from '@/components/icons/IconPlus.vue'
 import YearModal from '@/components/YearModal.vue'
 import SemesterModal from '@/components/SemesterModal.vue'
@@ -645,6 +647,7 @@ import { resetSchoolBrand, useSchoolBrand } from '@/composables/useSchoolBrand'
 import { extractLogoBrandColors } from '@/utils/extract-logo-brand-colors'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const { load: reloadSchoolBrand } = useSchoolBrand()
 
 const schoolInfo = ref({
@@ -1127,14 +1130,22 @@ const editSemester = (semester: any, year?: AcademicYear) => {
 }
 
 const deleteSemester = async (semester: any) => {
-  if (confirm('هل أنت متأكد من حذف هذا الفصل الدراسي؟')) {
-    try {
-      await semesterService.remove(semester.id)
-      await loadAcademicYears() // Reload data
-    } catch (err: any) {
-      error.value = err.message || 'Failed to delete semester'
-      console.error('Error deleting semester:', err)
-    }
+  const ok = await feedback.confirm({
+    title: t('settings.deleteSemester'),
+    message: t('settings.confirmDeleteSemester'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  })
+  if (!ok) {
+    activeSemesterDropdown.value = null
+    return
+  }
+  try {
+    await semesterService.remove(semester.id)
+    await loadAcademicYears()
+  } catch (err: any) {
+    error.value = err.message || 'Failed to delete semester'
+    console.error('Error deleting semester:', err)
   }
   activeSemesterDropdown.value = null
 }
@@ -1309,14 +1320,20 @@ const saveDuration = async (durationData: any) => {
   editingDuration.value = null
 }
 
-const confirmDeleteDuration = (duration: any) => {
+const confirmDeleteDuration = async (duration: any) => {
   activeDurationDropdown.value = null
   if (duration.inUse) return
   if (duration.isDefault && classDurations.value.length === 1) {
     error.value = t('classSettings.durations.cannotDeleteOnlyDefault')
     return
   }
-  if (!confirm(t('classSettings.durations.confirmDelete'))) return
+  const ok = await feedback.confirm({
+    title: t('common.delete'),
+    message: t('classSettings.durations.confirmDelete'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  })
+  if (!ok) return
   void deleteDuration(duration)
 }
 

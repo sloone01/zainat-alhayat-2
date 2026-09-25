@@ -55,6 +55,26 @@ export class NotificationLayoutService {
     });
   }
 
+  /** Layout picker options (no admin gate) — used by report export config. */
+  async listOptions(schoolId: string): Promise<
+    Array<{ id: string; name: string; name_ar: string | null; is_default: boolean }>
+  > {
+    const rows = await this.layoutRepo.find({
+      where: { school_id: schoolId },
+      order: { is_default: 'DESC', name: 'ASC' },
+    });
+    return rows.map((l) => ({
+      id: l.id,
+      name: l.name,
+      name_ar: l.name_ar,
+      is_default: l.is_default,
+    }));
+  }
+
+  async existsInSchool(schoolId: string, layoutId: string): Promise<boolean> {
+    return this.layoutRepo.exist({ where: { id: layoutId, school_id: schoolId } });
+  }
+
   async get(user: User, schoolId: string, id: string): Promise<SchoolNotificationLayout> {
     this.assertAdmin(user);
     this.schoolOf(user, schoolId);

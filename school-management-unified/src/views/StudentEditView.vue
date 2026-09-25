@@ -1,1112 +1,467 @@
 <template>
   <DashboardLayout>
-    <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
-      <FikrPageHeader
-        :title="$t('students.editStudentTitle')"
-        :subtitle="headerSubtitle"
-      />
-
-      <div v-if="pageError" class="fk-alert fk-alert--error" role="alert">{{ pageError }}</div>
+    <EnrollmentWizardChrome
+      :title="$t('students.editStudentTitle')"
+      :subtitle="headerSubtitle"
+      :steps="steps"
+      :current-step="currentStep"
+    >
+      <template #leading>
+        <router-link
+          to="/students"
+          class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+          :aria-label="$t('students.backToStudentManagement')"
+        >
+          <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </router-link>
+      </template>
 
       <div
         v-if="pageLoading"
-        class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200/80 bg-white py-16 text-gray-500 shadow-sm"
+        class="flex flex-col items-center justify-center gap-3 py-12 text-gray-500"
       >
         <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
 
-      <section
-        v-else
-        class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm ring-1 ring-black/[0.02]"
+      <StudentDetailsStep
+        v-else-if="currentStep === 1"
+        v-model="formData.student"
+        compact
+        mode="staff"
+        :school-id="schoolId"
+        :existing-student-id="studentId"
+        @next="handleNext"
+      />
+
+      <AcademicInfoStep
+        v-else-if="currentStep === 2"
+        v-model="formData.academic"
+        :school-id="schoolId"
+        compact
+        require-group
+        @next="handleNext"
+        @back="handleBack"
       >
-        <header class="border-b border-gray-100 bg-gradient-to-r from-primary-50/80 via-white to-teal-50/40 px-5 py-4 sm:px-6">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="min-w-0">
-              <router-link
-                to="/students"
-                class="mb-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-                :aria-label="$t('students.backToStudentManagement')"
-              >
-                <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-              </router-link>
-              <h2 class="text-base font-semibold text-gray-900">{{ currentTabMeta.title }}</h2>
-              <p class="mt-0.5 text-sm text-gray-500">{{ currentTabMeta.description }}</p>
-            </div>
-            <div
-              class="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-white/80 p-0.5 shadow-sm"
-              role="tablist"
-              :aria-label="$t('students.formTabsLabel')"
-            >
-              <button
-                v-for="tab in tabs"
-                :key="tab.id"
-                type="button"
-                role="tab"
-                class="rounded-md px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-                :class="activeTab === tab.id
-                  ? 'bg-primary-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
-                :aria-selected="activeTab === tab.id"
-                @click="activeTab = tab.id"
-              >
-                {{ tab.label }}
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <!-- Student -->
-        <form v-show="activeTab === 'student'" class="space-y-6 p-6" @submit.prevent="saveStudent">
-          <div class="text-center">
-            <div class="relative inline-block">
-              <div class="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-primary-50 to-teal-50 shadow-sm ring-1 ring-primary-100">
-                <img v-if="studentForm.photo" :src="studentForm.photo" alt="" class="h-full w-full object-cover">
-                <svg v-else class="h-12 w-12 text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <button
-                type="button"
-                class="absolute -bottom-1 -end-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm transition hover:bg-primary-700"
-                :aria-label="$t('students.photoDescription')"
-                @click="triggerPhotoPick"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
-              <input ref="photoInput" type="file" accept="image/*" class="hidden" @change="handlePhotoUpload">
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-first-name-ar">{{ $t('students.firstNameAr') }} <span class="text-red-500">*</span></label>
-              <input id="edit-first-name-ar" v-model="studentForm.first_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-first-name-en">{{ $t('students.firstNameEn') }} <span class="text-red-500">*</span></label>
-              <input id="edit-first-name-en" v-model="studentForm.first_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-second-name">{{ $t('students.secondName') }}</label>
-              <input id="edit-second-name" v-model="studentForm.secondName" type="text" class="fk-field">
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-third-name">{{ $t('students.thirdName') }}</label>
-              <input id="edit-third-name" v-model="studentForm.thirdName" type="text" class="fk-field">
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-last-name-ar">{{ $t('students.lastNameAr') }} <span class="text-red-500">*</span></label>
-              <input id="edit-last-name-ar" v-model="studentForm.last_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-last-name-en">{{ $t('students.lastNameEn') }} <span class="text-red-500">*</span></label>
-              <input id="edit-last-name-en" v-model="studentForm.last_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-dob">{{ $t('students.dateOfBirth') }} <span class="text-red-500">*</span></label>
-              <input id="edit-dob" v-model="studentForm.dateOfBirth" type="date" required class="fk-field">
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-gender">{{ $t('students.gender') }} <span class="text-red-500">*</span></label>
-              <select id="edit-gender" v-model="studentForm.gender" required class="fk-field">
-                <option value="male">{{ $t('students.male') }}</option>
-                <option value="female">{{ $t('students.female') }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-student-id">{{ $t('students.studentId') }}</label>
-              <input id="edit-student-id" v-model="studentForm.studentId" type="text" class="fk-field">
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-civil-id">{{ $t('students.civilId') }}</label>
-              <input id="edit-civil-id" v-model="studentForm.civil_id" type="text" dir="ltr" class="fk-field" :placeholder="$t('students.civilId')">
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-nationality">{{ $t('students.nationality') }}</label>
-              <select id="edit-nationality" v-model="studentForm.nationality" class="fk-field">
-                <option value="">{{ $t('students.selectNationality') }}</option>
-                <option v-if="studentForm.nationality && !NATIONALITIES.some((n) => n.en === studentForm.nationality)" :value="studentForm.nationality">{{ studentForm.nationality }}</option>
-                <option v-for="n in NATIONALITIES" :key="n.en" :value="n.en">{{ locale === 'ar' ? n.ar : n.en }}</option>
-              </select>
-            </div>
-            <div class="md:col-span-2">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-emergency">{{ $t('studentManagement.emergencyContact') }}</label>
-              <input id="edit-emergency" v-model="studentForm.emergencyContact" type="text" class="fk-field">
-            </div>
-          </div>
-
-          <div class="flex justify-end gap-2 border-t border-gray-100 pt-4">
-            <button type="submit" class="fk-btn fk-btn--primary" :disabled="saving">
-              {{ saving ? $t('common.saving') : $t('common.save') }}
-            </button>
-          </div>
-        </form>
-
-        <!-- Parents -->
-        <!-- Health -->
-        <form v-show="activeTab === 'health'" class="space-y-5 p-6" @submit.prevent="saveStudent">
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-medical">{{ $t('students.medicalConditions') }}</label>
-            <textarea id="edit-medical" v-model="studentForm.medicalConditions" rows="5" class="fk-field resize-none" />
-          </div>
-
-          <div class="rounded-xl border border-gray-200/80 bg-white">
-            <div class="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-3 py-2">
-              <span class="text-xs font-semibold text-gray-700">{{ $t('enrollment.medicalReports') }}</span>
-              <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-primary-200/80 bg-primary-100 px-2.5 py-1 text-xs font-semibold text-primary-700 hover:bg-primary-200">
-                {{ reportUploading ? $t('common.loading') : $t('enrollment.uploadReports') }}
-                <input type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple :disabled="reportUploading" @change="onReportFiles">
-              </label>
-            </div>
-            <p v-if="reportError" class="px-3 pt-2 text-xs font-medium text-red-600" role="alert">{{ reportError }}</p>
-            <p v-if="!medicalReports.length" class="px-3 py-4 text-sm text-gray-500">{{ $t('students.noMedicalReports') }}</p>
-            <ul v-else class="divide-y divide-gray-100">
-              <li v-for="report in medicalReports" :key="report.id" class="flex items-center justify-between gap-3 px-3 py-2">
-                <button type="button" class="min-w-0 truncate text-start text-sm font-medium text-primary-700 hover:underline" @click="openReport(report)">
-                  {{ report.filename }}
-                </button>
-                <button type="button" class="shrink-0 rounded-md p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600" :aria-label="$t('common.delete')" @click="removeReport(report)">
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          <div class="flex justify-end gap-2 border-t border-gray-100 pt-4">
-            <button type="submit" class="fk-btn fk-btn--primary" :disabled="saving">
-              {{ saving ? $t('common.saving') : $t('common.save') }}
-            </button>
-          </div>
-        </form>
-
-        <!-- Address -->
-        <form v-show="activeTab === 'address'" class="space-y-5 p-6" @submit.prevent="saveStudent">
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-address">{{ $t('students.tabAddress') }}</label>
-            <textarea id="edit-address" v-model="studentForm.address" rows="4" class="fk-field resize-none" />
-          </div>
-          <div class="flex justify-end gap-2 border-t border-gray-100 pt-4">
-            <button type="submit" class="fk-btn fk-btn--primary" :disabled="saving">
-              {{ saving ? $t('common.saving') : $t('common.save') }}
-            </button>
-          </div>
-        </form>
-
-        <div v-show="activeTab === 'parents'" class="space-y-5 p-6">
-          <div class="flex flex-wrap items-center justify-end gap-3">
-            <button type="button" class="fk-btn fk-btn--primary" @click="openAddParent">
-              <IconPlus />
-              {{ $t('studentManagement.addParent') }}
-            </button>
-          </div>
-
-          <div
-            v-if="!linkedParents.length"
-            class="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-10 text-center text-sm text-gray-500"
-          >
-            {{ $t('students.noParentsYet') }}
-          </div>
-
-          <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <article
-              v-for="parent in linkedParents"
-              :key="parent.id"
-              class="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-sm ring-1 ring-black/[0.02]"
-            >
-              <div
-                class="flex items-center justify-between gap-2 border-b px-4 py-3"
-                :class="relationshipBannerClass(parent.relationship)"
-              >
-                <span class="text-xs font-bold uppercase tracking-wide">
-                  {{ relationshipLabel(parent.relationship) }}
-                </span>
-                <button
-                  type="button"
-                  class="rounded-md px-2 py-1 text-xs font-semibold text-red-700 hover:bg-white/70"
-                  :disabled="saving"
-                  @click="unlinkParent(parent)"
-                >
-                  {{ $t('students.unlinkParent') }}
-                </button>
-              </div>
-              <div class="space-y-2 px-4 py-4">
-                <p class="text-sm font-semibold text-gray-900">
-                  {{ parentDisplayName(parent) }}
-                </p>
-                <p v-if="parent.phone || parent.responsiblePhone" class="text-xs text-gray-600">
-                  {{ parent.phone || parent.responsiblePhone }}
-                </p>
-                <p v-if="parent.email" class="text-xs text-gray-500">{{ parent.email }}</p>
-                <p v-if="parent.workplace" class="text-xs text-gray-500">{{ parent.workplace }}</p>
-                <p v-if="parent.organizationName" class="text-xs text-gray-500">{{ parent.organizationName }}</p>
-              </div>
-            </article>
-          </div>
-        </div>
-
-        <!-- Class -->
-        <form v-show="activeTab === 'class'" class="space-y-5 p-6" @submit.prevent="saveClass">
-          <div class="grid gap-5 md:grid-cols-2">
-            <div v-if="paymentLevels.length">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-level">{{ $t('studentManagement.feeLevel') }}</label>
-              <select id="edit-level" v-model="selectedPaymentLevelId" class="fk-field" @change="onPaymentLevelChange">
-                <option value="">{{ $t('groupManagement.paymentLevelNone') }}</option>
-                <option v-for="lv in paymentLevels" :key="lv.id" :value="lv.id">{{ lv.name }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-group">{{ $t('studentManagement.selectGroup') }}</label>
-              <select id="edit-group" v-model="selectedGroupId" class="fk-field">
-                <option value="">{{ $t('studentManagement.noGroup') }}</option>
-                <option v-for="g in groups" :key="g.id" :value="g.id">
-                  {{ g.name }}{{ g.level?.name ? ` · ${g.level.name}` : '' }}
-                </option>
-              </select>
-            </div>
-          </div>
-          <div class="flex justify-end gap-2 border-t border-gray-100 pt-4">
-            <button type="submit" class="fk-btn fk-btn--primary" :disabled="saving || !selectedGroupId">
-              {{ saving ? $t('common.saving') : $t('students.saveGroup') }}
-            </button>
-          </div>
-        </form>
-
-        <!-- Bus -->
-        <form v-show="activeTab === 'bus'" class="space-y-5 p-6" @submit.prevent="saveBus">
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-bus">{{ $t('studentManagement.selectBus') }}</label>
+        <template #after>
+          <div class="space-y-2">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-bus">
+              {{ $t('studentManagement.selectBus') }}
+            </label>
             <select id="edit-bus" v-model="selectedBusId" class="fk-field max-w-lg">
               <option value="">{{ $t('students.noBusOptional') }}</option>
               <option v-for="b in buses" :key="b.id" :value="b.id">{{ b.title }}</option>
             </select>
           </div>
-          <div class="flex flex-wrap justify-end gap-2 border-t border-gray-100 pt-4">
-            <button
-              v-if="currentBusId"
-              type="button"
-              class="fk-btn fk-btn--pearl"
-              :disabled="saving"
-              @click="clearBus"
-            >
-              {{ $t('students.removeBus') }}
-            </button>
-            <button type="submit" class="fk-btn fk-btn--primary" :disabled="saving">
-              {{ saving ? $t('common.saving') : $t('students.saveBus') }}
-            </button>
-          </div>
-        </form>
-      </section>
-    </div>
+        </template>
+      </AcademicInfoStep>
 
-    <!-- Add parent dialog -->
-    <FikrDialog
-      :show="showAddParent"
-      plain-footer
-      size="lg"
-      :title="$t('studentManagement.addParent')"
-      :subtitle="$t('students.addParentSubtitle')"
-      @close="closeAddParent"
-    >
-      <div class="space-y-5">
-        <div>
-          <p class="mb-2 text-xs font-medium text-gray-600">{{ $t('students.parentType') }} *</p>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <button
-              v-for="type in relationshipTypes"
-              :key="type.id"
-              type="button"
-              class="rounded-xl border-2 p-3 text-center transition"
-              :class="addForm.relationship === type.id
-                ? type.activeClass
-                : 'border-gray-200 bg-white hover:border-gray-300'"
-              @click="addForm.relationship = type.id"
-            >
-              <span class="block text-sm font-semibold text-gray-900">{{ type.label }}</span>
-            </button>
+      <HealthInfoStep
+        v-else-if="currentStep === 3"
+        v-model="formData.health"
+        compact
+        @next="handleNext"
+        @back="handleBack"
+      />
+
+      <GuardianInfoStep
+        v-else-if="currentStep === 4"
+        v-model="formData.guardian"
+        compact
+        edit-mode
+        @next="handleNext"
+        @back="handleBack"
+      />
+
+      <AddressInfoStep
+        v-else-if="currentStep === 5"
+        v-model="formData.address"
+        compact
+        @next="handleNext"
+        @back="handleBack"
+      />
+
+      <div v-else-if="currentStep === 6" class="space-y-6">
+        <div class="rounded-2xl border border-gray-200 bg-gradient-to-br from-slate-50 to-white p-5">
+          <h3 class="mb-4 text-sm font-semibold text-gray-900">{{ $t('students.registrationSummary') }}</h3>
+          <div class="space-y-2 text-sm text-gray-700">
+            <p>
+              <span class="font-medium text-gray-900">{{ $t('enrollment.idNumber') }}:</span>
+              {{ formData.student.idNumber || '—' }}
+            </p>
+            <p>
+              <span class="font-medium text-gray-900">{{ $t('students.firstNameAr') }}:</span>
+              {{ formData.student.first_name_ar || '—' }}
+            </p>
+            <p>
+              <span class="font-medium text-gray-900">{{ $t('students.secondNameAr') }}:</span>
+              {{ formData.student.secondName || '—' }}
+            </p>
+            <p>
+              <span class="font-medium text-gray-900">{{ $t('students.thirdNameAr') }}:</span>
+              {{ formData.student.thirdName || '—' }}
+            </p>
+            <p>
+              <span class="font-medium text-gray-900">{{ $t('students.lastNameAr') }}:</span>
+              {{ formData.student.last_name_ar || '—' }}
+            </p>
+            <p>
+              <span class="font-medium text-gray-900">{{ $t('students.firstNameEn') }}:</span>
+              {{ formData.student.first_name_en || '—' }}
+            </p>
+            <p>
+              <span class="font-medium text-gray-900">{{ $t('students.secondNameEn') }}:</span>
+              {{ formData.student.secondNameEn || '—' }}
+            </p>
+            <p>
+              <span class="font-medium text-gray-900">{{ $t('students.thirdNameEn') }}:</span>
+              {{ formData.student.thirdNameEn || '—' }}
+            </p>
+            <p>
+              <span class="font-medium text-gray-900">{{ $t('students.lastNameEn') }}:</span>
+              {{ formData.student.last_name_en || '—' }}
+            </p>
+            <p>
+              <span class="font-medium text-gray-900">{{ $t('enrollment.steps.guardian') }}:</span>
+              {{ guardianSummary }}
+            </p>
+            <p v-if="formData.academic.groupId">
+              <span class="font-medium text-gray-900">{{ $t('students.groupAssignment') }}:</span>
+              {{ groupLabel }}
+            </p>
           </div>
         </div>
 
-        <div>
-          <p class="mb-2 text-xs font-medium text-gray-600">{{ $t('students.addParentMode') }}</p>
-          <div class="inline-flex rounded-lg border border-gray-200 bg-gray-100/80 p-0.5">
-            <button
-              type="button"
-              class="rounded-md px-3 py-1.5 text-sm font-semibold"
-              :class="addForm.mode === 'existing' ? 'bg-white text-primary-800 shadow-sm' : 'text-gray-600'"
-              @click="addForm.mode = 'existing'"
-            >
-              {{ $t('students.existingParent') }}
-            </button>
-            <button
-              type="button"
-              class="rounded-md px-3 py-1.5 text-sm font-semibold"
-              :class="addForm.mode === 'create' ? 'bg-white text-primary-800 shadow-sm' : 'text-gray-600'"
-              @click="addForm.mode = 'create'"
-            >
-              {{ $t('students.newParent') }}
-            </button>
-          </div>
-        </div>
-
-        <div v-if="addForm.mode === 'existing'" class="space-y-3">
-          <div class="flex flex-wrap items-end gap-2">
-            <div class="min-w-[12rem] flex-1">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.searchParent') }}</label>
-              <input
-                v-model="parentSearchQuery"
-                type="search"
-                class="fk-field"
-                :placeholder="$t('students.searchParent')"
-                @input="scheduleParentSearch"
-              >
-            </div>
-            <button type="button" class="fk-btn fk-btn--pearl" @click="showParentSearchModal = true">
-              {{ $t('students.searchInParentDatabase') }}
-            </button>
-          </div>
-          <div v-if="parentSearchLoading" class="py-6 text-center text-sm text-gray-500">{{ $t('common.loading') }}</div>
-          <div v-else-if="parentSearchResults.length" class="max-h-56 space-y-2 overflow-y-auto">
-            <button
-              v-for="p in parentSearchResults"
-              :key="p.id"
-              type="button"
-              class="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-start text-sm transition"
-              :class="selectedExistingParentId === p.id
-                ? 'border-primary-400 bg-primary-50 ring-1 ring-primary-200'
-                : 'border-gray-200 hover:border-gray-300'"
-              @click="selectedExistingParentId = p.id"
-            >
-              <span>
-                <span class="font-semibold text-gray-900">{{ personFullName(p, locale) || `${p.firstName} ${p.lastName}` }}</span>
-                <span v-if="p.phone" class="mt-0.5 block text-xs text-gray-500">{{ p.phone }}</span>
-              </span>
-            </button>
-          </div>
-          <p v-else-if="parentSearchQuery.trim()" class="text-sm text-gray-500">{{ $t('students.noParentMatches') }}</p>
-        </div>
-
-        <!-- Create: father / mother -->
-        <div
-          v-else-if="addForm.relationship === 'father' || addForm.relationship === 'mother'"
-          class="grid grid-cols-1 gap-4 rounded-xl border p-4 sm:grid-cols-2"
-          :class="addForm.relationship === 'father' ? 'border-blue-100 bg-blue-50/40' : 'border-pink-100 bg-pink-50/40'"
+        <WizardStepNav
+          :disabled="saving || !formData.academic.groupId"
+          :next-label="saving ? $t('common.saving') : $t('common.save')"
+          hide-next-chevron
+          @back="handleBack"
+          @next="saveAll"
         >
-          <div class="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div class="sm:col-span-2">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.civilId') }} <span class="text-red-500">*</span></label>
-              <input v-model="createForm.civil_id" type="text" required dir="ltr" class="fk-field" :placeholder="$t('students.civilId')" @input="scheduleCivilLookup">
-              <p v-if="civilLookupLoading" class="mt-1 text-xs text-gray-500">{{ $t('common.loading') }}</p>
-              <p v-else-if="civilLookupNote" class="mt-1 text-xs text-primary-700">{{ civilLookupNote }}</p>
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameAr') }} <span class="text-red-500">*</span></label>
-              <input v-model="createForm.first_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.firstNameEn') }} <span class="text-red-500">*</span></label>
-              <input v-model="createForm.first_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameAr') }} <span class="text-red-500">*</span></label>
-              <input v-model="createForm.last_name_ar" type="text" required dir="rtl" lang="ar" class="fk-field">
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.lastNameEn') }} <span class="text-red-500">*</span></label>
-              <input v-model="createForm.last_name_en" type="text" required dir="ltr" lang="en" class="fk-field">
-            </div>
-          </div>
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.tribe') }}</label>
-            <input v-model="createForm.tribe" type="text" class="fk-field">
-          </div>
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.workplace') }}</label>
-            <input v-model="createForm.workplace" type="text" class="fk-field">
-          </div>
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.workPhone') }}</label>
-            <input v-model="createForm.workPhone" type="tel" class="fk-field">
-          </div>
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.mobile') }} <span class="text-red-500">*</span></label>
-            <input v-model="createForm.mobile" type="tel" required class="fk-field" :class="createForm.mobile.trim() && phoneError(createForm.mobile) ? 'border-red-300' : ''">
-            <p v-if="createForm.mobile.trim() && phoneError(createForm.mobile)" class="mt-1 text-xs text-red-600">{{ $t('validation.phoneInvalid') }}</p>
-          </div>
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.email') }} <span class="text-red-500">*</span></label>
-            <input v-model="createForm.email" type="email" required dir="ltr" class="fk-field">
-            <p v-if="createForm.email.trim() && !isValidEmail(createForm.email)" class="mt-1 text-xs text-red-600">{{ $t('validation.emailInvalid') }}</p>
-          </div>
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.maritalStatus') }}</label>
-            <select v-model="createForm.maritalStatus" class="fk-field">
-              <option value="">{{ $t('enrollment.selectMaritalStatus') }}</option>
-              <option value="married">{{ $t('enrollment.married') }}</option>
-              <option value="divorced">{{ $t('enrollment.divorced') }}</option>
-              <option value="widowed">{{ $t('enrollment.widowed') }}</option>
-            </select>
-          </div>
-          <label class="sm:col-span-2 inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700">
-            <input v-model="createForm.createLogin" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500/40">
-            {{ $t('students.createLoginAccount') }}
-          </label>
-        </div>
-
-        <!-- Create: guardian -->
-        <div
-          v-else
-          class="grid grid-cols-1 gap-4 rounded-xl border border-teal-100 bg-teal-50/40 p-4 sm:grid-cols-2"
-        >
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.organizationName') }} <span class="text-red-500">*</span></label>
-            <input v-model="createForm.organizationName" type="text" required class="fk-field">
-          </div>
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.phone') }} <span class="text-red-500">*</span></label>
-            <input v-model="createForm.orgPhone" type="tel" required class="fk-field">
-          </div>
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.responsiblePerson') }} <span class="text-red-500">*</span></label>
-            <input v-model="createForm.responsiblePerson" type="text" required class="fk-field">
-          </div>
-          <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.responsiblePhone') }} <span class="text-red-500">*</span></label>
-            <input v-model="createForm.responsiblePhone" type="tel" required class="fk-field">
-          </div>
-        </div>
-
-        <p v-if="addError" class="text-sm text-red-600">{{ addError }}</p>
+          <template #icon>
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </template>
+        </WizardStepNav>
       </div>
-
-      <template #footer>
-        <button type="button" class="fk-btn fk-btn--pearl" @click="closeAddParent">{{ $t('common.cancel') }}</button>
-        <button type="button" class="fk-btn fk-btn--primary" :disabled="saving || !canSubmitAdd" @click="submitAddParent">
-          {{ saving ? $t('common.saving') : $t('common.save') }}
-        </button>
-      </template>
-    </FikrDialog>
-
-    <ParentSearchModal
-      :show="showParentSearchModal"
-      @close="showParentSearchModal = false"
-      @select="onParentPickedFromModal"
-    />
+    </EnrollmentWizardChrome>
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
-import FikrPageHeader from '@/components/FikrPageHeader.vue'
-import IconPlus from '@/components/icons/IconPlus.vue'
-import FikrDialog from '@/components/FikrDialog.vue'
-import ParentSearchModal from '@/components/ParentSearchModal.vue'
-import { useFeedback } from '@/composables/useFeedback'
-import { authService } from '@/services'
-import { studentService, type MedicalReport, type Student } from '@/services/student.service'
-import {
-  parentService,
-  type Parent,
-  type ParentRelationship,
-} from '@/services/parent.service'
-import { groupService, type Group } from '@/services/group.service'
-import { busService, type Bus } from '@/services/bus.service'
-import paymentConfigService, { type SchoolPaymentLevel } from '@/services/payment-config.service'
-import { personFullName } from '@/utils/person-name'
-import { isValidEmail, isValidPhone, phoneError } from '@/utils/validation'
-import { userService } from '@/services/user.service'
-import { NATIONALITIES, normaliseNationality } from '@/utils/nationalities'
+import EnrollmentWizardChrome from '@/components/enrollment/EnrollmentWizardChrome.vue'
+import WizardStepNav from '@/components/enrollment/WizardStepNav.vue'
+import StudentDetailsStep from '@/components/enrollment/StudentDetailsStep.vue'
+import AcademicInfoStep from '@/components/enrollment/AcademicInfoStep.vue'
+import HealthInfoStep from '@/components/enrollment/HealthInfoStep.vue'
+import GuardianInfoStep from '@/components/enrollment/GuardianInfoStep.vue'
+import AddressInfoStep from '@/components/enrollment/AddressInfoStep.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { useFeedback } from '@/composables/useFeedback'
+import { getStoredSchoolId } from '@/utils/auth-token'
+import { isNotFutureDate } from '@/utils/validation'
+import { personFullName } from '@/utils/person-name'
+import { normaliseNationality } from '@/utils/nationalities'
+import { studentService, type Student } from '@/services/student.service'
+import { busService, type Bus } from '@/services/bus.service'
+import { groupService } from '@/services/group.service'
+import { parentService, type Parent } from '@/services/parent.service'
+import {
+  applyStudentToStaffIntakeForm,
+  createEmptyStaffIntakeForm,
+  hasCompleteBilingualName,
+  hasCompleteStudentIdentity,
+  mapStaffIntakeToStudentUpdate,
+  splitFullName,
+  type StaffIntakeForm,
+} from '@/components/enrollment/staffIntake'
 
-type TabId = 'student' | 'health' | 'address' | 'parents' | 'class' | 'bus'
-
-const route = useRoute()
 const { t, locale } = useI18n()
-const isRTL = computed(() => locale.value === 'ar')
+const feedback = useFeedback()
+const route = useRoute()
+const router = useRouter()
 
 const studentId = computed(() => String(route.params.id || ''))
-const schoolId = computed(() => {
-  const u = authService.getStoredUser() as { school_id?: string } | null
-  return String(u?.school_id ?? '').trim()
-})
-
-const feedback = useFeedback()
+const schoolId = computed(() => getStoredSchoolId() || '')
 
 const pageLoading = ref(true)
-const pageError = ref('')
 const saving = ref(false)
-const activeTab = ref<TabId>('student')
+const currentStep = ref(1)
 const student = ref<Student | null>(null)
-const linkedParents = ref<Parent[]>([])
-const groups = ref<Group[]>([])
+const formData = ref<StaffIntakeForm>(createEmptyStaffIntakeForm())
 const buses = ref<Bus[]>([])
-const paymentLevels = ref<SchoolPaymentLevel[]>([])
-const selectedGroupId = ref('')
-const selectedPaymentLevelId = ref('')
 const selectedBusId = ref('')
 const currentBusId = ref('')
-const photoInput = ref<HTMLInputElement | null>(null)
+const groupNameById = ref<Record<string, string>>({})
 
-const studentForm = reactive({
-  photo: '' as string,
-  first_name_ar: '',
-  first_name_en: '',
-  last_name_ar: '',
-  last_name_en: '',
-  secondName: '',
-  thirdName: '',
-  dateOfBirth: '',
-  gender: 'male' as 'male' | 'female',
-  studentId: '',
-  civil_id: '',
-  nationality: '',
-  emergencyContact: '',
-  medicalConditions: '',
-  address: '',
-})
-
-const showAddParent = ref(false)
-const showParentSearchModal = ref(false)
-const addError = ref('')
-const parentSearchQuery = ref('')
-const parentSearchResults = ref<Parent[]>([])
-const parentSearchLoading = ref(false)
-const selectedExistingParentId = ref<string | null>(null)
-let searchTimer: ReturnType<typeof setTimeout> | null = null
-
-const addForm = reactive<{
-  relationship: ParentRelationship
-  mode: 'existing' | 'create'
-}>({
-  relationship: 'father',
-  mode: 'existing',
-})
-
-const createForm = reactive({
-  first_name_ar: '',
-  first_name_en: '',
-  last_name_ar: '',
-  last_name_en: '',
-  civil_id: '',
-  tribe: '',
-  workplace: '',
-  workPhone: '',
-  mobile: '',
-  email: '',
-  maritalStatus: '',
-  createLogin: true,
-  organizationName: '',
-  orgPhone: '',
-  responsiblePerson: '',
-  responsiblePhone: '',
-})
-
-// Civil-ID-first lookup for the create-parent form
-const civilLookupLoading = ref(false)
-const civilLookupNote = ref('')
-let civilTimer: ReturnType<typeof setTimeout> | null = null
-
-const tabs = computed(() => [
-  { id: 'student' as const, label: t('students.tabStudent') },
-  { id: 'health' as const, label: t('students.tabHealth') },
-  { id: 'address' as const, label: t('students.tabAddress') },
-  { id: 'parents' as const, label: t('students.tabParents') },
-  { id: 'class' as const, label: t('students.tabClass') },
-  { id: 'bus' as const, label: t('students.tabBus') },
+const steps = computed(() => [
+  { key: 'student', shortTitle: t('students.stepShortStudent'), title: t('enrollment.steps.student'), description: t('enrollment.studentDetailsDescription') },
+  { key: 'academic', shortTitle: t('students.stepShortAcademic'), title: t('students.stepTitleAcademic'), description: t('students.stepDescAcademic') },
+  { key: 'health', shortTitle: t('students.stepShortHealth'), title: t('enrollment.steps.health'), description: t('enrollment.healthDescription') },
+  { key: 'guardian', shortTitle: t('students.stepShortGuardian'), title: t('enrollment.steps.guardian'), description: t('enrollment.guardianDescription') },
+  { key: 'address', shortTitle: t('students.stepShortAddress'), title: t('enrollment.steps.address'), description: t('enrollment.addressDescription') },
+  { key: 'review', shortTitle: t('students.stepShortReview'), title: t('enrollment.steps.review'), description: t('enrollment.reviewDescription') },
 ])
-
-const currentTabMeta = computed(() => {
-  const map: Record<TabId, { title: string; description: string }> = {
-    student: { title: t('students.stepStudentTitle'), description: t('students.editStudentSubtitle') },
-    health: { title: t('students.tabHealth'), description: t('students.healthTabHint') },
-    address: { title: t('students.tabAddress'), description: t('students.addressTabHint') },
-    parents: { title: t('students.linkedParentsHeading'), description: t('students.parentsGridHint') },
-    class: { title: t('studentManagement.groupAssignment'), description: t('students.classTabHint') },
-    bus: { title: t('students.busAssignment'), description: t('students.busAssignmentDescription') },
-  }
-  return map[activeTab.value]
-})
 
 const headerSubtitle = computed(() => {
   if (!student.value) return t('students.editStudentSubtitle')
-  const name = personFullName(student.value, locale.value)
-  return name || t('students.editStudentSubtitle')
+  return personFullName(student.value, locale.value) || t('students.editStudentSubtitle')
 })
 
-const relationshipTypes = computed(() => [
-  {
-    id: 'father' as const,
-    label: t('students.relationshipFather'),
-    activeClass: 'border-blue-500 bg-blue-50 ring-1 ring-blue-200',
-  },
-  {
-    id: 'mother' as const,
-    label: t('students.relationshipMother'),
-    activeClass: 'border-pink-500 bg-pink-50 ring-1 ring-pink-200',
-  },
-  {
-    id: 'guardian' as const,
-    label: t('students.relationshipGuardian'),
-    activeClass: 'border-teal-500 bg-teal-50 ring-1 ring-teal-200',
-  },
-])
+const guardianSummary = computed(() => {
+  const g = formData.value.guardian
+  if (g.type === 'mother') return g.motherInfo.fullName || '—'
+  if (g.type === 'other') return g.otherInfo.responsiblePerson || g.otherInfo.organizationName || '—'
+  return g.fatherInfo.fullName || '—'
+})
 
-const canSubmitAdd = computed(() => {
-  if (addForm.mode === 'existing') return selectedExistingParentId.value != null
-  if (addForm.relationship === 'guardian') {
-    return !!(
-      createForm.organizationName.trim()
-      && createForm.orgPhone.trim()
-      && createForm.responsiblePerson.trim()
-      && createForm.responsiblePhone.trim()
+const groupLabel = computed(() => {
+  const id = formData.value.academic.groupId
+  return groupNameById.value[id] || id || '—'
+})
+
+async function persistStudentFields() {
+  if (!studentId.value) return
+  const patch = await mapStaffIntakeToStudentUpdate(formData.value)
+  const updated = await studentService.update(studentId.value, patch as any)
+  student.value = updated
+  formData.value.student.nationality = normaliseNationality(formData.value.student.nationality)
+}
+
+async function persistGroupAndBus() {
+  if (!studentId.value) return
+  const groupId = formData.value.academic.groupId
+  if (groupId) {
+    await studentService.assignToGroup(studentId.value, groupId, { replaceExistingGroups: true })
+  }
+  if (selectedBusId.value !== currentBusId.value) {
+    if (!selectedBusId.value) {
+      if (currentBusId.value) {
+        await studentService.removeFromBus(studentId.value, currentBusId.value)
+      }
+    } else {
+      await studentService.assignToBus(studentId.value, selectedBusId.value)
+    }
+    currentBusId.value = selectedBusId.value
+  }
+}
+
+async function persistMedicalReports() {
+  if (!studentId.value) return
+  const files = (formData.value.health.medicalReports || []).filter((f): f is File => f instanceof File)
+  for (const file of files) {
+    try {
+      await studentService.uploadMedicalReport(studentId.value, file)
+    } catch {
+      // Keep going; toast on final save if needed
+    }
+  }
+  formData.value.health.medicalReports = formData.value.health.medicalReports.filter(
+    (f) => typeof f === 'string',
+  )
+}
+
+async function persistGuardians() {
+  if (!studentId.value) return
+  const linked = ((student.value?.parents || []) as Parent[])
+  const g = formData.value.guardian
+
+  async function ensureParent(
+    relationship: 'father' | 'mother' | 'guardian',
+    payload: Parameters<typeof parentService.create>[0],
+    match: (p: Parent) => boolean,
+  ) {
+    const existing = linked.find(match)
+    if (existing) {
+      await parentService.update(existing.id, {
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+        first_name_ar: payload.first_name_ar,
+        first_name_en: payload.first_name_en,
+        last_name_ar: payload.last_name_ar,
+        last_name_en: payload.last_name_en,
+        civil_id: payload.civil_id,
+        phone: payload.phone,
+        email: payload.email,
+        tribe: payload.tribe,
+        workplace: payload.workplace,
+        workPhone: payload.workPhone,
+        maritalStatus: payload.maritalStatus,
+        organizationName: payload.organizationName,
+        responsiblePerson: payload.responsiblePerson,
+        responsiblePhone: payload.responsiblePhone,
+      })
+      return
+    }
+    await parentService.create({
+      ...payload,
+      studentIds: [studentId.value],
+      relationship,
+      createLogin: false,
+    })
+  }
+
+  for (const role of ['father', 'mother'] as const) {
+    const info = role === 'father' ? g.fatherInfo : g.motherInfo
+    if (!hasCompleteBilingualName(info)) continue
+    await ensureParent(
+      role,
+      {
+        firstName: info.first_name_ar.trim() || info.first_name_en.trim(),
+        lastName: info.last_name_ar.trim() || info.last_name_en.trim(),
+        first_name_ar: info.first_name_ar.trim(),
+        first_name_en: info.first_name_en.trim(),
+        last_name_ar: info.last_name_ar.trim(),
+        last_name_en: info.last_name_en.trim(),
+        civil_id: info.civil_id.trim() || undefined,
+        phone: info.mobile.trim() || undefined,
+        email: info.email.trim() || undefined,
+        tribe: info.tribe.trim() || undefined,
+        workplace: info.workplace.trim() || undefined,
+        workPhone: info.workPhone.trim() || undefined,
+        maritalStatus: info.maritalStatus.trim() || undefined,
+      },
+      (p) =>
+        p.relationship === role ||
+        (!!info.civil_id.trim() && p.civil_id === info.civil_id.trim()),
     )
   }
-  const namesOk = !!(
-    createForm.civil_id.trim() &&
-    createForm.first_name_ar.trim() &&
-    createForm.first_name_en.trim() &&
-    createForm.last_name_ar.trim() &&
-    createForm.last_name_en.trim()
-  )
-  // UI keeps email + phone mandatory for now (see POINTS_TO_CHECK_LATER.md for the
-  // create-login/no-login nuance to revisit).
-  const phoneOk = !!(createForm.mobile.trim() && isValidPhone(createForm.mobile))
-  const emailOk = isValidEmail(createForm.email)
-  return namesOk && phoneOk && emailOk
-})
 
-function relationshipLabel(rel?: string) {
-  if (rel === 'father') return t('students.relationshipFather')
-  if (rel === 'mother') return t('students.relationshipMother')
-  return t('students.relationshipGuardian')
-}
-
-function relationshipBannerClass(rel?: string) {
-  if (rel === 'father') return 'border-blue-100 bg-blue-50 text-blue-800'
-  if (rel === 'mother') return 'border-pink-100 bg-pink-50 text-pink-800'
-  return 'border-teal-100 bg-teal-50 text-teal-800'
-}
-
-function parentDisplayName(parent: Parent) {
-  if (parent.relationship === 'guardian' && (parent.responsiblePerson || parent.organizationName)) {
-    return parent.responsiblePerson || parent.organizationName || ''
+  const org = g.otherInfo
+  if (g.type === 'other' && (org.organizationName.trim() || org.responsiblePerson.trim())) {
+    const nameParts = splitFullName(org.responsiblePerson)
+    await ensureParent(
+      'guardian',
+      {
+        firstName: nameParts.firstName,
+        lastName: org.organizationName.trim() || nameParts.lastName,
+        phone: org.phone.trim() || undefined,
+        organizationName: org.organizationName.trim() || undefined,
+        responsiblePerson: org.responsiblePerson.trim() || undefined,
+        responsiblePhone: org.responsiblePhone.trim() || undefined,
+      },
+      (p) => p.relationship === 'guardian',
+    )
   }
-  return personFullName(parent, locale.value) || `${parent.firstName || ''} ${parent.lastName || ''}`.trim()
+
+  const refreshed = await studentService.getById(studentId.value)
+  student.value = refreshed
 }
 
-function splitFullName(fullName: string): { firstName: string; lastName: string } {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean)
-  if (!parts.length) return { firstName: '-', lastName: '-' }
-  if (parts.length === 1) return { firstName: parts[0], lastName: parts[0] }
-  return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
+const handleBack = () => {
+  if (currentStep.value > 1) currentStep.value--
 }
 
-function triggerPhotoPick() {
-  photoInput.value?.click()
-}
+const handleNext = async () => {
+  const step = currentStep.value
+  const s = formData.value.student
 
-async function handlePhotoUpload(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file || !studentId.value) return
+  if (step === 1) {
+    if (
+      !hasCompleteStudentIdentity(s) ||
+      !s.idNumber.trim() ||
+      !s.gender ||
+      !s.nationality.trim() ||
+      !s.dateOfBirth
+    ) {
+      feedback.error(t('students.validationFillRequired'), t('students.validationErrorTitle'))
+      return
+    }
+    if (!isNotFutureDate(s.dateOfBirth)) {
+      feedback.error(t('validation.dateOfBirthFuture'), t('students.validationErrorTitle'))
+      return
+    }
+  }
+
+  saving.value = true
   try {
-    const uploaded = await studentService.uploadPhoto(studentId.value, file)
-    const url = uploaded?.photo || uploaded?.url || uploaded?.data?.photo
-    if (url) studentForm.photo = url
+    if (step === 1 || step === 2 || step === 3 || step === 5) {
+      await persistStudentFields()
+    }
+    if (step === 2) {
+      await persistGroupAndBus()
+    }
+    if (step === 3) {
+      await persistMedicalReports()
+    }
+    if (step === 4) {
+      await persistStudentFields()
+      await persistGuardians()
+    }
+    if (currentStep.value < 6) currentStep.value++
   } catch (e) {
     console.error(e)
-    pageError.value = t('students.saveFailedMessage')
+    feedback.error(t('students.saveFailedMessage'), t('students.registerFailedTitle'))
+  } finally {
+    saving.value = false
   }
 }
 
-function applyStudent(s: Student) {
-  student.value = s
-  linkedParents.value = (s.parents || []) as Parent[]
-  studentForm.photo = s.photo || ''
-  studentForm.first_name_ar = s.first_name_ar || s.firstName || ''
-  studentForm.first_name_en = s.first_name_en || ''
-  studentForm.secondName = s.secondName || ''
-  studentForm.thirdName = s.thirdName || ''
-  studentForm.last_name_ar = s.last_name_ar || s.lastName || ''
-  studentForm.last_name_en = s.last_name_en || ''
-  studentForm.dateOfBirth = s.dateOfBirth
-    ? new Date(s.dateOfBirth).toISOString().slice(0, 10)
-    : ''
-  studentForm.gender = s.gender || 'male'
-  studentForm.studentId = s.studentId || ''
-  studentForm.civil_id = s.civil_id || ''
-  studentForm.nationality = normaliseNationality(s.nationality)
-  studentForm.emergencyContact = s.emergencyContact || ''
-  studentForm.medicalConditions = s.medicalInfo || ''
-  studentForm.address = s.address && s.address !== '-' ? s.address : ''
-  selectedGroupId.value = s.groups?.[0]?.id || ''
-  const fromStudentLevel = s.payment_level_id || s.paymentLevel?.id || ''
-  const groupLevel = (s.groups?.[0] as { level_id?: string; level?: { id?: string } } | undefined)
-  const fromGroupLevel = groupLevel?.level_id || groupLevel?.level?.id || ''
-  selectedPaymentLevelId.value = fromStudentLevel || fromGroupLevel || ''
-  currentBusId.value = s.buses?.[0]?.id || ''
-  selectedBusId.value = currentBusId.value
+const saveAll = async () => {
+  if (!formData.value.academic.groupId) {
+    feedback.error(t('students.validationSelectGroup'), t('students.validationErrorTitle'))
+    return
+  }
+  saving.value = true
+  try {
+    await persistStudentFields()
+    await persistGroupAndBus()
+    await persistMedicalReports()
+    await persistGuardians()
+    feedback.success(t('students.saveStudentSuccess'), t('students.saveSuccessTitle'))
+    setTimeout(() => {
+      router.push('/students')
+    }, 800)
+  } catch (e) {
+    console.error(e)
+    feedback.error(t('students.saveFailedMessage'), t('students.registerFailedTitle'))
+  } finally {
+    saving.value = false
+  }
 }
 
 async function loadPage() {
   pageLoading.value = true
-  pageError.value = ''
   try {
-    const [s, b, levels] = await Promise.all([
+    const [s, b, groups] = await Promise.all([
       studentService.getById(studentId.value),
       busService.getAll(schoolId.value),
-      paymentConfigService.listLevels(schoolId.value).catch(() => [] as SchoolPaymentLevel[]),
+      groupService.getActive(schoolId.value).catch(() => []),
     ])
+    student.value = s
     buses.value = b || []
-    paymentLevels.value = levels || []
-    applyStudent(s)
-    void loadMedicalReports()
-    await reloadClassGroups()
+    groupNameById.value = Object.fromEntries(
+      (groups || []).map((g: { id: string; name?: string; title?: string }) => [
+        String(g.id),
+        g.name || g.title || String(g.id),
+      ]),
+    )
+    formData.value = applyStudentToStaffIntakeForm(s, createEmptyStaffIntakeForm())
+    formData.value.student.nationality = normaliseNationality(formData.value.student.nationality)
+    currentBusId.value = s.buses?.[0]?.id || ''
+    selectedBusId.value = currentBusId.value
+
+    // Prefill medical report names for display
+    try {
+      const reports = await studentService.listMedicalReports(studentId.value)
+      formData.value.health.medicalReports = reports.map((r) => r.filename || r.id)
+    } catch {
+      /* optional */
+    }
   } catch (e) {
     console.error(e)
-    pageError.value = t('students.saveFailedMessage')
+    feedback.error(t('students.saveFailedMessage'), t('students.registerFailedTitle'))
+    router.push('/students')
   } finally {
     pageLoading.value = false
-  }
-}
-
-async function reloadClassGroups() {
-  const levelId = String(selectedPaymentLevelId.value || '').trim() || undefined
-  try {
-    groups.value =
-      (await groupService.getActive(schoolId.value || undefined, levelId)) || []
-  } catch (e) {
-    console.error(e)
-    groups.value = []
-  }
-  if (
-    selectedGroupId.value &&
-    !groups.value.some((g) => String(g.id) === String(selectedGroupId.value))
-  ) {
-    selectedGroupId.value = ''
-  }
-}
-
-const medicalReports = ref<MedicalReport[]>([])
-const reportUploading = ref(false)
-const reportError = ref('')
-
-async function loadMedicalReports() {
-  if (!studentId.value) return
-  try {
-    medicalReports.value = await studentService.listMedicalReports(studentId.value)
-  } catch {
-    medicalReports.value = []
-  }
-}
-
-async function onReportFiles(event: Event) {
-  const input = event.target as HTMLInputElement
-  const files = Array.from(input.files || [])
-  input.value = ''
-  if (!studentId.value || !files.length) return
-  reportError.value = ''
-  reportUploading.value = true
-  for (const file of files) {
-    if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) {
-      reportError.value = t('validation.fileTypeInvalid')
-      continue
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      reportError.value = t('validation.fileTooLarge')
-      continue
-    }
-    try {
-      await studentService.uploadMedicalReport(studentId.value, file)
-    } catch {
-      reportError.value = t('students.saveFailedMessage')
-    }
-  }
-  reportUploading.value = false
-  await loadMedicalReports()
-}
-
-async function openReport(report: MedicalReport) {
-  if (!studentId.value) return
-  try {
-    const blob = await studentService.downloadMedicalReport(studentId.value, report.id)
-    window.open(URL.createObjectURL(blob), '_blank')
-  } catch {
-    reportError.value = t('students.saveFailedMessage')
-  }
-}
-
-async function removeReport(report: MedicalReport) {
-  if (!studentId.value) return
-  const ok = await feedback.confirm({
-    title: t('common.delete'),
-    message: t('students.confirmDeleteReport'),
-    confirmLabel: t('common.delete'),
-    danger: true,
-  })
-  if (!ok) return
-  await studentService.deleteMedicalReport(studentId.value, report.id)
-  await loadMedicalReports()
-}
-
-async function saveStudent() {
-  if (!studentId.value) return
-  saving.value = true
-  pageError.value = ''
-  try {
-    const updated = await studentService.update(studentId.value, {
-      firstName: studentForm.first_name_ar.trim() || studentForm.first_name_en.trim(),
-      lastName: studentForm.last_name_ar.trim() || studentForm.last_name_en.trim(),
-      first_name_ar: studentForm.first_name_ar.trim(),
-      first_name_en: studentForm.first_name_en.trim(),
-      last_name_ar: studentForm.last_name_ar.trim(),
-      last_name_en: studentForm.last_name_en.trim(),
-      secondName: studentForm.secondName,
-      thirdName: studentForm.thirdName,
-      dateOfBirth: studentForm.dateOfBirth as any,
-      gender: studentForm.gender,
-      studentId: studentForm.studentId || undefined,
-      civil_id: studentForm.civil_id.trim() || null,
-      nationality: studentForm.nationality || undefined,
-      emergencyContact: studentForm.emergencyContact,
-      medicalInfo: studentForm.medicalConditions,
-      photo: studentForm.photo || undefined,
-      address: studentForm.address.trim() || '-',
-    })
-    applyStudent(updated)
-    feedback.success(t('students.saveStudentSuccess'), t('students.saveSuccessTitle'))
-  } catch (e) {
-    console.error(e)
-    pageError.value = t('students.saveFailedMessage')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function onPaymentLevelChange() {
-  selectedGroupId.value = ''
-  await reloadClassGroups()
-}
-
-async function saveClass() {
-  if (!studentId.value || !selectedGroupId.value) return
-  saving.value = true
-  try {
-    const updated = await studentService.assignToGroup(studentId.value, selectedGroupId.value, {
-      paymentLevelId: selectedPaymentLevelId.value || undefined,
-      replaceExistingGroups: true,
-    })
-    applyStudent(updated)
-    await reloadClassGroups()
-    feedback.success(t('students.saveGroupSuccess'), t('students.saveSuccessTitle'))
-  } catch (e) {
-    console.error(e)
-    pageError.value = t('students.saveFailedMessage')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function saveBus() {
-  if (!studentId.value) return
-  saving.value = true
-  try {
-    let updated: Student
-    if (!selectedBusId.value) {
-      if (currentBusId.value) {
-        updated = await studentService.removeFromBus(studentId.value, currentBusId.value)
-      } else {
-        updated = await studentService.getById(studentId.value)
-      }
-    } else {
-      updated = await studentService.assignToBus(studentId.value, selectedBusId.value)
-    }
-    applyStudent(updated)
-    feedback.success(t('students.saveBusSuccess'), t('students.saveSuccessTitle'))
-  } catch (e) {
-    console.error(e)
-    pageError.value = t('students.saveFailedMessage')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function clearBus() {
-  selectedBusId.value = ''
-  await saveBus()
-}
-
-function resetCreateForm() {
-  createForm.first_name_ar = ''
-  createForm.first_name_en = ''
-  createForm.last_name_ar = ''
-  createForm.last_name_en = ''
-  createForm.civil_id = ''
-  createForm.tribe = ''
-  createForm.workplace = ''
-  createForm.workPhone = ''
-  createForm.mobile = ''
-  createForm.email = ''
-  createForm.maritalStatus = ''
-  createForm.createLogin = true
-  civilLookupNote.value = ''
-  createForm.organizationName = ''
-  createForm.orgPhone = ''
-  createForm.responsiblePerson = ''
-  createForm.responsiblePhone = ''
-}
-
-function openAddParent() {
-  addError.value = ''
-  addForm.relationship = 'father'
-  addForm.mode = 'existing'
-  selectedExistingParentId.value = null
-  parentSearchQuery.value = ''
-  parentSearchResults.value = []
-  resetCreateForm()
-  showAddParent.value = true
-}
-
-function closeAddParent() {
-  showAddParent.value = false
-  addError.value = ''
-}
-
-function scheduleParentSearch() {
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(runParentSearch, 300)
-}
-
-// Civil ID is entered first; when it matches an existing parent we load their details.
-function scheduleCivilLookup() {
-  civilLookupNote.value = ''
-  if (civilTimer) clearTimeout(civilTimer)
-  civilTimer = setTimeout(runCivilLookup, 400)
-}
-
-async function runCivilLookup() {
-  const civil = createForm.civil_id.trim()
-  if (civil.length < 4) return
-  civilLookupLoading.value = true
-  try {
-    const res = await userService.lookupParent({ civil_id: civil })
-    if (res.exists) {
-      createForm.first_name_ar = res.first_name_ar || createForm.first_name_ar
-      createForm.first_name_en = res.first_name_en || createForm.first_name_en
-      createForm.last_name_ar = res.last_name_ar || createForm.last_name_ar
-      createForm.last_name_en = res.last_name_en || createForm.last_name_en
-      createForm.email = res.email || createForm.email
-      createForm.mobile = res.phone || createForm.mobile
-      civilLookupNote.value = t('students.existingParentLoaded')
-    }
-  } catch (e) {
-    console.error(e)
-  } finally {
-    civilLookupLoading.value = false
-  }
-}
-
-async function runParentSearch() {
-  const q = parentSearchQuery.value.trim()
-  if (!q) {
-    parentSearchResults.value = []
-    return
-  }
-  parentSearchLoading.value = true
-  try {
-    parentSearchResults.value = await parentService.search(q)
-  } catch (e) {
-    console.error(e)
-    parentSearchResults.value = []
-  } finally {
-    parentSearchLoading.value = false
-  }
-}
-
-function onParentPickedFromModal(parent: Parent) {
-  selectedExistingParentId.value = parent.id
-  showParentSearchModal.value = false
-  addForm.mode = 'existing'
-  if (!parentSearchResults.value.some((p) => p.id === parent.id)) {
-    parentSearchResults.value = [parent, ...parentSearchResults.value]
-  }
-}
-
-async function submitAddParent() {
-  if (!studentId.value || !canSubmitAdd.value) return
-  saving.value = true
-  addError.value = ''
-  try {
-    if (addForm.mode === 'existing' && selectedExistingParentId.value != null) {
-      await parentService.assignToStudent(
-        selectedExistingParentId.value,
-        studentId.value,
-        addForm.relationship,
-      )
-    } else if (addForm.relationship === 'guardian') {
-      const nameParts = splitFullName(createForm.responsiblePerson)
-      await parentService.create({
-        firstName: nameParts.firstName,
-        lastName: createForm.organizationName.trim() || nameParts.lastName,
-        phone: createForm.orgPhone.trim(),
-        organizationName: createForm.organizationName.trim(),
-        responsiblePerson: createForm.responsiblePerson.trim(),
-        responsiblePhone: createForm.responsiblePhone.trim(),
-        studentIds: [studentId.value],
-        relationship: 'guardian',
-      })
-    } else {
-      await parentService.create({
-        firstName: createForm.first_name_ar.trim() || createForm.first_name_en.trim(),
-        lastName: createForm.last_name_ar.trim() || createForm.last_name_en.trim(),
-        first_name_ar: createForm.first_name_ar.trim(),
-        first_name_en: createForm.first_name_en.trim(),
-        last_name_ar: createForm.last_name_ar.trim(),
-        last_name_en: createForm.last_name_en.trim(),
-        civil_id: createForm.civil_id.trim(),
-        phone: createForm.mobile.trim(),
-        email: createForm.email.trim() || undefined,
-        createLogin: createForm.createLogin,
-        tribe: createForm.tribe.trim() || undefined,
-        workplace: createForm.workplace.trim() || undefined,
-        workPhone: createForm.workPhone.trim() || undefined,
-        maritalStatus: createForm.maritalStatus || undefined,
-        studentIds: [studentId.value],
-        relationship: addForm.relationship,
-      })
-    }
-    const refreshed = await studentService.getById(studentId.value)
-    applyStudent(refreshed)
-    closeAddParent()
-    feedback.success(t('students.saveParentsSuccess'), t('students.saveSuccessTitle'))
-  } catch (e) {
-    console.error(e)
-    addError.value = t('students.saveFailedMessage')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function unlinkParent(parent: Parent) {
-  if (!studentId.value) return
-  saving.value = true
-  try {
-    await parentService.unassignFromStudent(parent.id, studentId.value)
-    const refreshed = await studentService.getById(studentId.value)
-    applyStudent(refreshed)
-  } catch (e) {
-    console.error(e)
-    pageError.value = t('students.saveFailedMessage')
-  } finally {
-    saving.value = false
   }
 }
 

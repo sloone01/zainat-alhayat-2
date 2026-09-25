@@ -7,6 +7,7 @@ import { StudentCourseEnrollment } from '../entities/student-course-enrollment.e
 import { Schedule } from '../entities/schedule.entity';
 import { Course } from '../entities/course.entity';
 import type { NotifyRecipient } from './notification.types';
+import { formatStudentDisplayName } from '../common/identity/bilingual-name';
 
 @Injectable()
 export class NotificationAudienceService {
@@ -55,7 +56,7 @@ export class NotificationAudienceService {
     }
     return {
       schoolId: student.school_id ?? null,
-      studentName: `${student.firstName} ${student.lastName}`.trim(),
+      studentName: formatStudentDisplayName(student),
       recipients: this.recipientsFromParents(student.parents ?? []),
     };
   }

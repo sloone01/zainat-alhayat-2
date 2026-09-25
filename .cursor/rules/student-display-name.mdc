@@ -1,0 +1,28 @@
+---
+description: Student short display names are always first + second + family
+alwaysApply: true
+---
+
+# Student display name
+
+When **showing or composing** a student name for lists, cards, menus, exports, notifications, search labels, or API `name` / `studentName` fields, use:
+
+**first + second + family** (`firstName` / `first_name_*` + `secondName` / `secondNameEn` + `lastName` / `last_name_*`).
+
+## Rules
+
+- Prefer the shared helpers: frontend `formatStudentDisplayName` (`utils/student-display-name.ts`), backend `formatStudentDisplayName` (`common/identity/bilingual-name.ts`).
+- Do **not** use only `firstName` + `lastName` (drops the second name).
+- Do **not** include `thirdName` / `thirdNameEn` in the short display string. Third name stays on the record and on full legal/register forms (all four parts), not in list/label display.
+- Skip empty parts; join with a single space.
+- Locale: prefer Arabic parts when the UI is Arabic, English parts when English; fall back to the other language, then legacy `firstName` / `secondName` / `lastName`.
+
+## Anti-pattern
+
+```ts
+// BAD
+`${student.firstName} ${student.lastName}`
+
+// GOOD
+formatStudentDisplayName(student)
+```

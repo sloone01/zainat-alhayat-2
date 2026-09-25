@@ -95,7 +95,7 @@
                 <div @click.stop>
                   <RowActionsMenu
                     :open="activeMenuId === bus.id"
-                    placement="up"
+                    placement="down"
                     @toggle="toggleMenu(bus.id)"
                   >
                     <RowActionsItem icon="view" @click="openDailyLog(bus)">

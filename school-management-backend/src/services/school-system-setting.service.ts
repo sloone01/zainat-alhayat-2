@@ -77,6 +77,17 @@ const SETTING_REGISTRY: Record<string, RegistryEntry> = {
       'once_a_day: one roll per group per day (session 1). session_based: mark attendance per period/session order.',
     is_public: false,
   },
+  'reports.student_export': {
+    value: {
+      columns: ['name', 'age', 'group', 'bus', 'parent', 'enrollmentDate', 'status'],
+      layout_id: null,
+    },
+    type: 'json',
+    category: 'reports',
+    title: 'Student list export',
+    description: 'Columns and email layout for student list download (Excel / PDF / Word)',
+    is_public: false,
+  },
   'userPermissions.teacherCanViewAllGroups': {
     value: true,
     type: 'boolean',

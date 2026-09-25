@@ -102,7 +102,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading || listLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
+          <div v-if="(loading || listLoading) && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -128,11 +128,11 @@
                       class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-lg font-medium text-navy-800"
                       aria-hidden="true"
                     >
-                      {{ student.firstName.charAt(0) }}{{ student.lastName.charAt(0) }}
+                      {{ studentDisplayInitials(student, locale) }}
                     </span>
                     <div class="min-w-0">
                       <h3 class="truncate text-base font-medium leading-5 text-navy-800">
-                        {{ student.firstName }} {{ student.lastName }}
+                        {{ studentDisplayName(student) }}
                       </h3>
                       <p class="mt-0.5 truncate text-xs leading-5 text-fikr-ink-muted">
                         {{ getStudentGroup(student) }} · {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}
@@ -144,8 +144,12 @@
                     placement="up"
                     @toggle="toggleMenu(student.id)"
                   >
-                    <RowActionsItem icon="view" @click="onViewStudent(student)">
-                      {{ $t('studentManagement.studentCardTitle') }}
+                    <RowActionsItem
+                      v-if="getStudentStatus(student) !== 'draft'"
+                      icon="view"
+                      @click="onViewStudent(student)"
+                    >
+                      {{ $t('common.view') }}
                     </RowActionsItem>
                     <RowActionsItem
                       v-if="canEditStudent"
@@ -155,25 +159,33 @@
                       {{ $t('common.edit') }}
                     </RowActionsItem>
                     <RowActionsItem
-                      v-if="canEditStudent && (!student.groups || student.groups.length === 0)"
+                      v-if="canEditStudent && getStudentStatus(student) !== 'draft' && (!student.groups || student.groups.length === 0)"
                       icon="group"
                       @click="onAssignToGroup(student)"
                     >
                       {{ $t('studentManagement.assignToGroup') }}
                     </RowActionsItem>
                     <RowActionsItem
-                      v-if="canEditStudent && (!student.buses || student.buses.length === 0)"
+                      v-if="canEditStudent && getStudentStatus(student) !== 'draft' && (!student.buses || student.buses.length === 0)"
                       icon="bus"
                       @click="onAssignToBus(student)"
                     >
                       {{ $t('studentManagement.assignToBus') }}
                     </RowActionsItem>
                     <RowActionsItem
-                      v-if="canEditStudent && (!student.parents || student.parents.length === 0)"
+                      v-if="canEditStudent && getStudentStatus(student) !== 'draft' && (!student.parents || student.parents.length === 0)"
                       icon="parent"
                       @click="onCreateParent(student)"
                     >
                       {{ $t('studentManagement.createParent') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="canDeleteStudent && getStudentStatus(student) === 'draft'"
+                      icon="delete"
+                      danger
+                      @click="onDeleteStudent(student)"
+                    >
+                      {{ $t('common.delete') }}
                     </RowActionsItem>
                   </RowActionsMenu>
                 </div>
@@ -181,9 +193,13 @@
                   <span class="fk-ktag">
                     <span
                       class="fk-ktag__dot"
-                      :class="getStudentStatus(student) === 'active' ? 'bg-primary-500' : 'bg-fikr-ink-soft'"
+                      :class="{
+                        'bg-primary-500': getStudentStatus(student) === 'active',
+                        'bg-amber-500': getStudentStatus(student) === 'draft',
+                        'bg-fikr-ink-soft': getStudentStatus(student) === 'inactive',
+                      }"
                     />
-                    {{ getStudentStatus(student) === 'active' ? $t('studentManagement.active') : $t('studentManagement.inactive') }}
+                    {{ studentStatusLabel(student) }}
                   </span>
                 </div>
                 <div class="mt-auto flex items-start justify-between gap-4 border-t border-fikr-hairline pt-4 text-sm leading-5">
@@ -218,7 +234,7 @@
                     :key="'list-' + student.id"
                   >
                     <td>
-                      <div class="font-medium">{{ student.firstName }} {{ student.lastName }}</div>
+                      <div class="font-medium">{{ studentDisplayName(student) }}</div>
                     </td>
                     <td class="whitespace-nowrap tabular-nums">
                       {{ calculateAge(student.dateOfBirth) }} {{ $t('studentManagement.years') }}
@@ -229,9 +245,13 @@
                     <td>
                       <span
                         class="fk-pill"
-                        :class="getStudentStatus(student) === 'active' ? 'fk-pill--teal' : 'fk-pill--mist'"
+                        :class="{
+                          'fk-pill--teal': getStudentStatus(student) === 'active',
+                          'fk-pill--outline': getStudentStatus(student) === 'draft',
+                          'fk-pill--mist': getStudentStatus(student) === 'inactive',
+                        }"
                       >
-                        {{ getStudentStatus(student) === 'active' ? $t('studentManagement.active') : $t('studentManagement.inactive') }}
+                        {{ studentStatusLabel(student) }}
                       </span>
                     </td>
                     <td>
@@ -241,8 +261,12 @@
                           placement="up"
                           @toggle="toggleMenu(student.id)"
                         >
-                          <RowActionsItem icon="view" @click="onViewStudent(student)">
-                            {{ $t('studentManagement.studentCardTitle') }}
+                          <RowActionsItem
+                            v-if="getStudentStatus(student) !== 'draft'"
+                            icon="view"
+                            @click="onViewStudent(student)"
+                          >
+                            {{ $t('common.view') }}
                           </RowActionsItem>
                           <RowActionsItem
                             v-if="canEditStudent"
@@ -252,25 +276,33 @@
                             {{ $t('common.edit') }}
                           </RowActionsItem>
                           <RowActionsItem
-                            v-if="canEditStudent && (!student.groups || student.groups.length === 0)"
+                            v-if="canEditStudent && getStudentStatus(student) !== 'draft' && (!student.groups || student.groups.length === 0)"
                             icon="group"
                             @click="onAssignToGroup(student)"
                           >
                             {{ $t('studentManagement.assignToGroup') }}
                           </RowActionsItem>
                           <RowActionsItem
-                            v-if="canEditStudent && (!student.buses || student.buses.length === 0)"
+                            v-if="canEditStudent && getStudentStatus(student) !== 'draft' && (!student.buses || student.buses.length === 0)"
                             icon="bus"
                             @click="onAssignToBus(student)"
                           >
                             {{ $t('studentManagement.assignToBus') }}
                           </RowActionsItem>
                           <RowActionsItem
-                            v-if="canEditStudent && (!student.parents || student.parents.length === 0)"
+                            v-if="canEditStudent && getStudentStatus(student) !== 'draft' && (!student.parents || student.parents.length === 0)"
                             icon="parent"
                             @click="onCreateParent(student)"
                           >
                             {{ $t('studentManagement.createParent') }}
+                          </RowActionsItem>
+                          <RowActionsItem
+                            v-if="canDeleteStudent && getStudentStatus(student) === 'draft'"
+                            icon="delete"
+                            danger
+                            @click="onDeleteStudent(student)"
+                          >
+                            {{ $t('common.delete') }}
                           </RowActionsItem>
                         </RowActionsMenu>
                       </div>
@@ -365,6 +397,7 @@
             >
               <option value="">{{ $t('studentManagement.allStatuses') }}</option>
               <option value="active">{{ $t('studentManagement.active') }}</option>
+              <option value="draft">{{ $t('studentManagement.draft') }}</option>
               <option value="inactive">{{ $t('studentManagement.inactive') }}</option>
             </select>
           </div>
@@ -534,6 +567,7 @@
                             type="date"
                             required
                             class="fk-field"
+                            :max="maxStudentDob"
                           />
                         </div>
                         <div>
@@ -724,7 +758,7 @@
       >
         <div v-if="assigningStudent" class="space-y-4">
           <p class="text-sm text-fikr-ink-soft">
-            {{ $t('studentManagement.assignStudentToGroup', { name: `${assigningStudent.firstName} ${assigningStudent.lastName}` }) }}
+            {{ $t('studentManagement.assignStudentToGroup', { name: studentDisplayName(assigningStudent) }) }}
           </p>
           <div v-if="paymentLevelsForAssign.length" class="fk-form__row">
             <label class="fk-flabel" for="assign-fee-level"><span>{{ $t('studentManagement.feeLevel') }}</span></label>
@@ -776,7 +810,7 @@
       >
         <div v-if="assigningStudentForBus" class="space-y-4">
           <p class="text-sm text-fikr-ink-soft">
-            {{ $t('studentManagement.assignStudentToBus', { name: `${assigningStudentForBus.firstName} ${assigningStudentForBus.lastName}` }) }}
+            {{ $t('studentManagement.assignStudentToBus', { name: studentDisplayName(assigningStudentForBus) }) }}
           </p>
           <div class="fk-form__row">
             <label class="fk-flabel" for="assign-bus"><span>{{ $t('studentManagement.selectBus') }}</span></label>
@@ -815,7 +849,7 @@
         @close="closeParentManagementModal"
       >
               <p v-if="managingParentsFor" class="mb-4 text-sm text-gray-500">
-                {{ managingParentsFor.firstName }} {{ managingParentsFor.lastName }}
+                {{ studentDisplayName(managingParentsFor) }}
               </p>
 
               <div v-if="parentActionError" class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -1150,7 +1184,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useClaims } from '@/composables/useClaims'
 import html2canvas from 'html2canvas'
-import { isValidEmail } from '@/utils/validation'
+import { isValidEmail, localDateInputValue } from '@/utils/validation'
 import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -1164,17 +1198,29 @@ import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import StudentIdCard from '@/components/StudentIdCard.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
+import { useFeedback } from '@/composables/useFeedback'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { fetchAllPages, useServerPagination } from '@/composables/useServerPagination'
 import { useSchoolBrand } from '@/composables/useSchoolBrand'
 import { authService } from '@/services'
 import { studentService, type Student, type StudentListParams } from '@/services/student.service'
+import reportExportService from '@/services/report-export.service'
+import {
+  DEFAULT_STUDENT_EXPORT_COLUMNS,
+  applyExportLayout,
+  type StudentExportColumnKey,
+} from '@/utils/student-export-columns'
 import { groupService, type Group } from '@/services/group.service'
 import { busService, type Bus } from '@/services/bus.service'
 import { parentService, type Parent } from '@/services/parent.service'
 import paymentConfigService from '@/services/payment-config.service'
 import type { SchoolPaymentLevel } from '@/services/payment-config.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
+import {
+  formatStudentDisplayName,
+  studentDisplayInitials,
+} from '@/utils/student-display-name'
 
 const { locale, t } = useI18n()
 const router = useRouter()
@@ -1184,6 +1230,8 @@ const { load: loadSchoolBrand, schoolName, logoSrc: schoolLogoSrc } = useSchoolB
 const isRTL = computed(() => locale.value === 'ar')
 /** Row / toolbar mutations — hidden when the group lacks students:edit. */
 const canEditStudent = computed(() => hasClaim('students', 'edit'))
+const canDeleteStudent = computed(() => hasClaim('students', 'delete'))
+const feedback = useFeedback()
 const canCreateStudent = computed(
   () => hasClaim('student_register', 'create') || hasClaim('students', 'create'),
 )
@@ -1225,12 +1273,12 @@ const groups = ref<Group[]>([])
 const buses = ref<Bus[]>([])
 
 // Filters are applied by the API; `students` is only the current page.
-// selectedStatus is not sent: students have no status column yet (draft/active/inactive is pending).
 const listFilters = computed<StudentListParams>(() => ({
   q: searchQuery.value.trim(),
   group_id: selectedGroup.value || undefined,
   bus_id: selectedBusFilter.value || undefined,
   age_group: (selectedAgeGroup.value || undefined) as StudentListParams['age_group'],
+  status: (selectedStatus.value || undefined) as StudentListParams['status'],
 }))
 
 const {
@@ -1307,6 +1355,8 @@ const studentForm = ref({
   email: '',
   notes: ''
 })
+
+const maxStudentDob = localDateInputValue()
 
 const parentForm = ref({
   firstName: '',
@@ -1411,10 +1461,7 @@ const getParentName = (student: Student) => {
 }
 
 function studentDisplayName(student: Student) {
-  return [student.firstName, student.secondName, student.thirdName, student.lastName]
-    .map((part) => String(part || '').trim())
-    .filter(Boolean)
-    .join(' ')
+  return formatStudentDisplayName(student, locale.value)
 }
 
 function studentGenderLabel(student: Student) {
@@ -1447,12 +1494,18 @@ async function printStudentCard() {
   else setTimeout(done, 800)
 }
 
-const getStudentStatus = (student: Student): 'active' | 'inactive' => {
-  const s = (student as unknown as { status?: string }).status
-  if (s === 'inactive') return 'inactive'
-  if (s === 'active') return 'active'
+const getStudentStatus = (student: Student): 'draft' | 'active' | 'inactive' => {
+  const s = student.status
+  if (s === 'draft' || s === 'inactive' || s === 'active') return s
   if ((student as unknown as { isActive?: boolean }).isActive === false) return 'inactive'
   return 'active'
+}
+
+const studentStatusLabel = (student: Student) => {
+  const s = getStudentStatus(student)
+  if (s === 'draft') return t('studentManagement.draft')
+  if (s === 'inactive') return t('studentManagement.inactive')
+  return t('studentManagement.active')
 }
 
 const exportFilterLines = computed(() => {
@@ -1468,9 +1521,15 @@ const exportFilterLines = computed(() => {
     lines.push({ label: t('studentManagement.filterBus'), value: b?.title ?? String(selectedBusFilter.value) })
   }
   if (selectedStatus.value) {
+    const statusKey =
+      selectedStatus.value === 'draft'
+        ? 'draft'
+        : selectedStatus.value === 'inactive'
+          ? 'inactive'
+          : 'active'
     lines.push({
       label: t('studentManagement.filterStatus'),
-      value: selectedStatus.value === 'active' ? t('studentManagement.active') : t('studentManagement.inactive'),
+      value: t(`studentManagement.${statusKey}`),
     })
   }
   if (selectedAgeGroup.value) {
@@ -1505,24 +1564,58 @@ const exportStamp = () => {
 const buildStudentExportRows = (): Promise<Student[]> =>
   fetchAllPages<Student, StudentListParams>((params) => studentService.listPage(params), listFilters.value)
 
-const buildExportTableHtml = (exportRows: Student[]) => {
+function exportColumnLabel(key: StudentExportColumnKey) {
+  return t(`reports.studentExportCol.${key}`)
+}
+
+function studentExportCell(student: Student, key: StudentExportColumnKey): string {
+  switch (key) {
+    case 'name':
+      return studentDisplayName(student)
+    case 'age':
+      return `${calculateAge(student.dateOfBirth)} ${t('studentManagement.years')}`
+    case 'group':
+      return getStudentGroup(student)
+    case 'bus':
+      return getStudentBusTitles(student)
+    case 'parent':
+      return getParentName(student)
+    case 'enrollmentDate':
+      return formatDate(student.createdAt)
+    case 'status':
+      return studentStatusLabel(student)
+    case 'civilId':
+      return student.civil_id || ''
+    case 'gender':
+      return studentGenderLabel(student)
+    case 'dateOfBirth':
+      return student.dateOfBirth ? formatDate(student.dateOfBirth) : ''
+    case 'nationality':
+      return student.nationality || ''
+    case 'studentId':
+      return student.studentId || ''
+    case 'emergencyContact':
+      return student.emergencyContact || ''
+    case 'email':
+      return student.email || ''
+    default:
+      return ''
+  }
+}
+
+const buildExportTableHtml = (exportRows: Student[], columns: StudentExportColumnKey[]) => {
+  const cols = columns.length ? columns : [...DEFAULT_STUDENT_EXPORT_COLUMNS]
   const ta = isRTL.value ? 'right' : 'left'
   const dir = isRTL.value ? 'rtl' : 'ltr'
+  const headerCells = cols
+    .map((key) => `<th>${escapeHtml(exportColumnLabel(key))}</th>`)
+    .join('')
   const rows = exportRows
     .map((student) => {
-      const name = `${student.firstName} ${student.lastName}`
-      const age = `${calculateAge(student.dateOfBirth)} ${t('studentManagement.years')}`
-      const statusLabel =
-        getStudentStatus(student) === 'active' ? t('studentManagement.active') : t('studentManagement.inactive')
-      return `<tr>
-        <td>${escapeHtml(name)}</td>
-        <td>${escapeHtml(age)}</td>
-        <td>${escapeHtml(getStudentGroup(student))}</td>
-        <td>${escapeHtml(getStudentBusTitles(student))}</td>
-        <td>${escapeHtml(getParentName(student))}</td>
-        <td>${escapeHtml(formatDate(student.createdAt))}</td>
-        <td>${escapeHtml(statusLabel)}</td>
-      </tr>`
+      const cells = cols
+        .map((key) => `<td>${escapeHtml(studentExportCell(student, key))}</td>`)
+        .join('')
+      return `<tr>${cells}</tr>`
     })
     .join('')
 
@@ -1555,15 +1648,7 @@ const buildExportTableHtml = (exportRows: Student[]) => {
       ${filterBlock}
       <table>
         <thead>
-          <tr>
-            <th>${escapeHtml(t('studentManagement.exportStudentName'))}</th>
-            <th>${escapeHtml(t('studentManagement.age'))}</th>
-            <th>${escapeHtml(t('studentManagement.group'))}</th>
-            <th>${escapeHtml(t('studentManagement.exportBus'))}</th>
-            <th>${escapeHtml(t('studentManagement.parent'))}</th>
-            <th>${escapeHtml(t('studentManagement.enrollmentDate'))}</th>
-            <th>${escapeHtml(t('studentManagement.exportStatus'))}</th>
-          </tr>
+          <tr>${headerCells}</tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
@@ -1571,7 +1656,11 @@ const buildExportTableHtml = (exportRows: Student[]) => {
   `
 }
 
-function buildExcelRows(exportRows: Student[]): (string | number)[][] {
+function buildExcelRows(
+  exportRows: Student[],
+  columns: StudentExportColumnKey[],
+): (string | number)[][] {
+  const cols = columns.length ? columns : [...DEFAULT_STUDENT_EXPORT_COLUMNS]
   const rows: (string | number)[][] = []
   rows.push([t('studentManagement.title')])
   rows.push([t('studentManagement.exportReportSubtitle')])
@@ -1584,36 +1673,26 @@ function buildExcelRows(exportRows: Student[]): (string | number)[][] {
     }
     rows.push([])
   }
-  rows.push([
-    t('studentManagement.exportStudentName'),
-    t('studentManagement.age'),
-    t('studentManagement.group'),
-    t('studentManagement.exportBus'),
-    t('studentManagement.parent'),
-    t('studentManagement.enrollmentDate'),
-    t('studentManagement.exportStatus'),
-  ])
+  rows.push(cols.map((key) => exportColumnLabel(key)))
   for (const student of exportRows) {
-    const statusLabel =
-      getStudentStatus(student) === 'active' ? t('studentManagement.active') : t('studentManagement.inactive')
-    rows.push([
-      `${student.firstName} ${student.lastName}`,
-      `${calculateAge(student.dateOfBirth)} ${t('studentManagement.years')}`,
-      getStudentGroup(student),
-      getStudentBusTitles(student),
-      getParentName(student),
-      formatDate(student.createdAt),
-      statusLabel,
-    ])
+    rows.push(cols.map((key) => studentExportCell(student, key)))
   }
   return rows
 }
 
 const runExport = async (format: 'word' | 'pdf' | 'excel') => {
   let exportRows: Student[] = []
+  let columns: StudentExportColumnKey[] = [...DEFAULT_STUDENT_EXPORT_COLUMNS]
+  let layoutHtml: string | null = null
   try {
     loading.value = true
-    exportRows = await buildStudentExportRows()
+    const [rows, config] = await Promise.all([
+      buildStudentExportRows(),
+      reportExportService.getExport('students', locale.value).catch(() => null),
+    ])
+    exportRows = rows
+    if (config?.columns?.length) columns = config.columns as StudentExportColumnKey[]
+    layoutHtml = config?.template_html ?? null
   } catch (e) {
     console.error('Student export fetch failed:', e)
     window.alert(t('studentManagement.loadFailed'))
@@ -1629,7 +1708,7 @@ const runExport = async (format: 'word' | 'pdf' | 'excel') => {
   const dateSeg = new Date().toISOString().slice(0, 10)
 
   if (format === 'excel') {
-    const ws = XLSX.utils.aoa_to_sheet(buildExcelRows(exportRows))
+    const ws = XLSX.utils.aoa_to_sheet(buildExcelRows(exportRows, columns))
     const wb = XLSX.utils.book_new()
     applyRtlToExcel(wb, ws, isRTL.value)
     XLSX.utils.book_append_sheet(wb, ws, 'Students')
@@ -1638,7 +1717,8 @@ const runExport = async (format: 'word' | 'pdf' | 'excel') => {
     return
   }
 
-  const inner = buildExportTableHtml(exportRows)
+  const tableHtml = buildExportTableHtml(exportRows, columns)
+  const inner = applyExportLayout(layoutHtml, tableHtml)
 
   if (format === 'word') {
     const html = `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="${locale.value}"><head><meta charset="utf-8"><title>${escapeHtml(t('studentManagement.title'))}</title></head><body>${inner}</body></html>`
@@ -1781,6 +1861,29 @@ function onAssignToBus(student: Student) {
 function onCreateParent(student: Student) {
   closeMenu()
   createParent(student)
+}
+
+async function onDeleteStudent(student: Student) {
+  closeMenu()
+  if (getStudentStatus(student) !== 'draft') return
+  const ok = await feedback.confirm({
+    title: t('common.delete'),
+    message: t('studentManagement.confirmDeleteDraft', { name: studentDisplayName(student) }),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  })
+  if (!ok) return
+  try {
+    await studentService.deleteStudent(student.id)
+    feedback.success(t('studentManagement.draftDeleted'), t('common.success'))
+    await loadStudents()
+  } catch (err: unknown) {
+    const message =
+      err && typeof err === 'object' && 'message' in err
+        ? String((err as { message?: string }).message || '')
+        : ''
+    feedback.error(message || t('studentManagement.deleteDraftFailed'), t('common.error'))
+  }
 }
 
 // Modal functions
@@ -2118,7 +2221,12 @@ const confirmResetPassword = async () => {
 
 const unlinkParent = async (parent: Parent) => {
   if (!managingParentsFor.value) return
-  if (!window.confirm(t('studentManagement.confirmUnlinkParent'))) return
+  if (!(await feedback.confirm({
+    title: t('common.confirm'),
+    message: t('studentManagement.confirmUnlinkParent'),
+    confirmLabel: t('common.confirm'),
+    danger: true,
+  }))) return
   try {
     loading.value = true
     parentActionError.value = ''

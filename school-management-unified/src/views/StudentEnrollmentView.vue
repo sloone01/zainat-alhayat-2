@@ -42,7 +42,10 @@
           v-if="currentStep === 1"
           v-model="formData.student"
           compact
+          mode="public"
+          :school-id="schoolId"
           @next="handleNext"
+          @enrollment-draft-loaded="onEnrollmentDraftLoaded"
         />
         <AcademicInfoStep
           v-else-if="currentStep === 2"
@@ -73,8 +76,15 @@
           @next="handleNext"
           @back="handleBack"
         />
-        <PaymentPlanStep
+        <DocumentsStep
           v-else-if="currentStep === 6"
+          v-model="formData.documents"
+          compact
+          @next="handleNext"
+          @back="handleBack"
+        />
+        <PaymentPlanStep
+          v-else-if="currentStep === 7"
           v-model="selectedPlanId"
           :school-id="schoolId"
           :grade-level="formData.academic.gradeLevel"
@@ -82,7 +92,7 @@
           @back="handleBack"
         />
         <ReviewSubmitStep
-          v-else-if="currentStep === 7"
+          v-else-if="currentStep === 8"
           :form-data="formData"
           :school-id="schoolId"
           compact
@@ -129,13 +139,15 @@ import { schoolLandingService, type SchoolLandingMeta } from '@/services/school-
 import { useFeedback } from '@/composables/useFeedback'
 import { isSchoolIdUuid } from '@/utils/auth-token'
 import { mediaUrl } from '@/utils/thawaniCheckout'
-import { createEmptyStaffIntakeForm } from '@/components/enrollment/staffIntake'
+import { createEmptyStaffIntakeForm, composeBilingualFullName, hasCompleteStudentIdentity, formatStaffIntakeDate } from '@/components/enrollment/staffIntake'
+import { isNotFutureDate } from '@/utils/validation'
 import EnrollmentWizardChrome from '@/components/enrollment/EnrollmentWizardChrome.vue'
 import StudentDetailsStep from '@/components/enrollment/StudentDetailsStep.vue'
 import AcademicInfoStep from '@/components/enrollment/AcademicInfoStep.vue'
 import HealthInfoStep from '@/components/enrollment/HealthInfoStep.vue'
 import GuardianInfoStep from '@/components/enrollment/GuardianInfoStep.vue'
 import AddressInfoStep from '@/components/enrollment/AddressInfoStep.vue'
+import DocumentsStep from '@/components/enrollment/DocumentsStep.vue'
 import PaymentPlanStep from '@/components/enrollment/PaymentPlanStep.vue'
 import ReviewSubmitStep from '@/components/enrollment/ReviewSubmitStep.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
@@ -185,11 +197,14 @@ const backToSchoolPath = computed(() => {
 })
 
 const currentStep = ref(1)
-const totalSteps = 7
+const totalSteps = 8
 const isSubmitting = ref(false)
 const showSuccessDialog = ref(false)
 const formData = ref(createEmptyStaffIntakeForm())
 const selectedPlanId = ref<string | null>(null)
+/** Public-form draft id (enrollments.status=draft) — distinct from staff student drafts. */
+const draftEnrollmentId = ref<string | null>(null)
+const draftSaving = ref(false)
 
 const steps = computed(() => [
   {
@@ -223,6 +238,12 @@ const steps = computed(() => [
     description: t('enrollment.addressDescription'),
   },
   {
+    key: 'documents',
+    shortTitle: t('students.stepShortDocuments'),
+    title: t('enrollment.steps.documents'),
+    description: t('enrollment.documentsDescription'),
+  },
+  {
     key: 'payment',
     shortTitle: t('students.stepShortPayment'),
     title: t('enrollment.steps.payment'),
@@ -236,7 +257,136 @@ const steps = computed(() => [
   },
 ])
 
-const handleNext = () => {
+function onEnrollmentDraftLoaded(
+  draft: { id: string; payload: Record<string, unknown> | null } | null,
+) {
+  if (!draft?.id) {
+    draftEnrollmentId.value = null
+    return
+  }
+  draftEnrollmentId.value = draft.id
+  const payload = draft.payload || {}
+  if (payload.academic && typeof payload.academic === 'object') {
+    Object.assign(formData.value.academic, payload.academic)
+  }
+  if (payload.health && typeof payload.health === 'object') {
+    Object.assign(formData.value.health, payload.health)
+    formData.value.health.medicalReports = Array.isArray(
+      (payload.health as { medicalReports?: unknown }).medicalReports,
+    )
+      ? ((payload.health as { medicalReports: (File | string)[] }).medicalReports)
+      : []
+  }
+  if (payload.guardian && typeof payload.guardian === 'object') {
+    Object.assign(formData.value.guardian, payload.guardian)
+  }
+  if (payload.address && typeof payload.address === 'object') {
+    Object.assign(formData.value.address, payload.address)
+  }
+  if (payload.documents && typeof payload.documents === 'object') {
+    Object.assign(formData.value.documents, payload.documents)
+  }
+  if (typeof payload.installment_plan_id === 'string' && payload.installment_plan_id) {
+    selectedPlanId.value = payload.installment_plan_id
+  }
+}
+
+function buildDraftPayload(): Record<string, unknown> {
+  return {
+    student: {
+      ...formData.value.student,
+      dateOfBirth: formatStaffIntakeDate(formData.value.student.dateOfBirth) || null,
+      photo:
+        typeof formData.value.student.photo === 'string'
+          ? formData.value.student.photo
+          : null,
+    },
+    academic: { ...formData.value.academic },
+    health: {
+      ...formData.value.health,
+      medicalReports: (formData.value.health.medicalReports || []).filter(
+        (f): f is string => typeof f === 'string',
+      ),
+    },
+    guardian: JSON.parse(JSON.stringify(formData.value.guardian)),
+    address: { ...formData.value.address },
+    documents: {
+      parentIdDocuments: (formData.value.documents.parentIdDocuments || []).filter(
+        (f): f is string => typeof f === 'string',
+      ),
+      birthCertificate:
+        typeof formData.value.documents.birthCertificate === 'string'
+          ? formData.value.documents.birthCertificate
+          : null,
+      childIdDocument:
+        typeof formData.value.documents.childIdDocument === 'string'
+          ? formData.value.documents.childIdDocument
+          : null,
+    },
+    installment_plan_id: selectedPlanId.value,
+  }
+}
+
+async function savePublicDraft() {
+  const civil = formData.value.student.idNumber.trim()
+  if (!schoolId.value || !civil) return
+  draftSaving.value = true
+  try {
+    const saved = await enrollmentService.savePublicDraft({
+      school_id: schoolId.value,
+      civil_id: civil,
+      draftEnrollmentId: draftEnrollmentId.value,
+      payload: buildDraftPayload(),
+    })
+    draftEnrollmentId.value = saved.id
+  } finally {
+    draftSaving.value = false
+  }
+}
+
+const handleNext = async () => {
+  if (currentStep.value === 1) {
+    const student = formData.value.student
+    if (
+      !hasCompleteStudentIdentity(student) ||
+      !student.idNumber.trim() ||
+      !student.gender ||
+      !student.nationality.trim() ||
+      !student.dateOfBirth
+    ) {
+      feedback.error(t('students.validationFillRequired'), t('students.validationErrorTitle'))
+      return
+    }
+    if (!isNotFutureDate(student.dateOfBirth)) {
+      feedback.error(t('validation.dateOfBirthFuture'), t('students.validationErrorTitle'))
+      return
+    }
+  }
+  if (currentStep.value === 6) {
+    const docs = formData.value.documents
+    if (
+      !docs.parentIdDocuments.length ||
+      !docs.birthCertificate ||
+      !docs.childIdDocument
+    ) {
+      feedback.error(t('enrollment.documentsRequired'), t('students.validationErrorTitle'))
+      return
+    }
+  }
+  if (currentStep.value === 7 && !selectedPlanId.value) {
+    feedback.error(t('enrollment.selectInstallmentPlanRequired'), t('students.validationErrorTitle'))
+    return
+  }
+
+  try {
+    await savePublicDraft()
+  } catch (e) {
+    console.error(e)
+    const message = e instanceof Error ? e.message : t('enrollment.submitError')
+    feedback.error(message)
+    return
+  }
+
   if (currentStep.value < totalSteps) currentStep.value++
 }
 
@@ -285,6 +435,8 @@ const handleSubmit = async () => {
       installment_plan_id: selectedPlanId.value,
       student: {
         ...formData.value.student,
+        fullName:
+          composeBilingualFullName(formData.value.student) || formData.value.student.fullName,
         dateOfBirth:
           formData.value.student.dateOfBirth instanceof Date
             ? formData.value.student.dateOfBirth.toISOString().split('T')[0]
@@ -300,6 +452,7 @@ const handleSubmit = async () => {
       health: formData.value.health,
       guardian: formData.value.guardian,
       address: formData.value.address,
+      documents: formData.value.documents,
     }
 
     await enrollmentService.submitEnrollment(enrollmentData)

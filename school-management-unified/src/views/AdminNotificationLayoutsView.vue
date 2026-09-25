@@ -420,6 +420,7 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import { useDebounceFn } from '@vueuse/core'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -440,6 +441,7 @@ import { docxFileToHtmlFragment, isDocxFile, wrapDocxHtmlAsLayout } from '@/util
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t, te } = useI18n()
+const feedback = useFeedback()
 const route = useRoute()
 const isRTL = computed(() => locale.value === 'ar')
 const isPlatform = computed(() => route.path.startsWith('/platform/'))
@@ -798,7 +800,12 @@ async function save() {
 
 async function removeSelected() {
   if (!selectedId.value || layouts.value.length <= 1) return
-  if (!confirm(t('notificationLayouts.deleteConfirm'))) return
+  if (!(await feedback.confirm({
+    title: t('common.delete'),
+    message: t('notificationLayouts.deleteConfirm'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  }))) return
   saving.value = true
   flashError.value = ''
   try {

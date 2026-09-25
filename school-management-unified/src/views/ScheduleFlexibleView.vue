@@ -78,80 +78,19 @@
           <p class="text-sm font-semibold">{{ $t('scheduleManagement.noGroupSelected') }}</p>
         </div>
 
-        <template v-else>
-          <div class="hidden overflow-x-auto lg:block">
-            <div class="fk-tt-grid" style="grid-template-columns: repeat(5, minmax(0, 1fr))">
-              <div
-                v-for="day in weekDays"
-                :key="day.key"
-                class="flex min-w-0 flex-col gap-1.5"
-              >
-                <div
-                  class="fk-tt-grid__day"
-                  :class="day.key === todayDayKey ? 'fk-tt-grid__day--today' : ''"
-                >
-                  {{ $t(`scheduleManagement.days.${day.key}`) }}
-                  <template v-if="day.key === todayDayKey"> · {{ $t('scheduleUi.today') }}</template>
-                </div>
-                <button
-                  v-for="cls in sortedDayClasses(day.key)"
-                  :key="cls.id"
-                  type="button"
-                  class="fk-tt-cell fk-tt-cell--lesson w-full"
-                  :class="day.key === todayDayKey ? 'fk-tt-cell--today' : ''"
-                  :style="{ minHeight: `${sessionCardHeight(cls)}px` }"
-                  @click="editClass(cls)"
-                >
-                  <p class="fk-tt-cell__title">{{ cls.subjectLabel }}</p>
-                  <p class="fk-tt-cell__meta">{{ cls.teacherLabel }}</p>
-                  <p class="fk-tt-cell__meta">{{ cls.startTime }} – {{ cls.endTime }}</p>
-                  <p v-if="cls.room" class="fk-tt-cell__meta">{{ cls.room }}</p>
-                </button>
-                <button
-                  type="button"
-                  class="fk-tt-cell fk-tt-cell--empty mt-auto w-full"
-                  @click="addClass(nextStartForDay(day.key), day.key)"
-                >
-                  {{ $t('scheduleUi.add') }}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="space-y-5 lg:hidden">
-            <div v-for="day in weekDays" :key="day.key" class="space-y-2">
-              <h3 class="text-sm font-semibold text-[#0a2147]">
-                {{ $t(`scheduleManagement.days.${day.key}`) }}
-                <template v-if="day.key === todayDayKey"> · {{ $t('scheduleUi.today') }}</template>
-              </h3>
-              <button
-                v-for="cls in sortedDayClasses(day.key)"
-                :key="cls.id"
-                type="button"
-                class="fk-tt-lesson w-full"
-                @click="editClass(cls)"
-              >
-                <span class="fk-tt-lesson__clock">
-                  {{ cls.startTime }}<template v-if="cls.endTime"><br>{{ cls.endTime }}</template>
-                </span>
-                <div class="min-w-0 flex-1">
-                  <p class="fk-tt-lesson__title">{{ cls.subjectLabel }}</p>
-                  <p class="fk-tt-lesson__sub">
-                    {{ cls.teacherLabel }}
-                    <template v-if="cls.room"> · {{ cls.room }}</template>
-                  </p>
-                </div>
-              </button>
-              <button
-                type="button"
-                class="fk-tt-cell fk-tt-cell--empty min-h-14 w-full"
-                @click="addClass(nextStartForDay(day.key), day.key)"
-              >
-                {{ $t('scheduleUi.add') }}
-              </button>
-            </div>
-          </div>
-        </template>
+        <FlexibleTimeline
+          v-else
+          :slots="timelineSlots"
+          :days="timelineDays"
+          :start-hour="timelineBounds.startHour"
+          :end-hour="timelineBounds.endHour"
+          :rtl="isRTL"
+          :busy="loading"
+          @select="onTimelineSelect"
+          @add="onTimelineAdd"
+          @move="onTimelineMove"
+          @reject="onTimelineReject"
+        />
       </section>
     </div>
 
@@ -184,6 +123,8 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import IconDownload from '@/components/icons/IconDownload.vue'
 import ClassModal from '@/components/ClassModal.vue'
+import FlexibleTimeline from '@/components/FlexibleTimeline.vue'
+import { useFeedback } from '@/composables/useFeedback'
 import { courseService } from '@/services/course.service'
 import userService from '@/services/user.service'
 import { scheduleService } from '@/services/schedule.service'
@@ -205,7 +146,19 @@ import { isCourseSchedulable } from '@/utils/course-status'
 import { resolveFeeLevelId } from '@/utils/fee-level'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
+
+const SESSION_COLORS = ['#2563eb', '#059669', '#7c3aed', '#ea580c', '#0f766e', '#db2777', '#ca8a04']
+
+function sessionColor(courseId: string | null, raw?: string) {
+  const value = String(raw || '').trim()
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)) return value
+  const key = String(courseId || value || 'session')
+  let index = 0
+  for (let i = 0; i < key.length; i += 1) index = (index + key.charCodeAt(i)) % SESSION_COLORS.length
+  return SESSION_COLORS[index]
+}
 
 function escapeHtml(text: string): string {
   return String(text)
@@ -389,6 +342,10 @@ const fetchSchedules = async (groupId: string) => {
           courseId: courseId != null ? String(courseId) : null,
           teacherId: tid || null,
           groupId: schedule.group_id,
+          color: sessionColor(
+            courseId != null ? String(courseId) : null,
+            schedule.course?.color_code || schedule.course?.colorCode,
+          ),
         }
       })
       .filter(Boolean)
@@ -493,7 +450,100 @@ const sortedDayClasses = (day: string) =>
 
 const sessionMinutes = (cls: any) => sessionDurationMinutes(cls?.startTime, cls?.endTime)
 
-const sessionCardHeight = (cls: any) => Math.max(88, Math.round(sessionMinutes(cls) * 0.7))
+const timelineDays = computed(() =>
+  weekDays.map((day) => ({
+    key: day.key,
+    label: t(`scheduleManagement.days.${day.key}`),
+    isToday: day.key === todayDayKey,
+  })),
+)
+
+const timelineSlots = computed(() =>
+  currentSchedule.value.map((cls) => ({
+    id: String(cls.id),
+    day: cls.day,
+    startTime: cls.startTime,
+    endTime: cls.endTime,
+    title: cls.subjectLabel || cls.subject || '—',
+    teacher: cls.teacherLabel || '',
+    color: cls.color || sessionColor(cls.courseId, ''),
+  })),
+)
+
+const timelineBounds = computed(() => {
+  let min = hmToMinutes(firstClassTime.value)
+  if (!Number.isFinite(min)) min = 8 * 60
+  let max = min + 8 * 60
+  for (const cls of currentSchedule.value) {
+    const start = hmToMinutes(cls.startTime)
+    const end = hmToMinutes(cls.endTime)
+    if (Number.isFinite(start)) min = Math.min(min, start)
+    if (Number.isFinite(end)) max = Math.max(max, end)
+  }
+  const startHour = Math.max(0, Math.floor(min / 60))
+  let endHour = Math.min(24, Math.ceil(max / 60))
+  if (endHour <= startHour) endHour = Math.min(24, startHour + 8)
+  if (max >= endHour * 60) endHour = Math.min(24, endHour + 1)
+  return { startHour, endHour }
+})
+
+function onTimelineSelect(id: string) {
+  const cls = currentSchedule.value.find((item) => String(item.id) === id)
+  if (cls) editClass(cls)
+}
+
+function onTimelineAdd(day: string) {
+  addClass(nextStartForDay(day), day)
+}
+
+function onTimelineReject() {
+  feedback.error(t('scheduleManagement.overlapRejected'))
+}
+
+async function onTimelineMove(payload: { id: string; day: string; startTime: string; endTime: string }) {
+  const cls = currentSchedule.value.find((item) => String(item.id) === payload.id)
+  const groupId = String(selectedGroupId.value)
+  if (!cls || !groupId) return
+
+  const start = hmToMinutes(payload.startTime)
+  const end = hmToMinutes(payload.endTime)
+  const clash = currentSchedule.value.some((other) => {
+    if (String(other.id) === payload.id || other.day !== payload.day) return false
+    const otherStart = hmToMinutes(other.startTime)
+    const otherEnd = hmToMinutes(other.endTime)
+    return start < otherEnd && otherStart < end
+  })
+  if (clash) {
+    feedback.error(t('scheduleManagement.overlapRejected'))
+    return
+  }
+
+  try {
+    loading.value = true
+    await scheduleService.updateSchedule(cls.id, {
+      day_of_week: payload.day,
+      start_time: payload.startTime,
+      end_time: payload.endTime,
+      duration_minutes: sessionDurationMinutes(payload.startTime, payload.endTime),
+      notes: encodeScheduleNotes(cls.room || '', cls.notes || ''),
+      group_id: cls.groupId || groupId,
+      course_id: cls.courseId || null,
+      teacher_id: cls.teacherId || null,
+      room_id: null,
+    })
+    await fetchSchedules(groupId)
+  } catch (error) {
+    console.error('Error moving schedule:', error)
+    feedback.error(t('scheduleManagement.saveFailed'))
+    try {
+      await fetchSchedules(groupId)
+    } catch {
+      /* ignore */
+    }
+  } finally {
+    loading.value = false
+  }
+}
 
 const nextStartForDay = (day: string) => {
   const list = sortedDayClasses(day)

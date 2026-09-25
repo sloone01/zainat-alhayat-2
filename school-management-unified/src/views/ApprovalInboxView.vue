@@ -39,8 +39,6 @@
                 :key="'approval-card-' + row.message_id"
                 :title="row.title"
                 :description="[row.party_name, row.students_label].filter(Boolean).join(' · ')"
-                :priority="row.approval_status === 'rejected' ? 'high' : row.approval_status === 'pending' ? 'medium' : undefined"
-                :priority-label="row.approval_status === 'rejected' || row.approval_status === 'pending' ? approvalStatusLabel(row.approval_status) : undefined"
               >
                 <template #tags>
                   <KanbanTag v-if="row.approval_status === 'approved'" dot="emerald">

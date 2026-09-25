@@ -76,16 +76,16 @@
         <h3 class="text-sm font-semibold text-gray-900">{{ $t('enrollment.emergencyContact') }}</h3>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.emergencyContactName') }} <span class="text-red-500">*</span></label>
-            <input v-model="localData.emergencyContact.fullName" type="text" required class="fk-field">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.emergencyContactName') }} <span v-if="!editMode" class="text-red-500">*</span></label>
+            <input v-model="localData.emergencyContact.fullName" type="text" :required="!editMode" class="fk-field">
           </div>
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.mobile') }} <span class="text-red-500">*</span></label>
-            <input v-model="localData.emergencyContact.mobile" type="tel" required class="fk-field">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.mobile') }} <span v-if="!editMode" class="text-red-500">*</span></label>
+            <input v-model="localData.emergencyContact.mobile" type="tel" :required="!editMode" class="fk-field">
           </div>
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.relationship') }} <span class="text-red-500">*</span></label>
-            <input v-model="localData.emergencyContact.relationship" type="text" required class="fk-field">
+            <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.relationship') }} <span v-if="!editMode" class="text-red-500">*</span></label>
+            <input v-model="localData.emergencyContact.relationship" type="text" :required="!editMode" class="fk-field">
           </div>
           <div>
             <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('enrollment.workplace') }}</label>
@@ -116,7 +116,16 @@
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div class="sm:col-span-2">
           <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('students.civilId') }} <span class="text-red-500">*</span></label>
-          <input v-model="draft.civil_id" type="text" required dir="ltr" class="fk-field" :placeholder="$t('students.civilId')" @input="scheduleCivilLookup">
+          <input
+            v-model="draft.civil_id"
+            type="text"
+            required
+            dir="ltr"
+            class="fk-field"
+            :class="isRTL ? 'text-end' : ''"
+            :placeholder="$t('students.civilId')"
+            @input="scheduleCivilLookup"
+          >
           <p v-if="civilLoading" class="mt-1 text-xs text-gray-500">{{ $t('common.loading') }}</p>
           <p v-else-if="civilNote" class="mt-1 text-xs text-primary-700">{{ civilNote }}</p>
         </div>
@@ -238,7 +247,8 @@ const emit = defineEmits<{
   (e: 'back'): void
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const isRTL = computed(() => locale.value === 'ar')
 
 const localData = ref({ ...props.modelValue })
 
@@ -307,6 +317,7 @@ const parentOk = (role: 'father' | 'mother') => {
 const isValid = computed(() => {
   if (localData.value.type !== 'father' && localData.value.type !== 'mother') return false
   if (!parentOk('father') || !parentOk('mother')) return false
+  if (props.editMode) return true
   return !!(
     localData.value.emergencyContact.fullName &&
     localData.value.emergencyContact.mobile &&

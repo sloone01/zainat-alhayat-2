@@ -290,8 +290,10 @@ export const docsEn: DocsContentMap = {
     when: 'Programs that do not fit the standard period template, or weeks that change often.',
     steps: [
       'Open Flexible schedule (/flexible). Do not look under /schedules/flexible — that URL redirects here.',
-      'Add a session: pick the day, then place it at the start of the day or after an existing slot, then duration, course, and teacher.',
-      'Later sessions on the same day shift automatically when you insert or change duration.',
+      'The week is a clock timeline: each day is a row, sessions sit on the hour grid, and the zoom control changes how much of the day is in view.',
+      'Drag a session to another time or day. It snaps to 15 minutes. A drop that overlaps another session on that day is rejected.',
+      'Add a session with + on the day: pick the day, then place it at the start of the day or after an existing slot, then duration, course, and teacher.',
+      'Later sessions on the same day shift automatically when you insert or change duration from the session form. Dragging does not shift other sessions.',
       'Keep class durations in Settings consistent so session attendance and weekly plans still line up.',
       'Tell teachers to check My schedule and weekly sessions after you change the week.',
       'Only use submitted, Active courses that match the group level, same as the fixed grid.',

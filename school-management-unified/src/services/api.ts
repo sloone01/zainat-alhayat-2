@@ -28,6 +28,7 @@ import {
   resultCountFromData,
   shouldSkipClientBizLog,
 } from '@/utils/client-biz-log'
+import { notePageInitRequest, notePageInitSettled } from '@/router/page-init'
 
 /** School staff are scoped from the JWT. Do not send client `school_id`. */
 function isSchoolSwitchRequest(config: InternalAxiosRequestConfig): boolean {
@@ -191,6 +192,8 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
   async (config) => {
+    notePageInitRequest(config)
+    try {
     config.baseURL = getApiBaseUrl()
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type']
@@ -237,8 +240,13 @@ apiClient.interceptors.request.use(
       console.info(formatClientBizLine(action, `${criteria} req=${requestId}`.trim()))
     }
     return config
+    } catch (error) {
+      notePageInitSettled(config)
+      throw error
+    }
   },
   (error) => {
+    notePageInitSettled(error?.config)
     return Promise.reject(error)
   }
 )
@@ -246,6 +254,7 @@ apiClient.interceptors.request.use(
 // Response interceptor to handle errors
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
+    notePageInitSettled(response.config)
     const url = String(response.config?.url || '')
     if (!shouldSkipClientBizLog(url)) {
       const requestId =
@@ -285,6 +294,7 @@ apiClient.interceptors.response.use(
     const isReportCall = typeof url === 'string' && url.includes('/errors/report')
 
     if (status === 403 && /Password change required/i.test(String(message))) {
+      notePageInitSettled(error.config)
       maybeGoToChangePassword(true)
       return Promise.reject(error)
     }
@@ -297,11 +307,14 @@ apiClient.interceptors.response.use(
         original.headers.Authorization = `Bearer ${nextToken}`
         return apiClient(original)
       }
+      notePageInitSettled(original)
       if (sessionIsGone() && !isPublicAppPath(window.location.pathname)) {
         goToUnauthorizedPage()
       }
       return Promise.reject(error)
     }
+
+    notePageInitSettled(error.config)
 
     if (status === 401 && !isAuthCredentialUrl(url) && !isPublicAppPath(window.location.pathname)) {
       if (sessionIsGone()) {

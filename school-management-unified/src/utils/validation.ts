@@ -28,6 +28,31 @@ export function isIdNumber(value: string | null | undefined): boolean {
   return /^[A-Za-z0-9-]{5,20}$/.test(String(value ?? '').trim())
 }
 
+/** Local calendar YYYY-MM-DD (avoids UTC day-shift from toISOString). */
+export function localDateInputValue(d: Date = new Date()): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+export function toLocalDateInputValue(value: Date | string | null | undefined): string {
+  if (value == null || value === '') return ''
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value.trim())) {
+    return value.trim().slice(0, 10)
+  }
+  const d = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  return localDateInputValue(d)
+}
+
+/** True when the calendar date is today or earlier. Empty → false. */
+export function isNotFutureDate(value: Date | string | null | undefined): boolean {
+  const v = toLocalDateInputValue(value)
+  if (!v) return false
+  return v <= localDateInputValue()
+}
+
 export type ValidationKey =
   | 'validation.emailRequired'
   | 'validation.emailInvalid'
@@ -36,6 +61,7 @@ export type ValidationKey =
   | 'validation.englishOnly'
   | 'validation.arabicOnly'
   | 'validation.idInvalid'
+  | 'validation.dateOfBirthFuture'
 
 export function emailError(value: string | null | undefined): ValidationKey | '' {
   const v = String(value ?? '').trim()

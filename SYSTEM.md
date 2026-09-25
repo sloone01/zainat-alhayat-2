@@ -15,7 +15,7 @@ Related files (do not duplicate them here):
 | `.cursor/rules/grid-row-actions.mdc` | 3-dot row menus |
 | `.cursor/rules/back-navigation-button.mdc` | Icon-only back control |
 | `.cursor/rules/student-register-form.mdc` | `/students/register` wizard is not a list page |
-| `.cursor/rules/student-edit-form.mdc` | `/students/:id/edit` tabs + parents grid |
+| `.cursor/rules/student-edit-form.mdc` | `/students/:id/edit` same wizard as register |
 | `.cursor/rules/notification-templates.mdc` | Template variables + locale on send |
 | `TEMPLATE_INSTRUCTIONS.md` | Enrollment Word/docx merge fields |
 | `school-management-unified/src/docs/` | Public `/docs` school-admin manuals + parent how-tos (`en.ts` + `ar.ts` + `catalog.ts`); staff articles include `appearsAs` (teacher / parent / driver); live cursor from `src/demo/` |
@@ -100,6 +100,8 @@ Migrations: `school-management-backend/src/migrations/`. Run only when code is n
 
 **Names are always Arabic + English.** `users`, `parents`, and `students` store `first_name_ar` / `first_name_en` / `last_name_ar` / `last_name_en` (plus legacy `firstName` / `lastName` as the Arabic-or-English display fallback). New staff creates require both languages. Optional `civil_id` on `users` and `parents` (unique on parents when set).
 
+**Student short display name** is always **first + second + family** (`firstName` + `secondName` + `lastName`, with bilingual `_ar`/`_en` / `secondNameEn` when present). Do not show only first+family, and do not include `thirdName` in list/card/label/notification strings. Register/edit forms still collect all four parts. Helpers: frontend `formatStudentDisplayName`, backend `formatStudentDisplayName` in `common/identity/bilingual-name.ts`. Rule: `.cursor/rules/student-display-name.mdc`.
+
 **One email = one login.** `users.email` is unique. Sign-in and forgot-password accept **email or mobile** (`users.phone`, digits normalized; +968 / 8-digit local). Subscribe/approve creates one owner `User` (`user_type: staff`, `role: admin`) when the email is new. An existing login (staff **or** parent/student) on `/subscribe` or platform register **links** that login to the new school (`staff` membership). Approve assigns the School Admin group there; a parent/student login is promoted to `user_type: staff` / `role: admin` so they can run the new school. It does not create a second user or reset the password. Platform operator emails still conflict. Domain parent/student rows stay linked via `user_id`.
 
 **Staff can belong to more than one school.** Membership is `staff (user_id, school_id)` (unique). `users.school_id` is the **active** school for the JWT when the session persona is staff. The profile **account switcher** lists every staff school plus a school-less **Parent** entry when that login also has `parents.user_id` (`GET /api/auth/schools` → `{ accounts, schools, has_parent_access }`). Switch with `POST /api/auth/switch-school` `{ school_id }` (staff) or `{ persona: "parent" }` (clears `school_id`; parent is never tied to a school). Claims and staff data stay bound to the active school only.
@@ -128,7 +130,7 @@ Migrations: `school-management-backend/src/migrations/`. Run only when code is n
 | `/s/:slug/login` | Staff/parents of that school | Branded login (logo/name); email or mobile |
 | `/login` | Anyone | Generic platform login; email or mobile. `/s/login` redirects here (`login` is not a school slug). |
 | `/change-password` | Signed-in user with `must_change_password` | Same split layout as login; required after first login / reset |
-| `/student-enrollment` | Prospective family | Public enrollment application (no auth). Query: `school_id` (UUID only). Same wizard chrome/fields as `/students/register` (`EnrollmentWizardChrome` + compact steps), plus an **installment plan** step: `GET /api/public/enrollment-fees/plans` and preview via `GET /api/public/enrollment-fees/preview` (advance + weighted schedule from grade fee package timing). Selected `installment_plan_id` is stored on the application. Loads school name/logo/brand colors via `GET /api/public/landing/school-id/:id` on an **unauthenticated** axios client (no JWT — expired staff tokens must not 401 public meta). Review step loads **school** and **parent** responsibility lists from `GET /api/public/enrollment-responsibilities?school_id=` (managed under `/settings/enrollment-responsibilities`). Validation / resolve / submit errors use `useFeedback()` toasts (not inline banners or `alert()`). |
+| `/student-enrollment` | Prospective family | Public enrollment application (no auth). Query: `school_id` (UUID only). Same wizard chrome/fields as `/students/register` (`EnrollmentWizardChrome` + compact steps), plus an **installment plan** step: `GET /api/public/enrollment-fees/plans` and preview via `GET /api/public/enrollment-fees/preview` (advance + weighted schedule from grade fee package timing). Selected `installment_plan_id` is stored on the application. Civil ID first: `GET /api/public/students/lookup` — same school loads details (or already-registered); other school only allows a new application. Loads school name/logo/brand colors via `GET /api/public/landing/school-id/:id` on an **unauthenticated** axios client (no JWT — expired staff tokens must not 401 public meta). Review step loads **school** and **parent** responsibility lists from `GET /api/public/enrollment-responsibilities?school_id=` (managed under `/settings/enrollment-responsibilities`). Validation / resolve / submit errors use `useFeedback()` toasts (not inline banners or `alert()`). |
 
 `/s/default` redirects to `/s/zinat-al-haya`. `/for-schools` redirects to `/`.
 
@@ -180,6 +182,8 @@ PostgreSQL (TypeORM entities + migrations) + ./uploads filesystem
 6. A 401 retries refresh once. If the token is expired and refresh fails, storage is cleared and the SPA goes to `/unauthorized` (not `/login`). Timeouts, network errors, and **5xx** never log the user out — they `router.push` to `/error` (a normal `DashboardLayout` page: sidebar + header stay). Login/refresh credential failures **and 5xx on `/login`** stay on the form via `useFeedback()` (translated mixin toast). `/unauthorized` Sign in goes to `/login?reauth=1` and clears storage first. Visiting `/login` asks `GET /auth/verify` before skipping the form — a leftover unexpired JWT that the server rejects stays on the form instead of bouncing `/login` ↔ home. `must_change_password` does not steal `/login`.
 7. Sidebar persona is taken from the **JWT** (`getSessionPersona`), not leftover `user_data.role`. A platform/parent token must not keep a school-admin menu. `400 school_id is required` / `403 School context required` send the user to their home (`/platform/schools`, `/parent/dashboard`, or `/dashboard`) — they do **not** stay on the broken page and do **not** count as a 401 logout (except staff with no school in the token). Claims `4xx` fail closed so the full staff list is not left on screen.
 
+Global page loader (`src/router/route-loading.ts`, overlay in `App.vue`): a path change (including the first load) shows `FikrLoader` until that page's startup API calls finish (`src/router/page-init.ts` on the shared `apiClient`). That covers auth/claim guards, the lazy chunk, and the `onMounted` chain (including follow-up calls started as soon as the previous one returns, such as `/groups` loading teachers, levels, the year, then each group's capacity). The overlay stays up through a short quiet gap so the list is not shown empty and then filled. Query-only and hash-only updates do not use it. Redirects keep the loader up until the navigation that actually settles.
+
 Guards in `src/router/index.ts`:
 
 - `requiresAuth` — most app pages
@@ -223,6 +227,8 @@ Defined in `DashboardLayout.vue` (not the router).
 
 **Platform:** Schools · Billing (plans, custom-plan requests, transfers) · Roles · Notifications (email layouts, notification templates, system templates) · Activity log
 
+**Top bar bell:** `GET /api/attention?locale=ar|en` (`@RequireAnyClaim` on dashboard, parent dashboard, or a queue page; platform actors pass the claim guard). Returns `{ items, total }`. Each item is `{ id, kind, title, href, created_at }`. The menu is the notifications panel (`components/ui/notifications-filter.vue`): All, Updates (new registrations, schools, custom plans, support), Alerts (receipts, transfers, approvals, excuses), and Reminders (subscription). A click opens `href`. School staff, claim-gated: pending enrollments → `/enrollments/:id`, attached receipts → `/students/payments/pending-receipts`, transfers waiting on the school → `/students/payments/pending-transfers`, approval inbox → `/approvals`, absence excuses → `/attendance/excuses`. Parents: their pending approvals → `/approvals`. Platform: schools still `pending` → `/platform/schools/:id`, custom-plan requests still `new` → `/platform/custom-plan-requests/:id`, open support tickets → `/platform/support-requests`. A school in `pending_payment` gets one item → `/billing`. Students get an empty list.
+
 ---
 
 ## 7. Design system (Fikr)
@@ -239,7 +245,7 @@ Shared Vue pieces:
 
 - `FikrPageHeader` — navy hero on every authenticated app page (title + subtitle only, no eyebrow). Exceptions: login, public marketing, chat threads, live video rooms, print, error pages.
 - `FikrDialog` — `plain-footer`; pearl cancel + primary save
-- `useFeedback` + `FikrFeedbackHost` (mounted in `App.vue`) — **confirm** is a modal (`FikrDialog`); **validation error** and **success** are mixin toasts. Do not use `alert()` / `confirm()` on product pages.
+- `useFeedback` + `FikrFeedbackHost` (mounted in `App.vue`) — **confirm** is one centered alert (danger trash icon for deletes; Cancel + action centered). **Validation error** and **success** are mixin toasts. Do not use `alert()` / `confirm()` on product pages.
 - `RowActionsMenu` / `RowActionsItem` — 3-dot menus, filled dots, default placement **up**
 - `ListViewModeToggle` — cards vs table
 - `FikrLoader` — animated FIKR logo (`/fikr-icon.webp`) for page, panel, and button loading. Sizes `xs` / `sm` / `md` / `lg`. Do not use circular gray/teal CSS or SVG ring spinners (`fk-spinner`, `animate-spin rounded-full`). Refresh-icon spin on an existing icon is OK.
@@ -347,24 +353,36 @@ Materials work for all three (`/course-materials` and `/parent/course-materials`
 ### 9.2 Public student application
 
 1. Family uses `/student-enrollment` (or a school landing CTA).
-2. Multi-step form (student, academic, health, guardian, address, **installment plan**, review) → `POST /api/enrollments` with **UUID** `school_id` (and optional `installment_plan_id`). Legacy numeric `school_id` is rejected by DTO validation (`@IsUUID`), not coerced to int.
-3. Staff list at `/enrollments`. Detail `/enrollments/:id`, edit (`/enrollments/:id/edit` includes the same **installment plan** step), print (`/enrollments/:id/print` shows live fee preview + schedule from `GET /api/public/enrollment-fees/preview`, not hardcoded amounts).
+2. Multi-step form (student, academic, health, guardian, address, **documents**, installment plan, review). **Each Next** saves a **public enrollment draft** (`enrollments.status=draft` + `draft_payload`) via `POST /api/public/enrollments/draft`. Civil ID lookup loads **only** those public drafts (`GET /api/public/enrollments/lookup`) — never staff `/students/register` student drafts. Final submit → `POST /api/enrollments` (promotes draft → `pending`). Idle public drafts are **deleted after 24 hours** (hourly cleanup job).
+3. Staff list at `/enrollments` (default hides drafts; filter **Public form draft** to see them — labeled Outer enrollment). Detail `/enrollments/:id`, edit, print.
+4. **Staff register drafts** live on `students.status=draft` (`/students`) and are labeled **Staff register draft** — separate source from the outer form.
 4. **Approve** resolves `gradeLevel` → school payment level, creates `Student` (with `payment_level_id`) + `Parent` record(s), sets enrollment `status: enrolled`, seeds the current-year **charge sheet** with the application’s `installment_plan_id` (advance + weighted installments), and sends `enrollment.accepted`. Notifications use `enrollment.school_id` (not the first school in the DB).
 5. **Reject** sets `rejected` and sends `enrollment.rejected`.
 6. Staff still assign the student to a **class group** (and bus) on `/students`; fee level is already set from the application grade.
 
 ### 9.3 In-app student register (staff)
 
-`/students/register` is a **3-step wizard**: student → parent → group. It creates records directly (not the public application). Teachers are blocked from `/students*`.
+`/students/register` is a **multi-step wizard** (student → academic → health → guardian → address → review/group). It creates records directly (not the public application). Teachers are blocked from `/students*`.
 
-Staff submit **`POST /api/students/register`** (`students` `create`). That call:
+Student identity (step 1): **civil ID first** (lookup). Required name parts in **Arabic and English**: first + second + third + family (`last_name_*`). Tribe is not collected on the student (it duplicates family name). `GET /api/students/lookup?civil_id=` (`students` `create`): **same-school draft** → load details and continue that draft; **draft at another school** → do not load details; show a note that registration is already in progress elsewhere (admin should wait); **active/inactive** (any school) → already registered (block). Final submit and draft save re-check the civil ID (already registered / draft elsewhere). Public outer form uses `GET /api/public/students/lookup?civil_id=&school_id=`: **same school** → load details (or already-registered if active); **other school only** → allow a fresh application for this school.
 
-- Creates the student (Arabic + English first/last names required) and assigns the selected class group (fee level comes from the group).
+After **Next** on each wizard tab, the form validates that step and persists to the DB before advancing:
+
+- Step 1 (student): **`POST /api/students/register/draft`** → student `status=draft`
+- Steps 2–3 / 5: same draft endpoint updates notes / medical / address on that draft student
+- Step 4 (guardian): **`POST /api/students/register/draft/parents`** — for each father/mother, **link an existing parent** if civil ID / email / phone matches (leave their status alone), otherwise **create `parents.status=draft`** and link. No parent login is created yet.
+- Final submit: **`POST /api/students/register`** with `draftStudentId` → group + optional logins, student `status=active`, and any linked draft parents promoted to `active`
+
+Staff final submit **`POST /api/students/register`** (`students` `create`):
+
+- Creates or activates the student (Arabic + English first/second/third/family names required) and assigns the selected class group (fee level comes from the group).
 - Links an existing parent **or** creates a parent record. Before creating, match globally by civil ID / email / phone and **link** instead of cloning.
 - Parent users keep `users.school_id` null. Optional **Create user account** (parent): creates a `User` (`user_type: parent`), links `parent.user_id`, emails a temporary password.
 - Optional **Create student login**: creates a `User` (`user_type: student`), links `student.user_id`, emails a temporary password (requires a student email). Kindergarten default is parent-only login; student login stays opt-in.
 
-`/students/:id/edit` is a separate **tabbed editor** (student · parents · class · bus). The **Parents** tab is a grid: add father / mother / guardian, choosing an existing parent or creating a new profile (type-specific fields). Join table `student_parents.relationship` stores the role. **Class** tab (and students-list group assign): choose optional **Level** (`المستوى`), then pick a group filtered to that level.
+Students list supports filtering by `status` (`draft` | `active` | `inactive`). Drafts appear until the wizard is finished (or the row is deleted). Draft row actions are **Edit** and **Delete** only (no view / assign group / bus / parent).
+
+`/students/:id/edit` uses the **same wizard as register** (`EnrollmentWizardChrome` + the same six steps: student → academic → health → guardian → address → review/save). Step bodies reuse the register components (`compact`). Academic includes optional **bus** in the step `#after` slot (register has no bus). Guardian uses `GuardianInfoStep` with `edit-mode`. Next persists that step; review **Save** writes identity/health/address, group, bus, guardians, and medical report uploads. `StudentDetailsStep` gets `existingStudentId` so the student’s own civil ID is not treated as already-registered. Enrollment edit (`/enrollments/:id/edit`) stays on the public-application field set (includes documents + installment plan).
 
 ### 9.4 Fees v2 (current billing)
 
@@ -486,7 +504,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | Path | View | Job |
 |------|------|-----|
 | `/` | `ForSchoolsView` → `ForSchoolsBrochureLanding` | Platform marketing hub. Hero contact: `www.fikr.om`, `admin@fikr.om`, `+968 99788677`, `+968 98234590`. Navbar: Features, Pricing, **Documentation**, **Demo**, demo school (desktop links; **mobile burger**), language **dropdown** (closed trigger = **flag only**), sign in — **Subscribe only in hero/CTAs below**, not in the top bar. Hero: desktop browser + 2 phones. Features (`#gallery-features`): **navy dark band**, centered title + **6 icon cards** (transport, attendance, courses/grading, activities, chats/video/messages, fees) in FIKR teal — title sits beside the icon; each card links to the matching staff how-to under `/docs`. The following family/precision tile is parchment so pricing (`#gallery-pricing`) stays a distinct white band. Pricing (`#gallery-pricing`) is live brochure plan cards from the public catalog: **yearly** as the main amount, **starting from** monthly underneath (catalog monthly, or yearly ÷ 12), plus a **custom** card whose CTA (**اختر ما يناسبك** / Choose what suits you) links to `/custom-plan` — always shown unless the catalog already has an unpriced contact plan. Bottom consult form (**اطلب عرضاً تجريبياً** / Ask for a demo; no input placeholders) emails platform operators (`POST /public/school-subscription/inquiry`) instead of navigating to `/subscribe`. |
-| `/docs`, `/docs/:audience/:slug` | `DocsView` | Public product documentation (no auth). Audience `staff` \| `parents`. Sidebar of topics; who / when; live-cursor player from `src/demo/` (same scripts as `/demo`). Numbered steps only if a topic has no demo script. `/docs` redirects to `/docs/staff/admin-overview`. Staff articles include `appearsAs` (teacher/parent/driver). Same marketing header/footer as `/`. |
+| `/docs`, `/docs/:audience/:slug` | `DocsView` | Public product documentation (no auth). Audience `staff` \| `parents`. Sidebar of topics; who / when; live-cursor player from `src/demo/` (same scripts as `/demo`) when a topic has a demo script. Numbered steps when there is no demo (e.g. **landing-editor** is text-only). `/docs` redirects to `/docs/staff/admin-overview`. Staff articles include `appearsAs` (teacher/parent/driver). Same marketing header/footer as `/`. |
 | `/demo`, `/demo/:slug` | `DemoTheaterView` | Public **Demo** menu. Same topic list as `/docs`. Iframe loads the real SPA with `?demo=play&persona=staff\|parents`. `POST /api/public/demo/session` issues a short JWT stored in the iframe `sessionStorage` only (not the visitor’s `localStorage`). Default display logins: `admin@fikr-demo.com` / `parent@fikr-demo.com` / `DemoPass1` — the API falls back to the first admin/parent on `DEMO_SCHOOL_SLUG` (`zinat-al-haya`) until those emails exist. Scripts do not submit mutating forms. The player shows numbered on-stage captions (`demoSay` / `demo.say.*`, ar+en) so each beat is labeled. |
 | `/custom-plan` | `CustomPlanRequestView` | Public custom-plan builder (same `PlatformMarketingNav` as `/` — flag-only language dropdown, mobile burger; no back arrow). Stays on-page on API errors; never bounce to `/error`: optional module grid; each tile shows purpose + what the school can do with that module, selects the module on tap, and a separate **?** control opens the same detail in a dialog; then contact details with **school name Arabic + English** (`school_name_ar` / `school_name_en`); submits `POST /api/public/school-subscription/custom-plan-request` (row saved immediately; admin + visitor emails in the background). |
 | `/s/:slug` | `LandingView` | School CMS page (`GET /api/public/landing/:slug`) |
@@ -496,7 +514,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 | `/unauthorized` | `UnauthorizedView` | Session ended (401). Sign-in CTA; no ticket |
 | `/error` | `SystemErrorView` | **Web:** authenticated system-error page inside `DashboardLayout` (sidebar + header stay). Vue crash, unhandled rejection, API timeout/network, or API 5xx `router.push` here. Navy board fills the content box (login pixel motif): title, message, ticket number + copy. Back control only; no Try again / Go home. `beforeEach` skips `verifyToken` so a down API cannot loop. Public marketing/signup pages stay on-page. **Native (Capacitor):** stay on the current screen; `FikrFeedbackHost` shows a popup with the ticket number only (no `/error` page). |
 | `/subscribe` | `SchoolSubscriptionView` | New school signup. Landing pricing CTAs go to `/subscribe?plan=:code#subscribe-plan` and the page scrolls/focuses the plan picker (section 1) at the top. Plan cards use the same brochure pricing component as `/#gallery-pricing`: **yearly** as the main amount, plus **starting from** monthly (catalog monthly, or yearly ÷ 12). Registration submits `billing_period=yearly`. School name is collected in **Arabic + English** (`school_name_ar` / `school_name_en`); owner and school phone fields follow the page language direction (RTL when Arabic). Priced plans register in-place; the custom/contact card goes to `/custom-plan`. After submit, the same **Request received** confirmation as `/custom-plan` (`تم استلام الطلب` / Request received — full-page, top bar stays; Home + Pricing CTAs). Register/validation failures stay on-page via `useFeedback()` toast (translated). An existing owner email (staff or parent/student) is linked to the new school; platform operator emails still show the duplicate-email toast. |
-| `/student-enrollment` | `StudentEnrollmentView` | Public application wizard |
+| `/student-enrollment` | `StudentEnrollmentView` | Public application wizard (required identity documents: parent IDs, birth certificate, child ID) |
 | `/letter-approval` | `LetterApprovalView` | Token-signed parent approve/reject for an approval letter (no login). Query `t` + optional `d`. GET never applies the decision. |
 
 ### Platform (`requiresPlatform`)
@@ -528,11 +546,11 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 | Path | View | Job |
 |------|------|-----|
-| `/students` | `StudentManagementView` | List/view, assign group/bus shortcuts; Edit opens edit page; no summary stat chips |
-| `/students/register` | `StudentRegistrationView` | In-app 3-step create |
-| `/students/:id/edit` | `StudentEditView` | Tabbed edit (student / parents grid / class / bus). **Class** tab: optional **Level**, then groups filtered to that level |
+| `/students` | `StudentManagementView` | List/view, assign group/bus shortcuts; Edit opens edit page; **draft** rows: Edit + Delete only (no view/assign); download menu Excel / PDF / Word uses `/reports/exports/students` columns + template; no summary stat chips |
+| `/students/register` | `StudentRegistrationView` | Multi-step create; draft after step 1, active on final submit |
+| `/students/:id/edit` | `StudentEditView` | Same wizard as `/students/register` (student → academic → health → guardian → address → review/save); optional bus on academic |
 | `/enrollments` | `EnrollmentManagementView` | Application inbox |
-| `/enrollments/:id` | `EnrollmentDetailsView` | Approve / reject |
+| `/enrollments/:id` | `EnrollmentDetailsView` | Approve / reject. Reject requires a non-empty reason (`notes`). View parent IDs, birth certificate, child ID |
 | `/enrollments/:id/edit` | `EnrollmentEditView` | Staff edit application |
 | `/enrollments/:id/print` | `EnrollmentPrintView` | Print form; fee section from public enrollment fee preview (package charges + installment schedule) |
 | `/course-enrollments` | `CourseEnrollmentView` | Staff enroll in courses; empty states match `/attendance/sessions` centered empty chrome |
@@ -578,7 +596,7 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 |------|------|-----|
 | `/schedules` | `ScheduleManagementView` | Navy `FikrPageHeader` at default hero size (title + group subtitle + group/export). Group/modal selects show a chevron. Week grid stays the 11c board. Desktop is a CSS week grid (`88px` + 5 columns, 6px gap, spanning gray breaks, navy lesson cells, dashed `+ Add`). Mobile: day strip + lesson cards, with a small extra page inset. Add/edit opens 11d gray-field sheet (`ClassModal`). No room field |
 | `/schedules/auto` | `ScheduleAutoView` | School-wide three-tab stepper (same chrome as course phases/milestones). Tab 1: course accordions — subject on the left, teachers in the side panel (same layout as phase fields + milestones). Each collapsed course shows teacher count, level, and matching class count. Empty list shows **No courses**. Seeds submitted Active **skill** (`milestone`) and **graded** courses that have a `level_id` and at least one active class on that level (standalone optional via Add). Courses without a level are not expanded. Next persists a school-wide draft (partial week allowed). Tab 2: courses grouped by level, one periods/week per course (teachers named on the row). Each level’s total must equal teaching sessions × 5 before tab 3. Tab 3: groups listed under each level; pick one to see that class’s week. Generate / Apply stay school-wide. Apply replaces active `schedules` for every affected group. Manual `/schedules` is unchanged. Same `schedules` RBAC claims. |
-| `/flexible` | `ScheduleFlexibleView` | Same navy `FikrPageHeader` as `/schedules` (title, group pill, export, add). Chronological day columns with navy cells and dashed add; guided insert (day → place after → duration) with auto-shift; `/schedules/flexible` redirects here. Add/edit uses 11d `ClassModal` sheet. Same course-level filter as `/schedules` |
+| `/flexible` | `ScheduleFlexibleView` | Same navy `FikrPageHeader` as `/schedules` (title, group pill, export). Day rows on a clock timeline (zoom, hour grid, current-time line, course-colored cards). Drag a session: the card follows the pointer, a ghost marks the snapped time, and the target day highlights blue (red when the drop overlaps). 15-minute snap; overlaps are rejected and do not shift other sessions. Add still uses guided insert (day → place after → duration) with auto-shift. `/schedules/flexible` redirects here. Add/edit uses 11d `ClassModal` sheet. Same course-level filter as `/schedules` |
 | `/attendance` | `AttendanceManagementView` | Daily group roll. Navy header: group **dropdown** + date + desktop list/card toggle. Cards side card: **الحصة** = Once a day or period dropdown. Desktop switch between designes.html **5b** (compact table + session summary) and **4b** (hero + student cards); mobile always **5a**. Statuses are present / late / absent (present by default). Name + arrival/bus, no UUIDs |
 | `/attendance/excuses` | `AbsenceExcusesView` | Staff review of parent absence excuses. Default list is pending. Approve, or reject with required details. File download from the row menu. Claim `absence_excuses` view/approve; school via `resolveActorSchoolId`. |
 | `/parent/excuses` | `ParentExcusesView` | Parent-self. Child chips, upload an excuse file + explanation for a linked child, then see status and any rejection details. No staff claim; scoped by `student_parents`. |
@@ -660,18 +678,24 @@ Almost every authenticated view wraps `DashboardLayout`. Router: `school-managem
 
 ### Reports hub
 
-Sidebar **Reports** has two submenu links, each opening its own list page so more reports can be added per category:
+Sidebar **Reports** has submenu links, each opening its own list/config page:
 
 - Academic reports → `/reports/academic`
 - Financial reports → `/reports/financial`
+- **Report exports** → `/reports/exports` (list of page exports; Edit opens `/reports/exports/:key` for columns + template)
+- **Export templates** → `/reports/export-templates` (add/edit HTML shells with `{{content}}`, like email layouts)
 
-`/reports` redirects to `/reports/academic`.
+`/reports` redirects to `/reports/academic`. Legacy `/reports/students-export` redirects to `/reports/exports/students`.
 
 | Path | View | Job |
 |------|------|-----|
 | `/reports` | redirect | → `/reports/academic` |
-| `/reports/academic` | `ReportsView` | Academic report list |
+| `/reports/academic` | `ReportsView` | Academic report list (includes export hub tile) |
 | `/reports/financial` | `ReportsView` | Financial report list |
+| `/reports/exports` | `ReportExportsListView` | Catalog of exportable reports (start: students). Add more keys in `report-export-catalog.ts` |
+| `/reports/exports/:key` | `ReportExportEditView` | Columns + template for one report |
+| `/reports/export-templates` | `ReportExportTemplatesListView` | Template list |
+| `/reports/export-templates/new`, `/:id` | `ReportExportTemplateEditorView` | Create/edit export template |
 | `/reports/graded-marks/class` | `GradedMarksClassReportView` | Class marks |
 | `/reports/graded-marks/student` | `GradedMarksStudentReportView` | Student marks |
 | `/reports/fees/due-installments` | `DueInstallmentsReportView` | Due/late |
@@ -691,7 +715,7 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/auth` | login, register, profile, verify, refresh, change password; `POST /reset-password` emails a token link (does not change the password); `POST /reset-password/confirm` `{ token, newPassword }` (public); `GET /schools` (`accounts` = Parent? + staff schools); `POST /switch-school` (`school_id` or `persona: parent`; self) |
 | `/users` | CRUD, password, toggle active, by role; list/get include `civil_id`. `GET /users?audience=staff\|parent\|student` scopes the list (`staff` = `user_type` staff, role admin/teacher, or `staff` membership at the actor school). List search matches name, mobile/phone, email, and civil ID (digit-normalized for phone/civil ID) |
 | `/rbac` | catalog, me/claims, groups, permissions |
-| `/students` | CRUD, search, by group/bus/parent, assign group/bus, **in-app register** (`POST /register`: student + parent + optional parent/student logins + group). **Paging:** `GET /students?page&limit&q&fee_level` returns `{ items, total, page, limit, pages }` when `page` is set; omit `page` for the legacy full array. **Parents/buses** on list + detail are loaded from `student_parents` / `student_buses` SQL (TypeORM ManyToMany breaks on extra join columns `relationship` / pickup_*). |
+| `/students` | CRUD, search, by group/bus/parent, assign group/bus, **civil-id lookup** (`GET /lookup?civil_id=`), **register draft** (`POST /register/draft` → student `status=draft`; `POST /register/draft/parents` → link existing parents or create `parents.status=draft`), **in-app register** (`POST /register` + optional `draftStudentId`: group + optional logins → student/parents `active`). Identity: Arabic + English first/second/third/family. **Paging:** `GET /students?page&limit&q&fee_level&status` returns `{ items, total, page, limit, pages }` when `page` is set; omit `page` for the legacy full array. **Parents/buses** on list + detail are loaded from `student_parents` / `student_buses` SQL (TypeORM ManyToMany breaks on extra join columns `relationship` / pickup_*). |
 | `/parents` | CRUD, assign/unassign student (`relationship`: father\|mother\|guardian), **dashboard** (`/parents/dashboard/my-data`, attendance, activities, weekly-plans, bus-movements). Parent self dashboard routes scope by linked students — **no** JWT/`school_id` required (`bus-movements` optional `school_id` filter only). |
 | `/groups` | classroom CRUD, capacity, stats, **`level_id`** (fee/grade level) and **`supervisor_id`** (staff user); PATCH/POST persist those columns directly; **GET list** also allows picker claims (`schedules`/`attendance`/`students`/… `view`) via `@RequireAnyClaim` |
 | `/grades` | grade levels per school (`school_id` on `grades`; unique `(school_id, code)`). Staff list/create/edit bound via JWT `resolveActorSchoolId`. Public `GET /grades/active?school_id=` for enrollment. |
@@ -715,12 +739,17 @@ Global prefix: `/api`. CORS allows all origins + `thawani-signature` / `thawani-
 | `/enrollments` | public create + staff list/approve/reject/document |
 | `/enrollment-responsibilities` | staff CRUD for school/parent responsibility lists (`enrollment_responsibilities` claims). `GET` seeds the ministry default rows when a school has none. |
 | `/public/enrollment-responsibilities` | public list by `school_id` (active items only) |
+| `/public/enrollments` | Public outer-form drafts: `POST /draft`, `GET /lookup?civil_id=&school_id=` (source `public_enrollment`; not staff student drafts) |
+| `/public/students` | civil-id lookup for outer enrollment (`GET /lookup?civil_id=&school_id=`) — does not load staff register drafts |
 | `/buses` | fleet, students, movements; required staff driver (`driver_user_id`) + optional supervisor; pickup on `student_buses` (`pickup_lat/lng/source`, migration `1791600000000`) is GPS-captured on site (`PATCH /buses/:id/students/:studentId/pickup`); parent self `PATCH /parents/dashboard/students/:id/bus-pickup`; live `PATCH /buses/:id/position` (+ optional `trip_type`/`trip_date`) returns ETA snapshot; `GET /buses/:id/eta` ordered stop ETAs; approaching parent push `bus.approaching` (migration `1792420000000`) |
 | `/payment-config` | levels, charge/discount/extra/inclusion types, school flags, profiles (PUT by-level/by-course binds `school_id` from JWT). **`GET …/levels`** syncs `school_payment_levels` from **`grades`** and returns only rows whose code matches a grade (orphans hidden). Extra and inclusion types use the same `@Roles('admin')` gate as discount types; sidebar page keys `payment_catalog_extras` / `payment_catalog_inclusions` |
 | `/fees/v2` | packages (charge + discount + extra + inclusion type ids), installment plans, grade/bus/course links, charge sheets (extras add to due; discounts subtract; inclusions editable on the sheet via catalog items, else package defaults), pay, Thawani, transfers, due report. `GET payments/pending-reconcile` is **platform-only** and lists **paid Thawani** payments not yet in a transfer (offline receipts stay on the school inbox). `POST /transfers` is multipart (`proof` required JPG/PNG/PDF) and stores `proof_url` on `fee_transfers`. `GET charge-sheet-summaries` accepts optional `student_ids` (comma-separated) to scope the batch. |
 | `/student-payments` | **legacy** ledger |
 | `/fee-packages` | older package CRUD |
 | `/notification-templates` | definitions, school overrides, preview, `layout_id` (`notification_templates` claim) |
+| `/reports/student-export-config` | legacy alias → students export config |
+| `/reports/exports` | list/get/put per-report export columns + template (`reports` / `reports_exports`) |
+| `/reports/export-templates` | CRUD + preview for report download HTML shells (`{{content}}`) |
 | `/notification-layouts` | school email layout CRUD + preview (`notification_layouts` claim) |
 | `/platform/notification-templates` | platform defaults (`platform_notification_templates` **or** `platform_schools` view/manage + `assertPlatformUser`) |
 | `/platform/notification-layouts` | product default layouts; seed schools via `ensureDefault` (`platform_notification_layouts` **or** `platform_schools`) |
@@ -812,6 +841,7 @@ When implementing UI:
 9. **Courses:** keep `status` (draft → submitted/`active`) separate from `is_active` (Active / Not active). See `.cursor/rules/course-status.mdc`.
 10. **Copy:** no helper / instructional microcopy (field hints, section how-to subtitles, footer essays) unless the user asked for that text. Labels, validation errors, and icon `aria-label`s are fine. See `.cursor/rules/no-helper-copy.mdc`.
 11. **IDs:** never render resource UUIDs (or 8-char slices) as visible labels. Use the human name/email/civil ID/title, or `—`.
+12. **Student names:** short display / fetch labels are always **first + second + family** (no third). Use `formatStudentDisplayName`. See `.cursor/rules/student-display-name.mdc`.
 
 When implementing API:
 
@@ -842,8 +872,8 @@ When implementing API:
 | Installment due/late reminders | `NotificationJobsService` — polls every 6h; emails at most once per installment every **3 days** (`notification_send_log`) |
 | Public `/demo` | `school-management-unified/src/demo/` (`catalog.ts`, `scripts/`, `defaults.ts`, `DemoTheaterView.vue`, `DemoPlayer.vue`) + `POST /api/public/demo/session` |
 | Course materials | `CourseMaterialsView.vue` + `course-material.service.ts` + `/api/course-materials` |
-| Student register wizard | `StudentRegistrationView.vue` + `student-register-form.mdc` |
-| Student edit tabs | `StudentEditView.vue` + `student-edit-form.mdc` |
+| Student display name | `.cursor/rules/student-display-name.mdc` + `formatStudentDisplayName` (first + second + family) |
+| Student edit wizard | `StudentEditView.vue` + `student-edit-form.mdc` (same as register) |
 | Fees config | `payment-config` + `fees/v2` + views under `/settings/payments` |
 | Charge sheet / pay | `StudentChargeSheetService`, `FeePaymentService`, `ThawaniService` |
 | Enrollment approve | `EnrollmentService.approveEnrollment` |

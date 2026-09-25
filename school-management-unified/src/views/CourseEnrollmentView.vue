@@ -260,6 +260,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import KanbanCard from '@/components/ui/kanban-card.vue'
@@ -278,6 +279,7 @@ import courseEnrollmentService, {
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
@@ -404,7 +406,12 @@ async function submitEnroll() {
 }
 
 async function dropEnrollment(id: string) {
-  if (!window.confirm(t('courseEnrollment.dropConfirm'))) return
+  if (!(await feedback.confirm({
+    title: t('common.confirm'),
+    message: t('courseEnrollment.dropConfirm'),
+    confirmLabel: t('common.confirm'),
+    danger: true,
+  }))) return
   try {
     await courseEnrollmentService.drop(id)
     await loadEnrollments()

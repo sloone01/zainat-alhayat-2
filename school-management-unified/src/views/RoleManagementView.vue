@@ -240,6 +240,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -259,6 +260,7 @@ import { useClientPagination } from '@/composables/useClientPagination'
 import { rbacService, type RbacGroup } from '@/services/rbac.service'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
 const isRTL = computed(() => locale.value === 'ar')
@@ -374,7 +376,12 @@ async function cloneRole(role: RbacGroup) {
 async function deleteRole(role: RbacGroup) {
   closeMenu()
   if (role.isSystem) return
-  if (!confirm(t('roleManagement.confirmDelete', { name: role.name }))) return
+  if (!(await feedback.confirm({
+    title: t('common.delete'),
+    message: t('roleManagement.confirmDelete', { name: role.name }),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  }))) return
   try {
     await rbacService.deleteGroup(role.id)
     await loadAll()

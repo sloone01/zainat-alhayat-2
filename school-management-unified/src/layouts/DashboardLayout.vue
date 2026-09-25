@@ -231,17 +231,7 @@
             </span>
           </button>
 
-          <!-- Notifications (approval inbox is a school page — platform console has none) -->
-          <router-link
-            v-if="!isPlatformUser"
-            to="/approvals"
-            class="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500"
-            :aria-label="$t('dashboard.viewNotifications')"
-          >
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-            </svg>
-          </router-link>
+          <AttentionBell />
 
           <!-- Profile dropdown -->
           <div class="relative" data-profile-menu>
@@ -371,6 +361,7 @@ import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { captureIssueReport, setPendingIssueReport } from '@/utils/issue-report'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import AttentionBell from '@/components/AttentionBell.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import MobileBottomNav from '@/components/MobileBottomNav.vue'
 import NavSidebarIcon from '@/components/NavSidebarIcon.vue'
@@ -786,7 +777,16 @@ function isReportsPath(path: string) {
 }
 
 function isAcademicReportsPath(path: string) {
-  return path === '/reports' || path === '/reports/academic' || path.startsWith('/reports/graded-marks/')
+  return (
+    path === '/reports' ||
+    path === '/reports/academic' ||
+    path.startsWith('/reports/graded-marks/') ||
+    path === '/reports/exports' ||
+    path.startsWith('/reports/exports/') ||
+    path === '/reports/export-templates' ||
+    path.startsWith('/reports/export-templates/') ||
+    path === '/reports/students-export'
+  )
 }
 
 function isFinancialReportsPath(path: string) {
@@ -955,6 +955,15 @@ function navChildActive(href: string) {
   }
   if (href === '/reports/academic') return isAcademicReportsPath(route.path)
   if (href === '/reports/financial') return isFinancialReportsPath(route.path)
+  if (href === '/reports/exports') {
+    return route.path === '/reports/exports' || route.path.startsWith('/reports/exports/')
+  }
+  if (href === '/reports/export-templates') {
+    return (
+      route.path === '/reports/export-templates' ||
+      route.path.startsWith('/reports/export-templates/')
+    )
+  }
   if (href === '/platform/custom-plan-requests' && route.path.startsWith('/platform/custom-plan-requests/')) return true
   if (href === '/platform/plans' && route.path.startsWith('/platform/plans/')) return true
   return false
@@ -985,6 +994,8 @@ function reportsNavGroup(): NavItem {
     children: [
       { name: t('reports.academicReports'), href: '/reports/academic' },
       { name: t('reports.financialReports'), href: '/reports/financial' },
+      { name: t('reports.exportsTitle'), href: '/reports/exports' },
+      { name: t('reports.exportTemplatesTitle'), href: '/reports/export-templates' },
     ],
   }
 }
@@ -1417,6 +1428,15 @@ const getPageTitle = () => {
   if (/^\/platform\/schools\/\d+$/.test(currentPath)) return t('platformSchools.detailsTitle')
   if (currentPath === '/reports/academic') return t('reports.academicReports')
   if (currentPath === '/reports/financial') return t('reports.financialReports')
+  if (currentPath === '/reports/exports' || currentPath.startsWith('/reports/exports/')) {
+    return t('reports.exportsTitle')
+  }
+  if (
+    currentPath === '/reports/export-templates' ||
+    currentPath.startsWith('/reports/export-templates/')
+  ) {
+    return t('reports.exportTemplatesTitle')
+  }
   if (currentPath === '/reports/fees/due-installments') return t('reports.dueFeesTitle')
   if (currentPath === '/groups' || currentPath.startsWith('/groups/')) return t('dashboard.groupManagement')
   if (currentPath === '/transportation') return t('transportation.title')

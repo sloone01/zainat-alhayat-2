@@ -241,6 +241,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
@@ -259,6 +260,7 @@ import { chatApiService } from '@/services/chat.service'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const router = useRouter()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
@@ -379,7 +381,12 @@ const selectBus = (id: string) => {
 
 const confirmDeleteBus = async (bus: Bus) => {
   activeMenuId.value = null
-  if (!window.confirm(t('transportation.confirmDelete', { title: bus.title }))) return
+  if (!(await feedback.confirm({
+    title: t('common.delete'),
+    message: t('transportation.confirmDelete', { title: bus.title }),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  }))) return
   try {
     await busService.deleteBus(bus.id)
     if (selectedBusId.value === bus.id) selectedBusId.value = null

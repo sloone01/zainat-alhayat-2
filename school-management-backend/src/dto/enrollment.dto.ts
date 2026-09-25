@@ -6,6 +6,8 @@ import {
   IsBoolean,
   IsDateString,
   IsArray,
+  ArrayMinSize,
+  MinLength,
   IsNumber,
   IsUUID,
   ValidateNested,
@@ -109,6 +111,26 @@ export class StudentDetailsDto {
   @emptyToUndefined()
   @IsString()
   last_name_en?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  secondName?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  thirdName?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  secondNameEn?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  thirdNameEn?: string;
 
   @IsOptional()
   @emptyToUndefined()
@@ -435,6 +457,21 @@ export class AddressInfoDto {
   housingType: 'house' | 'apartment';
 }
 
+export class EnrollmentDocumentsDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  parentIdDocuments: string[];
+
+  @IsString()
+  @MinLength(20)
+  birthCertificate: string;
+
+  @IsString()
+  @MinLength(20)
+  childIdDocument: string;
+}
+
 export class CreateEnrollmentDto {
   /** Schools use UUID primary keys (legacy numeric school_id is rejected). */
   @asString()
@@ -463,6 +500,10 @@ export class CreateEnrollmentDto {
   @Type(() => AddressInfoDto)
   address: AddressInfoDto;
 
+  @ValidateNested()
+  @Type(() => EnrollmentDocumentsDto)
+  documents: EnrollmentDocumentsDto;
+
   @IsOptional()
   @emptyToUndefined()
   @IsUUID('4')
@@ -486,6 +527,11 @@ export class UpdateEnrollmentDto {
   address?: Partial<AddressInfoDto>;
 
   @IsOptional()
+  @ValidateNested()
+  @Type(() => EnrollmentDocumentsDto)
+  documents?: EnrollmentDocumentsDto;
+
+  @IsOptional()
   @ValidateIf((_o, v) => v !== null && v !== undefined && v !== '')
   @IsUUID('4')
   installment_plan_id?: string | null;
@@ -498,4 +544,23 @@ export class UpdateEnrollmentDto {
   @emptyToUndefined()
   @IsString()
   notes?: string;
+}
+
+/** Public wizard: save progress after each step (upsert by school + civil ID). */
+export class SavePublicEnrollmentDraftDto {
+  @IsUUID('4')
+  school_id: string;
+
+  @asString()
+  @IsString()
+  @MinLength(4)
+  civil_id: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  draftEnrollmentId?: string;
+
+  /** Full wizard snapshot (student / academic / health / …). */
+  @IsOptional()
+  payload?: Record<string, unknown>;
 }

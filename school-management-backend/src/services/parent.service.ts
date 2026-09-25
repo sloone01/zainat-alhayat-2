@@ -51,6 +51,8 @@ export interface CreateParentDto {
   studentIds?: string[];
   /** Applied when linking via studentIds on create */
   relationship?: ParentRelationship;
+  /** New parents created during register wizard stay draft until final submit. */
+  status?: 'draft' | 'active';
 }
 
 export interface UpdateParentDto {
@@ -167,6 +169,7 @@ export class ParentService {
       responsiblePerson,
       responsiblePhone,
       civil_id,
+      status: parentStatus,
       ...rest
     } = createParentDto;
 
@@ -212,6 +215,7 @@ export class ParentService {
       organizationName: organizationName ?? null,
       responsiblePerson: responsiblePerson ?? null,
       responsiblePhone: responsiblePhone ?? null,
+      status: parentStatus || 'active',
     });
 
     if (userId) {

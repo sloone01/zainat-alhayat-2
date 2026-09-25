@@ -69,6 +69,12 @@ const academicReports = computed(() => [
     description: t('reports.gradedStudentDesc'),
     route: '/reports/graded-marks/student',
   },
+  {
+    id: 'students-export',
+    title: t('reports.exportsTitle'),
+    description: t('reports.exportsDesc'),
+    route: '/reports/exports',
+  },
 ])
 
 const financialReports = computed(() => [
