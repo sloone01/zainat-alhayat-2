@@ -94,6 +94,10 @@
                 <span dir="ltr">{{ attendanceStats.presentStudents }}</span>
               </span>
               <span class="rounded-pill bg-fikr-mist px-3 py-2 text-sm font-medium text-navy-800">
+                {{ $t('attendanceManagement.status.late') }}
+                <span dir="ltr">{{ attendanceStats.lateStudents }}</span>
+              </span>
+              <span class="rounded-pill bg-fikr-mist px-3 py-2 text-sm font-medium text-navy-800">
                 {{ $t('attendanceManagement.status.absent') }}
                 <span dir="ltr">{{ attendanceStats.absentStudents }}</span>
               </span>
@@ -104,6 +108,7 @@
             </div>
             <div class="mt-4 flex h-1.5 gap-[3px] overflow-hidden rounded-pill" aria-hidden="true">
               <span v-if="attendanceStats.presentStudents" class="bg-primary-500" :style="{ flex: attendanceStats.presentStudents }" />
+              <span v-if="attendanceStats.lateStudents" class="bg-primary-300" :style="{ flex: attendanceStats.lateStudents }" />
               <span v-if="attendanceStats.absentStudents" class="bg-navy-800" :style="{ flex: attendanceStats.absentStudents }" />
               <span v-if="unrecordedCount" class="bg-fikr-mist" :style="{ flex: unrecordedCount }" />
             </div>

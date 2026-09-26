@@ -1,7 +1,7 @@
 <template>
   <DashboardLayout>
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div v-if="loading" class="fk-elev flex flex-col items-center justify-center gap-3 py-20 text-fikr-ink-muted">
+      <div v-if="loading && !routePageLoading" class="fk-elev flex flex-col items-center justify-center gap-3 py-20 text-fikr-ink-muted">
         <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
@@ -150,6 +150,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import IconPlus from '@/components/icons/IconPlus.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'

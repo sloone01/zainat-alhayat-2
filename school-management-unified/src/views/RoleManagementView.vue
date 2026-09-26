@@ -10,7 +10,7 @@
         {{ loadError }}
       </div>
 
-      <div class="fk-card">
+      <div class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('roleManagement.listHeading') }}</h2>
@@ -36,7 +36,7 @@
         </header>
 
         <div class="p-4 sm:p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
             <FikrLoader size="sm" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -106,8 +106,8 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap">
-              <table class="fk-table">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable w-full">
                 <thead>
                   <tr>
                     <th>{{ $t('roleManagement.roleName') }}</th>
@@ -272,6 +272,7 @@ import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
@@ -323,7 +324,7 @@ const {
   paginatedItems: paginatedRoles,
   totalPages,
   goToPage,
-} = useClientPagination(filteredRoles)
+} = useClientPagination(filteredRoles, 10)
 
 watch([searchQuery, typeFilter], () => {
   currentPage.value = 1

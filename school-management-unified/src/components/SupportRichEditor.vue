@@ -296,8 +296,12 @@ onBeforeUnmount(() => {
   min-height: 14rem;
 }
 .support-editor :deep(.ProseMirror img) {
+  display: block;
+  width: auto;
   max-width: 100%;
-  height: auto;
+  max-height: min(70vh, 36rem);
+  height: auto !important;
+  object-fit: contain;
   border-radius: 0.5rem;
   margin: 0.5rem 0;
 }

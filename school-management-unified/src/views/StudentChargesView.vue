@@ -295,7 +295,7 @@
                 </button>
               </div>
               <p v-if="selectedPlanId && !planLocked" class="text-xs text-gray-500">
-                {{ $t('feesV2.remainingAfterAdvance') }}: <span class="font-mono tabular-nums">{{ fmt(displayInstallmentDue) }}</span>
+                {{ $t('feesV2.remainingAfterAdvance') }}: <span class="font-mono tabular-nums">{{ fmt(schedulePending) }}</span>
               </p>
               <p v-if="isSheetDirty" class="text-sm font-medium text-red-600">{{ $t('feesV2.pendingSave') }}</p>
               <p v-if="applyError" class="text-sm text-red-700">{{ applyError }}</p>

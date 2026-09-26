@@ -6,6 +6,8 @@
 export type ReportPageOrientation = 'portrait' | 'landscape'
 
 const PAGE_RULE = /@page\s*\{[^}]*\}/g
+/** Top and bottom inset on every printed page, including pages after the first. */
+const PAGE_MARGIN = '14mm 0 14mm 0'
 const TAG_ORIENT =
   /(<(?:body|div)\b[^>]*\bdata-rpt-orient\s*=\s*["'])(?:portrait|landscape)(["'])/gi
 
@@ -30,8 +32,8 @@ export function applyWordPageOrientation(
   const landscape = (orientation ?? reportPageOrientation(html)) === 'landscape'
   const size = landscape ? '841.9pt 595.3pt' : '595.3pt 841.9pt'
   const mso = landscape ? 'landscape' : 'portrait'
-  const head = `<!--[if gte mso 9]><xml><w:WordDocument xmlns:w="urn:schemas-microsoft-com:office:word"><w:View>Print</w:View></w:WordDocument></xml><![endif]--><style>@page WordSection1 { size: ${size}; mso-page-orientation: ${mso}; margin: 0; } div.WordSection1 { page: WordSection1; }</style>`
-  let out = html.replace(/@page\s*\{[^}]*\}/gi, `@page { size: ${size}; mso-page-orientation: ${mso}; margin: 0; }`)
+  const head = `<!--[if gte mso 9]><xml><w:WordDocument xmlns:w="urn:schemas-microsoft-com:office:word"><w:View>Print</w:View></w:WordDocument></xml><![endif]--><style>@page WordSection1 { size: ${size}; mso-page-orientation: ${mso}; margin: ${PAGE_MARGIN}; } div.WordSection1 { page: WordSection1; } tr { page-break-inside: avoid; break-inside: avoid; }</style>`
+  let out = html.replace(/@page\s*\{[^}]*\}/gi, `@page { size: ${size}; mso-page-orientation: ${mso}; margin: ${PAGE_MARGIN}; }`)
   if (/<html\b/i.test(out)) {
     out = out.replace(/<html\b([^>]*)>/i, (_match, attrs: string) => {
       let next = String(attrs)
@@ -381,7 +383,7 @@ export function setReportPageOrientation(
   PAGE_RULE.lastIndex = 0
   return source
     .replace(TAG_ORIENT, `$1${orientation}$2`)
-    .replace(PAGE_RULE, `@page { size: A4 ${orientation}; margin: 0; }`)
+    .replace(PAGE_RULE, `@page { size: A4 ${orientation}; margin: ${PAGE_MARGIN}; }`)
 }
 
 /** Full sample document (title, date, and every preview row). */
@@ -419,7 +421,7 @@ export function defaultReportExportLayoutHtml(
 </head>
 <body class="rpt-page" data-rpt-orient="${orientation}" dir="${dir}">
 <style>
-  @page { size: A4 ${orientation}; margin: 0; }
+  @page { size: A4 ${orientation}; margin: ${PAGE_MARGIN}; }
   * { box-sizing: border-box; }
   html, body.rpt-page {
     margin: 0;
@@ -518,7 +520,7 @@ export function defaultReportExportLayoutHtml(
   .rpt-body td { color: #2a2a2a; }
   .rpt-body tbody tr:nth-child(odd) td { background: #ffffff; }
   .rpt-body tbody tr:nth-child(even) td { background: #f3f4f6; }
-  .rpt-body tr { break-inside: avoid; }
+  .rpt-body tr { break-inside: avoid; page-break-inside: avoid; }
   .rpt-footer { margin-top: 18px; }
   .rpt-footer-text {
     font-size: 11px;

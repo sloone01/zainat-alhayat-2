@@ -93,8 +93,20 @@ let FileUploadController = class FileUploadController {
             });
         }
         const lower = filename.toLowerCase();
-        const isImage = /\.(png|jpe?g|gif|webp)$/i.test(lower);
-        if (!isImage) {
+        const imageType = lower.endsWith('.png')
+            ? 'image/png'
+            : lower.endsWith('.gif')
+                ? 'image/gif'
+                : lower.endsWith('.webp')
+                    ? 'image/webp'
+                    : /\.jpe?g$/.test(lower)
+                        ? 'image/jpeg'
+                        : '';
+        if (imageType) {
+            res.setHeader('Content-Type', imageType);
+            res.setHeader('Content-Disposition', 'inline');
+        }
+        else {
             res.setHeader('Content-Disposition', `attachment; filename="${(0, path_1.basename)(filename)}"`);
             res.setHeader('Content-Type', 'application/octet-stream');
         }

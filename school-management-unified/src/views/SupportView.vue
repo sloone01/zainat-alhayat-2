@@ -60,26 +60,38 @@
         <header class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <h2 class="fk-card__title">{{ $t('support.myRequests') }}</h2>
         </header>
-        <div v-if="loading" class="flex items-center justify-center py-12"><FikrLoader /></div>
+        <div v-if="loading && !routePageLoading" class="flex items-center justify-center py-12"><FikrLoader /></div>
         <div v-else-if="!items.length" class="fk-empty">
           <p class="fk-empty__title">{{ $t('support.empty') }}</p>
         </div>
-        <ul v-else class="divide-y divide-fikr-hairline">
-          <li v-for="item in items" :key="item.id" class="px-5 py-4 sm:px-6">
-            <button
-              type="button"
-              class="flex w-full items-center justify-between gap-3 text-start"
-              @click="toggle(item.id)"
-            >
-              <span class="min-w-0">
-                <span class="block truncate font-medium text-fikr-ink">{{ item.title }}</span>
-                <span class="text-xs text-fikr-ink-muted">{{ formatDate(item.created_at) }}</span>
-              </span>
-              <span class="fk-pill" :class="statusClass(item.status)">{{ $t(`support.status.${item.status}`) }}</span>
-            </button>
-            <SupportRequestBody v-if="expanded === item.id" class="mt-3" :html="item.description_html" />
-          </li>
-        </ul>
+        <template v-else>
+          <ul class="divide-y divide-fikr-hairline">
+            <li v-for="item in items" :key="item.id" class="px-5 py-4 sm:px-6">
+              <button
+                type="button"
+                class="flex w-full items-center justify-between gap-3 text-start"
+                @click="toggle(item.id)"
+              >
+                <span class="min-w-0">
+                  <span class="block truncate font-medium text-fikr-ink">{{ item.title }}</span>
+                  <span class="text-xs text-fikr-ink-muted">{{ formatDate(item.created_at) }}</span>
+                </span>
+                <span class="fk-pill" :class="statusClass(item.status)">{{ $t(`support.status.${item.status}`) }}</span>
+              </button>
+              <div v-if="expanded === item.id" class="mt-3">
+                <div v-if="detailLoading === item.id" class="flex justify-center py-6"><FikrLoader size="sm" /></div>
+                <SupportRequestBody v-else-if="item.description_html" :html="item.description_html" />
+              </div>
+            </li>
+          </ul>
+          <FikrPagination
+            wrapper-class="mx-5 mb-5 sm:mx-6"
+            :page="currentPage"
+            :pages="totalPages"
+            :show="total > 0"
+            @update:page="goToPage"
+          />
+        </template>
       </section>
     </div>
   </DashboardLayout>
@@ -93,6 +105,8 @@ import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
 import SupportRichEditor from '@/components/SupportRichEditor.vue'
 import SupportRequestBody from '@/components/SupportRequestBody.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { routePageLoading } from '@/router/route-loading'
 import supportService, {
   type SupportRequest,
   type SupportRequestContext,
@@ -115,6 +129,11 @@ const success = ref('')
 const loading = ref(true)
 const items = ref<SupportRequest[]>([])
 const expanded = ref<string | null>(null)
+const detailLoading = ref<string | null>(null)
+const currentPage = ref(1)
+const totalPages = ref(1)
+const total = ref(0)
+const PAGE_SIZE = 20
 /** Diagnostics from the "Report issue" button, sent along with the request. */
 const reportContext = ref<SupportRequestContext | null>(null)
 const reportUser = ref<IssueReportDraft['user']>(null)
@@ -157,13 +176,23 @@ function errorMessage(err: unknown, fallback: string): string {
 
 async function load() {
   loading.value = true
+  expanded.value = null
   try {
-    items.value = await supportService.mine()
+    const page = await supportService.mine(currentPage.value, PAGE_SIZE)
+    items.value = page.items
+    total.value = page.total
+    totalPages.value = page.pages
+    currentPage.value = page.page
   } catch (err) {
     error.value = errorMessage(err, t('support.loadFailed'))
   } finally {
     loading.value = false
   }
+}
+
+function goToPage(page: number) {
+  currentPage.value = page
+  void load()
 }
 
 async function submit() {
@@ -180,16 +209,17 @@ async function submit() {
   }
   saving.value = true
   try {
-    const created = await supportService.create({
+    await supportService.create({
       title: title.value.trim(),
       description_html: editor.getStorableHtml(),
       ...(reportContext.value ? { context: reportContext.value } : {}),
     })
-    items.value = [created, ...items.value]
     title.value = ''
     editor.clear()
     removeReport()
     success.value = t('support.submitted')
+    currentPage.value = 1
+    await load()
   } catch (err) {
     error.value = errorMessage(err, t('support.submitFailed'))
   } finally {
@@ -197,8 +227,25 @@ async function submit() {
   }
 }
 
-function toggle(id: string) {
-  expanded.value = expanded.value === id ? null : id
+async function toggle(id: string) {
+  if (expanded.value === id) {
+    expanded.value = null
+    return
+  }
+  expanded.value = id
+  const item = items.value.find((row) => row.id === id)
+  if (!item || item.description_html != null) return
+  detailLoading.value = id
+  try {
+    const full = await supportService.getOne(id)
+    item.description_html = full.description_html
+    item.context = full.context
+  } catch (err) {
+    error.value = errorMessage(err, t('support.loadFailed'))
+    expanded.value = null
+  } finally {
+    detailLoading.value = null
+  }
 }
 
 function formatDate(value: string) {

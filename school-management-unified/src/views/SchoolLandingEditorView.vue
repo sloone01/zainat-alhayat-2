@@ -22,7 +22,7 @@
         </template>
       </FikrPageHeader>
 
-      <div class="fk-card max-w-4xl p-5 sm:p-6">
+      <div class="fk-card w-full p-5 sm:p-6">
         <div class="flex flex-wrap gap-2 rounded-pill bg-fikr-surface-low p-1.5">
           <button
             v-for="(tab, i) in tabs"

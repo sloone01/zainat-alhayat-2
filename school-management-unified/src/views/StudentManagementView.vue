@@ -1220,6 +1220,7 @@ import {
   reportPageOrientation,
   reportPagePixelSize,
 } from '@/utils/report-export-layout'
+import { paintReportPdfPages } from '@/utils/report-pdf-pages'
 import { groupService, type Group } from '@/services/group.service'
 import { busService, type Bus } from '@/services/bus.service'
 import { parentService, type Parent } from '@/services/parent.service'
@@ -1814,26 +1815,12 @@ const runExport = async (format: 'word' | 'pdf' | 'excel') => {
       backgroundColor: '#ffffff',
       windowWidth: pagePx.width,
     })
-    const imgData = canvas.toDataURL('image/png')
     const pdf = new jsPDF({
       orientation: reportPage ? orient : 'portrait',
       unit: 'mm',
       format: 'a4',
     })
-    const pageW = pdf.internal.pageSize.getWidth()
-    const pageH = pdf.internal.pageSize.getHeight()
-    const imgW = pageW
-    const imgH = (canvas.height * imgW) / canvas.width
-    let heightLeft = imgH
-    let y = 0
-    pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
-    heightLeft -= pageH
-    while (heightLeft > 0) {
-      y -= pageH
-      pdf.addPage('a4', reportPage ? orient : 'portrait')
-      pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
-      heightLeft -= pageH
-    }
+    paintReportPdfPages(pdf, canvas, host)
     pdf.save(`students_${sanitizeFilenameSegment(dateSeg)}.pdf`)
   } catch (e) {
     console.error('Student PDF export failed:', e)

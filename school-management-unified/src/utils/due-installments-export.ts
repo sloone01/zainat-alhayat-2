@@ -4,6 +4,7 @@ import type { DueInstallmentRow } from '@/services/fees-v2.service'
 import { applyExportLayout } from '@/utils/student-export-columns'
 import {
   alignReportTableColumns,
+  applyWordPageOrientation,
   fillReportDate,
   isReportPageHtml,
   reportLayoutUsesRowSlot,
@@ -11,6 +12,7 @@ import {
   reportPageOrientation,
   reportPagePixelSize,
 } from '@/utils/report-export-layout'
+import { paintReportPdfPages } from '@/utils/report-pdf-pages'
 
 export const DUE_EXPORT_KEYS = [
   'student',
@@ -156,26 +158,12 @@ async function downloadPdf(inner: string, layoutHtml: string | null, rtl: boolea
       logging: false,
       backgroundColor: '#ffffff',
     })
-    const imgData = canvas.toDataURL('image/png')
     const pdf = new jsPDF({
       orientation: reportPage ? orient : 'portrait',
       unit: 'mm',
       format: 'a4',
     })
-    const pageW = pdf.internal.pageSize.getWidth()
-    const pageH = pdf.internal.pageSize.getHeight()
-    const imgW = pageW
-    const imgH = (canvas.height * imgW) / canvas.width
-    let heightLeft = imgH
-    let y = 0
-    pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
-    heightLeft -= pageH
-    while (heightLeft > 0) {
-      y -= pageH
-      pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH)
-      heightLeft -= pageH
-    }
+    paintReportPdfPages(pdf, canvas, host)
     pdf.save(`${filename}.pdf`)
   } finally {
     host.remove()
@@ -248,9 +236,12 @@ export async function exportDueInstallmentsPrint(options: {
     cell: options.cell,
   })
   if (options.format === 'word') {
-    const doc = /<html[\s>]/i.test(inner)
-      ? inner
-      : `<!DOCTYPE html><html lang="${options.locale}"><head><meta charset="utf-8"><title>${escapeHtml(options.title)}</title></head><body>${inner}</body></html>`
+    const doc = applyWordPageOrientation(
+      /<html[\s>]/i.test(inner)
+        ? inner
+        : `<!DOCTYPE html><html lang="${options.locale}"><head><meta charset="utf-8"><title>${escapeHtml(options.title)}</title></head><body>${inner}</body></html>`,
+      reportPageOrientation(html || inner),
+    )
     const blob = new Blob(['\ufeff', doc], { type: 'application/msword;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')

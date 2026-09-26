@@ -2,13 +2,11 @@
   <div ref="containerEl" class="fk-map relative h-full w-full overflow-hidden rounded-2xl">
     <div
       v-if="!isLoaded"
-      class="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-[2px]"
+      class="absolute inset-0 z-10 flex items-center justify-center bg-white/70"
+      role="status"
+      :aria-label="t('common.loading')"
     >
-      <div class="flex gap-1" aria-hidden="true">
-        <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-navy-800/50" />
-        <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-navy-800/50 [animation-delay:150ms]" />
-        <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-navy-800/50 [animation-delay:300ms]" />
-      </div>
+      <span class="fk-map-spinner" aria-hidden="true" />
     </div>
   </div>
 </template>
@@ -20,6 +18,7 @@
  * and fit-to-markers. Uses the free Carto basemap (light) like the mockups.
  */
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import * as MapLibreGL from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -86,6 +85,7 @@ const MAP_STYLE: MapLibreGL.StyleSpecification = {
   layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
 }
 
+const { t } = useI18n()
 const containerEl = ref<HTMLDivElement | null>(null)
 const isLoaded = ref(false)
 let map: MapLibreGL.Map | null = null
@@ -254,5 +254,16 @@ defineExpose({
 }
 .fk-map .maplibregl-ctrl-attrib {
   font-size: 10px;
+}
+.fk-map-spinner {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #0d9488;
+  animation: fk-map-spin 0.7s linear infinite;
+}
+@keyframes fk-map-spin {
+  to { transform: rotate(360deg); }
 }
 </style>

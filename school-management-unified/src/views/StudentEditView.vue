@@ -5,6 +5,8 @@
       :subtitle="headerSubtitle"
       :steps="steps"
       :current-step="currentStep"
+      jumpable
+      @jump="goToStep"
     >
       <template #leading>
         <router-link
@@ -46,14 +48,16 @@
         @back="handleBack"
       >
         <template #after>
-          <div class="space-y-2">
-            <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-bus">
-              {{ $t('studentManagement.selectBus') }}
-            </label>
-            <select id="edit-bus" v-model="selectedBusId" class="fk-field max-w-lg">
-              <option value="">{{ $t('students.noBusOptional') }}</option>
-              <option v-for="b in buses" :key="b.id" :value="b.id">{{ b.title }}</option>
-            </select>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="space-y-2">
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="edit-bus">
+                {{ $t('studentManagement.selectBus') }}
+              </label>
+              <select id="edit-bus" v-model="selectedBusId" class="fk-field">
+                <option value="">{{ $t('students.noBusOptional') }}</option>
+                <option v-for="b in buses" :key="b.id" :value="b.id">{{ b.title }}</option>
+              </select>
+            </div>
           </div>
         </template>
       </AcademicInfoStep>
@@ -359,6 +363,11 @@ async function persistGuardians() {
 
 const handleBack = () => {
   if (currentStep.value > 1) currentStep.value--
+}
+
+function goToStep(step: number) {
+  if (pageLoading.value || saving.value) return
+  if (step >= 1 && step <= steps.value.length) currentStep.value = step
 }
 
 const handleNext = async () => {

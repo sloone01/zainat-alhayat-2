@@ -87,7 +87,7 @@
                         <span class="flex-1 text-start">{{ item.name }}</span>
                         <svg
                           class="nav-chevron"
-                          :class="isNavGroupOpen(item) ? (isRTL ? '-rotate-90' : 'rotate-90') : ''"
+                          :class="isNavGroupOpen(item) ? 'rotate-90' : ''"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -781,12 +781,7 @@ function isAcademicReportsPath(path: string) {
   return (
     path === '/reports' ||
     path === '/reports/academic' ||
-    path.startsWith('/reports/graded-marks/') ||
-    path === '/reports/exports' ||
-    path.startsWith('/reports/exports/') ||
-    path === '/reports/export-templates' ||
-    path.startsWith('/reports/export-templates/') ||
-    path === '/reports/students-export'
+    path.startsWith('/reports/graded-marks/')
   )
 }
 

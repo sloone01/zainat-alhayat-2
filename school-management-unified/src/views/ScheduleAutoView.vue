@@ -364,31 +364,26 @@
         </div>
 
         <div v-show="activeTab === 'grid'">
-          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-            <div class="flex min-w-0 flex-wrap items-center gap-3">
-              <h2 class="fk-card__title truncate">
-                {{ $t('scheduleManagement.weeklySchedule') }}
-                <template v-if="previewActive"> — {{ $t('scheduleAuto.preview') }}</template>
-              </h2>
-            </div>
-            <div v-if="canCreate" class="flex shrink-0 flex-nowrap items-center gap-2">
-              <button
-                type="button"
-                class="fk-btn fk-btn--pearl"
-                :disabled="generating"
-                @click="runGenerate(false)"
-              >
-                {{ $t('scheduleAuto.generate') }}
-              </button>
-              <button
-                type="button"
-                class="fk-btn fk-btn--primary"
-                :disabled="generating || !previewActive"
-                @click="runGenerate(true)"
-              >
-                {{ $t('scheduleAuto.apply') }}
-              </button>
-            </div>
+          <div
+            v-if="canCreate"
+            class="flex items-center justify-end gap-2 border-b border-fikr-hairline px-5 py-4 sm:px-6"
+          >
+            <button
+              type="button"
+              class="fk-btn fk-btn--pearl"
+              :disabled="generating"
+              @click="runGenerate(false)"
+            >
+              {{ $t('scheduleAuto.generate') }}
+            </button>
+            <button
+              type="button"
+              class="fk-btn fk-btn--primary"
+              :disabled="generating || !previewActive"
+              @click="runGenerate(true)"
+            >
+              {{ $t('scheduleAuto.apply') }}
+            </button>
           </div>
 
           <div
@@ -774,18 +769,24 @@ const splitLevels = computed(() => {
 
 function setCoursePeriods(block: CourseBlock, event: Event) {
   const rows = block.teachers.filter((row) => row.teacher_id)
-  const min = Math.max(1, rows.length || 1)
+  const min = 1
   const max = Math.max(min, weeklyRequired.value || 40)
   let total = Math.floor(Number((event.target as HTMLInputElement).value))
   if (!Number.isFinite(total) || total < min) total = min
   if (total > max) total = max
   block.periods_per_week = total
   if (rows.length) {
-    const base = Math.floor(total / rows.length)
-    let extra = total % rows.length
-    for (const row of rows) {
-      row.periods_per_week = base + (extra > 0 ? 1 : 0)
-      if (extra > 0) extra -= 1
+    if (total < rows.length) {
+      rows.forEach((row, index) => {
+        row.periods_per_week = index < total ? 1 : 0
+      })
+    } else {
+      const base = Math.floor(total / rows.length)
+      let extra = total % rows.length
+      for (const row of rows) {
+        row.periods_per_week = base + (extra > 0 ? 1 : 0)
+        if (extra > 0) extra -= 1
+      }
     }
   }
   const input = event.target as HTMLInputElement
@@ -931,7 +932,7 @@ function flattenItems() {
       .map((row) => ({
         course_id: block.course_id,
         teacher_id: row.teacher_id,
-        periods_per_week: Math.max(1, Number(row.periods_per_week) || 1),
+        periods_per_week: Math.max(0, Math.floor(Number(row.periods_per_week) || 0)),
       })),
   )
 }
@@ -996,11 +997,11 @@ function demandsToBlocks(rows: ScheduleLessonDemand[]): CourseBlock[] {
     return {
       key: newKey(),
       course_id: courseId,
-      periods_per_week: periods || 1,
+      periods_per_week: periods,
       teachers: list.map((row) => ({
         key: newKey(),
         teacher_id: String(row.teacher_id),
-        periods_per_week: Number(row.periods_per_week) || 1,
+        periods_per_week: Math.max(0, Number(row.periods_per_week) || 0),
       })),
     }
   })
@@ -1276,8 +1277,7 @@ async function runGenerate(apply: boolean) {
     const ok = await feedback.confirm({
       title: t('scheduleAuto.apply'),
       message: t('scheduleAuto.applyConfirm'),
-      confirmLabel: t('scheduleAuto.apply'),
-      danger: true,
+      confirmLabel: t('common.confirm'),
     })
     if (!ok) return
   }

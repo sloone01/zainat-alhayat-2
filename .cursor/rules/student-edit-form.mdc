@@ -22,6 +22,7 @@ Must match **`/students/register`** exactly: same `EnrollmentWizardChrome` stepp
 - Brand **back** to `/students` in `#leading`
 - `compact` on step bodies
 - Per-step persist on Next; final Save on review
+- Stepper items jump straight to that step (register stays Next/Back only)
 - `existingStudentId` on `StudentDetailsStep` so the student’s own civil ID does not lock the form
 
 ## Do not

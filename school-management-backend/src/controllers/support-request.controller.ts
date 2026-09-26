@@ -102,17 +102,27 @@ export class SupportRequestController {
   }
 
   @Get('mine')
-  async mine(@Request() req: { user: User }) {
-    const rows = await this.supportService.findForUser(req.user.id);
-    return { success: true, data: rows, count: rows.length };
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  async mine(@Request() req: { user: User }, @Query() query: SupportRequestQueryDto) {
+    const data = await this.supportService.findPage({
+      userId: req.user.id,
+      page: query.page,
+      limit: query.limit,
+    });
+    return { success: true, data };
   }
 
   @Get()
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async findAll(@Request() req: { user: User }, @Query() query: SupportRequestQueryDto) {
     this.assertPlatform(req.user);
-    const rows = await this.supportService.findAll(query.status);
-    return { success: true, data: rows, count: rows.length };
+    const data = await this.supportService.findPage({
+      status: query.status,
+      page: query.page,
+      limit: query.limit,
+      withUser: true,
+    });
+    return { success: true, data };
   }
 
   @Get(':id')

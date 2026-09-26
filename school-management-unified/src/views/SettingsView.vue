@@ -361,7 +361,7 @@
 
       <!-- Class Settings Section -->
       <div class="fk-card overflow-visible p-4 sm:p-5">
-        <div class="relative mb-4 flex items-center gap-2">
+        <div class="class-settings-help relative mb-4 flex items-center gap-2">
           <button
             type="button"
             class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary-200/80 bg-primary-50 text-primary-700 hover:bg-primary-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
@@ -507,7 +507,7 @@
                     :key="bi"
                     class="flex items-center justify-between gap-2 text-sm"
                   >
-                    <span class="truncate font-medium text-fikr-ink">{{ b.name }}</span>
+                    <span class="truncate font-medium text-fikr-ink">{{ b.name || $t('classSettings.timeSlots.breakKind') }}</span>
                     <span class="shrink-0 tabular-nums text-fikr-ink-muted">
                       {{ b.startTime }} · {{ b.duration }} {{ $t('common.minutes') }}
                     </span>
@@ -1057,11 +1057,6 @@ function hydrateSchoolDayFromStorage() {
       const span = timeToMinutes(saved.schoolEndTime) - timeToMinutes(saved.firstClassTime)
       if (span > 0) periodsPerDay.value = Math.max(1, Math.round(span / dur))
     }
-    if (Array.isArray(saved.breakTimes)) {
-      breakTimes.value = saved.breakTimes.filter(
-        (b: BreakTimeRow) => b?.name && b?.startTime && Number(b.duration) > 0,
-      )
-    }
     if (Array.isArray(saved.timeSlots) && saved.timeSlots.length) {
       generatedTimeSlots.value = saved.timeSlots.map((slot: any, i: number) => ({
         id: String(slot.id || i + 1),
@@ -1071,6 +1066,10 @@ function hydrateSchoolDayFromStorage() {
         name: slot.name,
       }))
     }
+    const savedBreaks = Array.isArray(saved.breakTimes)
+      ? saved.breakTimes.map(normalizeBreakRow).filter((row): row is BreakTimeRow => row != null)
+      : []
+    breakTimes.value = savedBreaks.length ? savedBreaks : breaksFromSlots(generatedTimeSlots.value)
   } catch (err) {
     console.warn('Failed to hydrate class settings from localStorage:', err)
   }
@@ -1093,6 +1092,25 @@ function persistClassSettingsLocal() {
   } catch (error) {
     console.warn('Failed to save class settings to localStorage:', error)
   }
+}
+
+function normalizeBreakRow(raw: any): BreakTimeRow | null {
+  if (!raw || typeof raw !== 'object') return null
+  const startTime = String(raw.startTime || raw.time || raw.start || '').slice(0, 5)
+  const duration = Number(raw.duration ?? raw.duration_minutes ?? raw.minutes)
+  if (!/^\d{1,2}:\d{2}$/.test(startTime) || !Number.isFinite(duration) || duration <= 0) return null
+  return {
+    name: String(raw.name || raw.title || '').trim(),
+    startTime,
+    duration,
+  }
+}
+
+function breaksFromSlots(slots: GeneratedSlot[]): BreakTimeRow[] {
+  return slots
+    .filter((slot) => slot.kind === 'break')
+    .map((slot) => normalizeBreakRow(slot))
+    .filter((row): row is BreakTimeRow => row != null)
 }
 
 function timeToMinutes(hhmm: string): number {
@@ -1437,9 +1455,9 @@ const saveStartTimes = (startTimesData: any) => {
     periodsPerDay.value = Number(startTimesData.periodsPerDay)
   }
   // schoolEndTime is derived from firstClass + periods + breaks, not entered.
-  breakTimes.value = (startTimesData.breakTimes || []).filter(
-    (row: BreakTimeRow) => row?.name && row?.startTime && Number(row.duration) > 0,
-  )
+  breakTimes.value = (startTimesData.breakTimes || [])
+    .map(normalizeBreakRow)
+    .filter((row: BreakTimeRow | null): row is BreakTimeRow => row != null)
 
   showStartTimesModal.value = false
   void regenerateTimeSlots()
@@ -1546,10 +1564,14 @@ const regenerateTimeSlots = async () => {
 
 // Close dropdowns when clicking outside
 const handleClickOutside = (event: Event) => {
-  if (!(event.target as Element).closest('.relative')) {
+  const target = event.target as Element
+  if (!target.closest('.relative')) {
     activeYearDropdown.value = null
     activeSemesterDropdown.value = null
     activeDurationDropdown.value = null
+  }
+  if (!target.closest('.class-settings-help')) {
+    showClassSettingsHelp.value = false
   }
 }
 

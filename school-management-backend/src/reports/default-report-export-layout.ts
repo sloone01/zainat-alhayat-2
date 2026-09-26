@@ -44,7 +44,7 @@ export function defaultReportExportLayoutHtml(
 </head>
 <body class="rpt-page" data-rpt-orient="${orientation}" dir="${dir}">
 <style>
-  @page { size: A4 ${orientation}; margin: 0; }
+  @page { size: A4 ${orientation}; margin: 14mm 0 14mm 0; }
   * { box-sizing: border-box; }
   html, body.rpt-page {
     margin: 0;
@@ -143,7 +143,7 @@ export function defaultReportExportLayoutHtml(
   .rpt-body td { color: #2a2a2a; }
   .rpt-body tbody tr:nth-child(odd) td { background: #ffffff; }
   .rpt-body tbody tr:nth-child(even) td { background: #f3f4f6; }
-  .rpt-body tr { break-inside: avoid; }
+  .rpt-body tr { break-inside: avoid; page-break-inside: avoid; }
   .rpt-footer { margin-top: 18px; }
   .rpt-footer-text {
     font-size: 11px;
