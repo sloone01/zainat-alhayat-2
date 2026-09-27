@@ -557,7 +557,71 @@
               {{ $t('feesV2.addPayment') }}
             </button>
           </header>
-          <div class="fk-table-wrap overflow-visible">
+          <div class="space-y-3 p-4 md:hidden">
+            <article
+              v-for="inst in scheduleDisplayRows"
+              :key="'card-' + inst.id"
+              class="rounded-xl border border-fikr-hairline p-4"
+              :class="isAdvanceInstallment(inst) ? 'bg-amber-50/40' : 'bg-white'"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="font-medium text-gray-900">{{ scheduleLabel(inst) }}</p>
+                  <p v-if="inst.month_number" class="mt-0.5 text-xs text-gray-500">
+                    {{ $t('feesV2.month') }} {{ inst.month_number }}
+                  </p>
+                  <p class="mt-1 text-sm text-gray-600">{{ inst.due_date || '—' }}</p>
+                </div>
+                <span
+                  :class="statusClass(scheduleStatusKey(inst))"
+                  class="inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                >
+                  {{ scheduleStatusLabel(inst) }}
+                </span>
+              </div>
+              <dl class="mt-3 grid grid-cols-3 gap-2 text-sm">
+                <div>
+                  <dt class="text-xs text-gray-500">{{ $t('feesV2.due') }}</dt>
+                  <dd class="mt-0.5">
+                    <input
+                      v-if="isAdvanceInstallment(inst) && !planLocked"
+                      :id="`schedule-advance-card-${inst.id}`"
+                      v-model.number="draftUpfront"
+                      type="number"
+                      :min="advanceMinPaid(inst)"
+                      :max="draftNet"
+                      step="0.001"
+                      dir="ltr"
+                      class="fk-field fk-field--mono !m-0 h-8 w-full px-2 py-1 text-end text-sm tabular-nums"
+                      :disabled="!selectedPlanId || inst.status === 'paid'"
+                      :aria-label="$t('feesV2.advanceAmount')"
+                      @blur="clampDraftUpfront"
+                    >
+                    <span v-else class="font-mono tabular-nums text-gray-700">{{ fmt(displayInstDue(inst)) }}</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-gray-500">{{ $t('feesV2.paid') }}</dt>
+                  <dd class="mt-0.5 font-mono tabular-nums text-gray-700">{{ fmt(inst.amount_paid) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-gray-500">{{ $t('feesV2.remaining') }}</dt>
+                  <dd class="mt-0.5 font-mono font-semibold tabular-nums text-gray-900">{{ fmt(displayInstRemaining(inst)) }}</dd>
+                </div>
+              </dl>
+              <div v-if="!inst.isDraft && refsForInstallment(inst.id).length" class="mt-3 flex flex-wrap gap-1">
+                <code
+                  v-for="pref in refsForInstallment(inst.id)"
+                  :key="pref"
+                  class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-800"
+                >{{ pref }}</code>
+              </div>
+              <p v-if="isSheetDirty && displayInstStatus(inst) !== 'paid'" class="mt-2 text-xs font-medium text-red-600">
+                {{ $t('feesV2.pendingSave') }}
+              </p>
+            </article>
+          </div>
+          <div class="fk-table-wrap hidden overflow-visible md:block">
             <Table>
               <TableHeader>
                 <TableRow class="hover:bg-transparent">

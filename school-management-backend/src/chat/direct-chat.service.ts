@@ -427,15 +427,27 @@ export class DirectChatService {
     };
   }
 
-  async getRecentMessages(threadId: string, limit = 80): Promise<DirectChatMessageDto[]> {
+  async getRecentMessages(
+    threadId: string,
+    limit = 80,
+    before?: { createdAt: string; id?: string },
+  ): Promise<DirectChatMessageDto[]> {
     const lim = Math.min(Math.max(limit, 1), 200);
-    const rows = await this.messageRepo
+    const qb = this.messageRepo
       .createQueryBuilder('m')
       .leftJoinAndSelect('m.user', 'u')
-      .where('m.thread_id = :tid', { tid: threadId })
-      .orderBy('m.created_at', 'DESC')
-      .take(lim)
-      .getMany();
+      .where('m.thread_id = :tid', { tid: threadId });
+    if (before?.createdAt) {
+      if (before.id) {
+        qb.andWhere(
+          '(m.created_at < :beforeAt OR (m.created_at = :beforeAt AND m.id < :beforeId))',
+          { beforeAt: before.createdAt, beforeId: before.id },
+        );
+      } else {
+        qb.andWhere('m.created_at < :beforeAt', { beforeAt: before.createdAt });
+      }
+    }
+    const rows = await qb.orderBy('m.created_at', 'DESC').addOrderBy('m.id', 'DESC').take(lim).getMany();
     return rows.reverse().map((r) => this.toDto(r));
   }
 

@@ -403,6 +403,7 @@ async function saveForm() {
     }
     showForm.value = false
     resetForm()
+    feedback.success(t('common.savedSuccessfully'))
   } catch (e: unknown) {
     formError.value = (e as { message?: string })?.message || t('paymentSettings.saveError')
   } finally {

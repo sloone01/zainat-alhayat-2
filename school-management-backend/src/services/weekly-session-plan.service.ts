@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WeeklySessionPlan } from '../entities/weekly-session-plan.entity';
@@ -23,6 +23,8 @@ export interface CreateWeeklySessionPlanDto {
   }>;
   notes?: string;
   created_by: string;
+  /** When set, the schedule must belong to this teacher. */
+  onlyTeacherId?: string;
 }
 
 export interface UpdateWeeklySessionPlanDto {
@@ -110,6 +112,10 @@ export class WeeklySessionPlanService {
       if (!schedule) {
         throw new NotFoundException('No schedule found for this group');
       }
+    }
+
+    if (createDto.onlyTeacherId && schedule.teacher_id !== createDto.onlyTeacherId) {
+      throw new ForbiddenException('Teachers may only add tasks to their own sessions');
     }
 
     // Parse and validate week start date

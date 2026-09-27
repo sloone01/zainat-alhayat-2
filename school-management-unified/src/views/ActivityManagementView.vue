@@ -1096,6 +1096,13 @@ const buildUpdatePayload = (): UpdateActivityRequest => {
 const saveActivity = async () => {
   submitting.value = true
   error.value = ''
+  const start = form.value.start_time
+  const end = form.value.end_time
+  if (start && end && end <= start) {
+    error.value = t('activities.endBeforeStart')
+    submitting.value = false
+    return
+  }
   try {
     if (form.value.requires_parent_approval && letterBundle.value) {
       approvalLetterPanelRef.value?.flushAndEmit?.()

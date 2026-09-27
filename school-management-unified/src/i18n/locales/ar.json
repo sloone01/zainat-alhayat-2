@@ -1703,6 +1703,7 @@
     "openChat": "فتح",
     "starting": "جاري البدء…",
     "loadError": "تعذر تحميل الرسائل. حاول مرة أخرى.",
+    "loadEarlier": "جارٍ تحميل الرسائل الأقدم",
     "stats": {
       "total": "{count} محادثة",
       "suggested": "{count} مقترح",
@@ -2974,7 +2975,9 @@
       "placeAfterRequired": "اختر موضع الحصة في اليوم",
       "invalidTimeRange": "وقت النهاية يجب أن يكون بعد وقت البداية",
       "timeConflict": "تعارض في الوقت مع حصة أخرى",
-      "teacherConflict": "المعلم لديه حصة أخرى في نفس الوقت"
+      "teacherConflict": "المعلم لديه حصة أخرى في نفس الوقت",
+      "roomBooked": "القاعة محجوزة في هذا الوقت",
+      "groupConflict": "هذه المجموعة لديها حصة في هذا الوقت"
     }
   },
   "scheduleAuto": {
@@ -3147,6 +3150,10 @@
     "weeklySchedule": "الجدول الأسبوعي",
     "noSessionsFound": "لا توجد جلسات",
     "noSessionsFoundDescription": "لا توجد جلسات مخصصة لك في هذا الأسبوع",
+    "chooseSession": "الحصة",
+    "taskTitle": "عنوان المهمة",
+    "taskDescription": "الوصف",
+    "noSessionForTask": "لا توجد حصة هذا الأسبوع لإضافة مهمة إليها",
     "sessionStatus": {
       "pending": "لم تبدأ",
       "completed": "مكتملة",
@@ -4112,6 +4119,7 @@
     "image": "صورة",
     "startTime": "وقت البدء",
     "endTime": "وقت الانتهاء",
+    "endBeforeStart": "وقت النهاية يجب أن يكون بعد وقت البداية",
     "filterStatusAll": "كل الحالات",
     "filterTypeAll": "كل الأنواع",
     "filterByGroup": "تصفية حسب المجموعة",

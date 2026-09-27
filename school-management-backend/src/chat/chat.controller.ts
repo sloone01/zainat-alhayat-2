@@ -269,12 +269,15 @@ export class ChatController {
     @Req() req: { user: User },
     @Param('threadId') threadId: string,
     @Query('limit') limit?: string,
+    @Query('before') before?: string,
+    @Query('before_id') beforeId?: string,
   ) {
     await this.directChatService.assertThreadMember(req.user, threadId);
-    const lim = limit ? parseInt(limit, 10) : 80;
+    const lim = limit ? parseInt(limit, 10) : 40;
     const data = await this.directChatService.getRecentMessages(
       threadId,
-      Number.isFinite(lim) ? lim : 80,
+      Number.isFinite(lim) ? lim : 40,
+      before ? { createdAt: before, id: beforeId || undefined } : undefined,
     );
     return { success: true, data, count: data.length };
   }

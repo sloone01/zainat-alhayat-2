@@ -55,6 +55,18 @@ class ScheduleService extends BaseApiService {
     return this.get<Schedule[]>(`/schedules/group/${groupId}`)
   }
 
+  /** Teachers do not have the school timetable claim. Load their own slots, then keep this group. */
+  async getSchedulesForGroup(
+    groupId: string,
+    actor?: { id?: string; role?: string } | null,
+  ): Promise<Schedule[]> {
+    if (actor?.role === 'teacher' && actor.id) {
+      const mine = await this.getSchedulesByTeacher(String(actor.id))
+      return mine.filter((row) => String(row.group_id ?? '') === String(groupId))
+    }
+    return this.getSchedulesByGroup(groupId)
+  }
+
   async getSchedulesByTeacher(teacherId: string): Promise<Schedule[]> {
     return this.get<Schedule[]>(`/schedules/teacher/${teacherId}`)
   }

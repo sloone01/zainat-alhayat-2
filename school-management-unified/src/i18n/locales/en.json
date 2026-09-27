@@ -1837,6 +1837,7 @@
     "openChat": "Open",
     "starting": "Starting…",
     "loadError": "Could not load messages. Please try again.",
+    "loadEarlier": "Loading earlier messages",
     "stats": {
       "total": "{count} threads",
       "suggested": "{count} suggested",
@@ -2995,7 +2996,9 @@
       "placeAfterRequired": "Choose where to place this session",
       "invalidTimeRange": "End time must be after start time",
       "timeConflict": "Time conflict with another class",
-      "teacherConflict": "Teacher has another class at the same time"
+      "teacherConflict": "Teacher has another class at the same time",
+      "roomBooked": "That room is already booked at this time",
+      "groupConflict": "This group already has a class at this time"
     },
     "actions": {
       "exportSchedule": "Export Schedule",
@@ -3175,6 +3178,10 @@
     "weekOf": "Week of",
     "noSessionsFound": "No Sessions Found",
     "noSessionsFoundDescription": "No sessions are assigned to you for this week",
+    "chooseSession": "Session",
+    "taskTitle": "Task title",
+    "taskDescription": "Description",
+    "noSessionForTask": "There is no session this week to add a task to",
     "sessionDetails": "Session Details",
     "groupName": "Group Name",
     "courseName": "Course Name",
@@ -4116,6 +4123,7 @@
     "image": "Image",
     "startTime": "Start Time",
     "endTime": "End Time",
+    "endBeforeStart": "End time must be after the start time",
     "filterStatusAll": "All statuses",
     "filterTypeAll": "All types",
     "filterByGroup": "Filter by group",

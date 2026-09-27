@@ -275,9 +275,9 @@ const loadSchedules = async () => {
   }
 
   try {
-    const user = authService.getStoredUser() as { id?: string } | null
+    const user = authService.getStoredUser() as { id?: string; role?: string } | null
     const uid = user?.id ? String(user.id).trim() : ''
-    const rows = await scheduleService.getSchedulesByGroup(selectedGroupId.value)
+    const rows = await scheduleService.getSchedulesForGroup(selectedGroupId.value, user)
     schedules.value = uid
       ? rows.filter((schedule) => schedule.teacher_id != null && String(schedule.teacher_id).trim() === uid)
       : []

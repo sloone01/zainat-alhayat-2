@@ -36,7 +36,11 @@
     </header>
     <ChatAuditNotice class="m-2" />
 
-    <ScrollArea6 ref="threadFrame">
+    <ScrollArea6 ref="threadFrame" @scroll="onThreadScroll">
+      <p v-if="loadingOlder" class="text-center text-xs text-fikr-ink-soft">{{ $t('directMessages.loadEarlier') }}</p>
+      <div v-if="threadLoading" class="flex min-h-[12rem] flex-col items-center justify-center gap-3 py-14 text-fikr-ink-soft">
+        <FikrLoader />
+      </div>
       <div v-if="loadError" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
         {{ loadError }}
       </div>
@@ -48,7 +52,7 @@
         {{ sendError }}
       </div>
       <div
-        v-if="!loadError && !messages.length"
+        v-if="!threadLoading && !loadError && !messages.length"
         class="flex min-h-[12rem] flex-col items-center justify-center py-14 text-center"
       >
         <h3 class="text-sm font-semibold text-fikr-ink">{{ $t('directMessages.noMessages') }}</h3>
@@ -131,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, inject } from 'vue'
+import { ref, computed, watch, onUnmounted, inject, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useThrottleFn, useDebounceFn } from '@vueuse/core'
@@ -142,6 +146,7 @@ import { chatApiService, reloadDirectThreadsKey, type ChatMessage } from '@/serv
 import ChatThreadShell from '@/components/ui/chat-thread-shell.vue'
 import ChatAuditNotice from '@/components/ChatAuditNotice.vue'
 import ScrollArea6 from '@/components/ui/scroll-area6.vue'
+import FikrLoader from '@/components/FikrLoader.vue'
 import ChatComposer from '@/components/ui/chat-composer.vue'
 import ChatMessageRow from '@/components/ui/chat-message-row.vue'
 import MessageLetterCardFrame, {
@@ -160,7 +165,11 @@ const { locale, t } = useI18n()
 const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
+const MESSAGE_PAGE = 40
 const threadId = computed(() => String(route.params.threadId || ''))
+const threadLoading = ref(false)
+const loadingOlder = ref(false)
+const hasMoreMessages = ref(false)
 const roomTitle = ref('')
 /** Parent (or other peer) in this thread — needed when admin reads official letter threads. */
 const threadPeerUserId = ref<string | null>(null)
@@ -171,7 +180,10 @@ const loadError = ref('')
 const sendError = ref('')
 const draft = ref('')
 const sending = ref(false)
-const threadFrame = ref<{ scrollToBottom: () => Promise<void> } | null>(null)
+const threadFrame = ref<{
+  scrollToBottom: () => Promise<void>
+  viewport: HTMLElement | null
+} | null>(null)
 const socketConnected = ref(false)
 const typingByUser = ref<Record<string, string>>({})
 
@@ -544,21 +556,55 @@ function connectSocket() {
 async function loadInitial() {
   loadError.value = ''
   sendError.value = ''
+  threadLoading.value = true
+  hasMoreMessages.value = false
   try {
     const peer = await chatApiService.getDirectThreadPeer(threadId.value)
     threadPeerUserId.value = peer.other_user_id
     threadPeerRole.value = peer.other_role || ''
     roomTitle.value = peer.other_name || t('directMessages.roomTitle')
-    const initial = await chatApiService.listDirectMessages(threadId.value, 120)
+    const initial = await chatApiService.listDirectMessages(threadId.value, MESSAGE_PAGE)
     messages.value = Array.isArray(initial) ? initial : []
-    await hydrateAllLetterMessages(messages.value)
+    hasMoreMessages.value = messages.value.length >= MESSAGE_PAGE
+    void hydrateAllLetterMessages(messages.value)
     await scrollBottom()
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { message?: string | string[] } } }
     const m = ax.response?.data?.message
     const detail = Array.isArray(m) ? m.join(', ') : m
     loadError.value = detail || (e as Error).message || t('directMessages.loadError')
+  } finally {
+    threadLoading.value = false
   }
+}
+
+async function loadOlderMessages() {
+  const oldest = messages.value[0]
+  if (!oldest || loadingOlder.value || threadLoading.value || !hasMoreMessages.value) return
+  loadingOlder.value = true
+  const el = threadFrame.value?.viewport ?? null
+  const prevHeight = el?.scrollHeight ?? 0
+  const prevTop = el?.scrollTop ?? 0
+  try {
+    const older = await chatApiService.listDirectMessages(threadId.value, MESSAGE_PAGE, {
+      createdAt: oldest.createdAt,
+      id: oldest.id,
+    })
+    if (older.length < MESSAGE_PAGE) hasMoreMessages.value = false
+    if (older.length) {
+      mergeMessages(older)
+      void hydrateAllLetterMessages(older)
+      await nextTick()
+      if (el) el.scrollTop = el.scrollHeight - prevHeight + prevTop
+    }
+  } finally {
+    loadingOlder.value = false
+  }
+}
+
+function onThreadScroll(payload: { scrollTop: number }) {
+  if (payload.scrollTop > 64) return
+  void loadOlderMessages()
 }
 
 function send() {

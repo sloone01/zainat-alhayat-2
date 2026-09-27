@@ -6,6 +6,7 @@
         class="absolute inset-0 overflow-y-auto overscroll-y-contain"
         style="-webkit-overflow-scrolling: touch"
         data-slot="scroll-area-viewport"
+        @scroll="onViewportScroll"
       >
         <div class="space-y-4 p-4">
           <slot />
@@ -29,7 +30,20 @@
 <script setup lang="ts">
 import { nextTick, ref } from 'vue'
 
+const emit = defineEmits<{
+  scroll: [payload: { scrollTop: number; scrollHeight: number; clientHeight: number }]
+}>()
+
 const viewport = ref<HTMLElement | null>(null)
+
+function onViewportScroll(event: Event) {
+  const el = event.target as HTMLElement
+  emit('scroll', {
+    scrollTop: el.scrollTop,
+    scrollHeight: el.scrollHeight,
+    clientHeight: el.clientHeight,
+  })
+}
 
 async function scrollToBottom() {
   await nextTick()

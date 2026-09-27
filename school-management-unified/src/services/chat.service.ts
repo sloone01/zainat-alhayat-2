@@ -169,8 +169,16 @@ class ChatApiService extends BaseApiService {
     return this.get<DirectThreadPeer>(`/chat/direct/threads/${threadId}`)
   }
 
-  async listDirectMessages(threadId: string, limit = 100): Promise<ChatMessage[]> {
-    return this.get<ChatMessage[]>(`/chat/direct/threads/${threadId}/messages`, { limit })
+  async listDirectMessages(
+    threadId: string,
+    limit = 40,
+    before?: { createdAt: string; id?: string },
+  ): Promise<ChatMessage[]> {
+    return this.get<ChatMessage[]>(`/chat/direct/threads/${threadId}/messages`, {
+      limit,
+      before: before?.createdAt,
+      before_id: before?.id,
+    })
   }
 
   async listParentTeacherContacts(): Promise<ParentTeacherContactRow[]> {

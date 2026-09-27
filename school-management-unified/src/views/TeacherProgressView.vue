@@ -633,7 +633,7 @@ const loadGroupLessons = async (groupId) => {
 
     if (progressSettings.value.loadLessonsFromSchedule) {
       // Load lessons from schedule
-      let schedules = await scheduleService.getSchedulesByGroup(groupId)
+      let schedules = await scheduleService.getSchedulesForGroup(groupId, currentUser.value)
 
       // Filter by teacher if restricted
       if (progressSettings.value.restrictLessonsToAssignedTeacher && currentUser.value?.role === 'teacher') {

@@ -169,6 +169,7 @@
           @select-day="onCalendarSelectDay"
           @month-change="onCalendarMonthChange"
           @event-click="onCalendarEventClick"
+          @new-event="openNewTask"
         />
       </div>
 
@@ -185,6 +186,42 @@
         </div>
       </div>
     </div>
+
+    <FikrDialog
+      :show="newTaskOpen"
+      :title="$t('calendar.newEvent')"
+      size="md"
+      plain-footer
+      @close="closeNewTask"
+    >
+      <form id="teacher-new-task" class="fk-form" @submit.prevent="saveNewTask">
+        <div class="fk-form__section space-y-4">
+          <div>
+            <label class="fk-flabel" for="teacher-new-task-session"><span>{{ $t('teacherWeeklySessions.chooseSession') }}</span></label>
+            <select id="teacher-new-task-session" v-model="newTaskScheduleId" required class="fk-field">
+              <option v-for="cls in currentSchedule" :key="cls.schedule_id" :value="cls.schedule_id">
+                {{ sessionOptionLabel(cls) }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="fk-flabel" for="teacher-new-task-title"><span>{{ $t('teacherWeeklySessions.taskTitle') }}</span></label>
+            <input id="teacher-new-task-title" v-model="newTaskTitle" type="text" required class="fk-field" />
+          </div>
+          <div>
+            <label class="fk-flabel" for="teacher-new-task-body"><span>{{ $t('teacherWeeklySessions.taskDescription') }}</span></label>
+            <textarea id="teacher-new-task-body" v-model="newTaskDescription" rows="3" class="fk-field" />
+          </div>
+          <p v-if="newTaskError" class="fk-alert fk-alert--error">{{ newTaskError }}</p>
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--mist" @click="closeNewTask">{{ $t('common.cancel') }}</button>
+        <button type="submit" form="teacher-new-task" class="fk-btn fk-btn--navy" :disabled="newTaskSaving">
+          {{ newTaskSaving ? $t('common.loading') : $t('common.save') }}
+        </button>
+      </template>
+    </FikrDialog>
 
     <!-- Task Completion Modal (Read-only with completion options) -->
     <TaskCompletionModal
@@ -227,6 +264,8 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
+import { useFeedback } from '@/composables/useFeedback'
 import TaskCompletionModal from '@/components/TaskCompletionModal.vue'
 import TaskCompletionForm from '@/components/TaskCompletionForm.vue'
 import TaskDetailsModal from '@/components/TaskDetailsModal.vue'
@@ -251,6 +290,7 @@ import {
 } from '@/utils/calendar-date'
 
 const { t, locale } = useI18n()
+const feedback = useFeedback()
 const router = useRouter()
 
 const isRTL = computed(() => locale.value === 'ar')
@@ -454,6 +494,64 @@ function onCalendarEventClick(event: CalendarEvent) {
   openTaskModal(event.payload)
 }
 
+const newTaskOpen = ref(false)
+const newTaskSaving = ref(false)
+const newTaskError = ref('')
+const newTaskTitle = ref('')
+const newTaskDescription = ref('')
+const newTaskScheduleId = ref('')
+
+function sessionOptionLabel(cls: { day?: string; startTime?: string; endTime?: string; course_id?: string }) {
+  const course = getCourseName(cls.course_id || '')
+  const when = [cls.day, cls.startTime && cls.endTime ? `${cls.startTime}–${cls.endTime}` : cls.startTime]
+    .filter(Boolean)
+    .join(' · ')
+  return when ? `${course} · ${when}` : course
+}
+
+function openNewTask() {
+  const sessions = currentSchedule.value as Array<{ schedule_id: string }>
+  if (!selectedGroupId.value || !sessions.length) {
+    feedback.error(t('teacherWeeklySessions.noSessionForTask'))
+    return
+  }
+  newTaskScheduleId.value = sessions[0].schedule_id
+  newTaskTitle.value = ''
+  newTaskDescription.value = ''
+  newTaskError.value = ''
+  newTaskOpen.value = true
+}
+
+function closeNewTask() {
+  if (newTaskSaving.value) return
+  newTaskOpen.value = false
+}
+
+async function saveNewTask() {
+  const title = newTaskTitle.value.trim()
+  if (!title || !newTaskScheduleId.value || !selectedGroupId.value) return
+  newTaskSaving.value = true
+  newTaskError.value = ''
+  try {
+    await weeklySessionPlanService.create({
+      groupId: selectedGroupId.value,
+      weekStartDate: selectedWeekStart.value,
+      scheduleId: newTaskScheduleId.value,
+      title,
+      description: newTaskDescription.value.trim(),
+    })
+    newTaskOpen.value = false
+    feedback.success(t('common.createdSuccessfully'))
+    await loadTasks(true)
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
+    const raw = ax.response?.data?.message
+    newTaskError.value = Array.isArray(raw) ? raw.join(', ') : raw || ax.message || t('teacherWeeklySessions.updateFailed')
+  } finally {
+    newTaskSaving.value = false
+  }
+}
+
 const getCompletedTaskCount = (scheduleId: string): number => {
   const tasks = tasksBySchedule.value[scheduleId] || []
   return tasks.filter(task => task.is_completed).length
@@ -590,7 +688,10 @@ const loadSchedulesAndCourses = async () => {
 
     // Try to load real data first
     try {
-      schedules.value = await scheduleService.getSchedulesByGroup(selectedGroupId.value)
+      schedules.value = await scheduleService.getSchedulesForGroup(
+        selectedGroupId.value,
+        currentUser.value,
+      )
 
       if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
         const uid = String(currentUser.value.id).trim()

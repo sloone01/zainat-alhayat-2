@@ -30,7 +30,7 @@
               :search-aria="$t('directMessages.searchPlaceholder')"
               :plus-aria="$t('directMessages.startNew')"
               show-plus
-              :loading="loading"
+              :loading="loading && !routePageLoading"
               :loading-label="$t('common.loading')"
               :items="peopleItems"
               :has-source-items="threads.length > 0"
@@ -94,6 +94,7 @@ import ChatAuditNotice from '@/components/ChatAuditNotice.vue'
 import ShareAccess2 from '@/components/ui/share-access-2.vue'
 import MessagingPeopleList from '@/components/ui/messaging-people-list.vue'
 import MessagingKindSwitch from '@/components/ui/messaging-kind-switch.vue'
+import { routePageLoading } from '@/router/route-loading'
 import { getSessionPersona } from '@/utils/auth-token'
 import { scrubMessageLetterSystemSender } from '@/utils/message-letter-sender'
 import {

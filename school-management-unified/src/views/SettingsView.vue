@@ -524,13 +524,10 @@
               </div>
               <button
                 type="button"
-                class="fk-iconbtn"
-                :aria-label="$t('classSettings.timeSlots.regenerate')"
+                class="fk-btn fk-btn--pearl fk-btn--sm"
                 @click="regenerateTimeSlots"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+                {{ $t('classSettings.timeSlots.regenerate') }}
               </button>
             </div>
             <p v-if="timeSlotsError" class="fk-alert fk-alert--error mb-3">{{ timeSlotsError }}</p>
@@ -726,6 +723,41 @@ function clearSchoolLogo() {
   brandAccentColor.value = ''
 }
 
+/** Phone photos are multi-megabyte. Downscale before upload so the request finishes quickly. */
+async function shrinkSchoolLogo(file: File): Promise<File> {
+  const maxEdge = 1024
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(file)
+  } catch {
+    return file
+  }
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height))
+  if (scale === 1 && file.size < 400_000) {
+    bitmap.close()
+    return file
+  }
+  const width = Math.max(1, Math.round(bitmap.width * scale))
+  const height = Math.max(1, Math.round(bitmap.height * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    bitmap.close()
+    return file
+  }
+  ctx.drawImage(bitmap, 0, 0, width, height)
+  bitmap.close()
+  const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, mime, mime === 'image/jpeg' ? 0.85 : undefined)
+  })
+  if (!blob || blob.size >= file.size) return file
+  const name = mime === 'image/png' ? 'logo.png' : 'logo.jpg'
+  return new File([blob], name, { type: mime })
+}
+
 async function onSchoolLogoFile(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -742,13 +774,14 @@ async function onSchoolLogoFile(event: Event) {
   }
   uploadingLogo.value = true
   try {
-    const row = await attachmentService.uploadFile(file, {
+    const prepared = await shrinkSchoolLogo(file)
+    const row = await attachmentService.uploadFile(prepared, {
       entity_type: 'school',
       entity_id: schoolId,
       purpose: 'school_logo',
     })
     schoolLogoUrl.value = publicSchoolLogoPath(row.id)
-    await detectBrandColorsFromLogo()
+    void detectBrandColorsFromLogo()
   } catch (err) {
     console.error('Error uploading school logo:', err)
     feedback.error(t('settings.logoUploadFailed'))
@@ -1537,19 +1570,23 @@ const regenerateTimeSlots = async () => {
   const defaultDuration = defaultDurationMinutes.value
   if (!defaultDuration) {
     timeSlotsError.value = t('classSettings.durations.defaultRequired')
-    generatedTimeSlots.value = []
-    persistClassSettingsLocal()
     return
   }
 
   try {
-    generatedTimeSlots.value = buildSlotsFromDay(
+    const next = buildSlotsFromDay(
       defaultDuration,
       firstClassTime.value,
       schoolEndTime.value,
       breakTimes.value,
     )
+    if (!next.length) {
+      timeSlotsError.value = t('classSettings.timeSlots.empty')
+      return
+    }
+    generatedTimeSlots.value = next
     persistClassSettingsLocal()
+    feedback.success(t('common.savedSuccessfully'))
   } catch (err: any) {
     console.error('Error regenerating time slots:', err)
     generatedTimeSlots.value = buildSlotsFromDay(

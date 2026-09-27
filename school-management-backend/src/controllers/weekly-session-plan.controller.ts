@@ -51,7 +51,11 @@ export class WeeklySessionPlanController {
   }
 
   @Post()
-  @RequireClaim('weekly_session_plans', 'create')
+  @RequireAnyClaim(
+    { page: 'weekly_session_plans', action: 'create' },
+    { page: 'teacher_weekly_sessions', action: 'edit' },
+    { page: 'teacher_weekly_sessions', action: 'view' },
+  )
   @HttpCode(HttpStatus.CREATED)
   async createWeeklySessionPlan(
     @Body() createDto: Omit<CreateWeeklySessionPlanDto, 'created_by'>,
@@ -63,6 +67,7 @@ export class WeeklySessionPlanController {
       const plan = await this.weeklySessionPlanService.createWeeklySessionPlan({
         ...createDto,
         created_by: req.user.id,
+        onlyTeacherId: req.user.role === 'teacher' ? req.user.id : undefined,
       });
 
       return {

@@ -596,6 +596,11 @@ const saveClass = async (classData: any) => {
       room_id: null,
     }
 
+    if (durationMinutes <= 0) {
+      alert(t('scheduleManagement.validation.invalidTimeRange'))
+      return
+    }
+
     if (selectedClass.value) {
       await scheduleService.updateSchedule(selectedClass.value.id, scheduleData)
       await fetchSchedules(groupId)
@@ -603,14 +608,24 @@ const saveClass = async (classData: any) => {
       await scheduleService.createSchedule(scheduleData)
       await fetchSchedules(groupId)
     }
+    closeClassModal()
   } catch (error) {
     console.error('Error saving schedule:', error)
-    alert(t('scheduleManagement.saveFailed'))
+    alert(scheduleSaveErrorMessage(error))
   } finally {
     loading.value = false
   }
+}
 
-  closeClassModal()
+function scheduleSaveErrorMessage(error: unknown): string {
+  const ax = error as { response?: { data?: { message?: string | string[] } }; message?: string }
+  const raw = ax.response?.data?.message
+  const text = Array.isArray(raw) ? raw.join(' ') : raw || ax.message || ''
+  if (/teacher/i.test(text)) return t('scheduleManagement.validation.teacherConflict')
+  if (/room/i.test(text)) return t('scheduleManagement.validation.roomBooked')
+  if (/group/i.test(text)) return t('scheduleManagement.validation.groupConflict')
+  if (/end time/i.test(text)) return t('scheduleManagement.validation.invalidTimeRange')
+  return t('scheduleManagement.saveFailed')
 }
 
 const deleteClass = async (classItem: any) => {
