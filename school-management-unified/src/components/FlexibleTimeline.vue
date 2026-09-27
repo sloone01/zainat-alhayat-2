@@ -25,168 +25,144 @@
     <div class="relative w-full">
       <div
         ref="scrollRef"
-        class="relative overflow-auto rounded-lg border border-gray-200 bg-white"
+        class="relative max-h-[70vh] overflow-auto rounded-lg border border-gray-200 bg-white"
         @mousemove="onGridMouseMove"
         @mouseleave="hover = null; slotTip = null"
       >
         <div
-          class="relative"
-          :style="{
-            minWidth: `${timelineWidth + columnWidth}px`,
-            '--tl-col': `${columnWidth}px`,
-          }"
+          class="relative grid w-full min-w-0"
+          :style="{ gridTemplateColumns: gridColumns }"
         >
-          <div class="sticky top-0 z-10 border-b border-gray-200 bg-white">
-            <div class="flex h-12">
-              <div class="sticky start-0 z-20 flex w-[var(--tl-col)] items-center border-e border-gray-200 bg-white px-4 text-sm font-semibold text-[#0A2147]">
-                {{ $t('scheduleUi.day') }}
-              </div>
-              <div class="relative h-12 flex-1">
-                <div
-                  v-for="marker in hourMarkers"
-                  :key="`${marker.position}-${marker.label}`"
-                  class="absolute top-0 flex h-full items-center text-xs text-gray-500"
-                  :class="marker.edge === 'end' ? (rtl ? 'translate-x-full pe-2' : '-translate-x-full ps-2') : 'ps-2'"
-                  :style="{ insetInlineStart: `${marker.position}px` }"
-                >
-                  {{ marker.label }}
-                </div>
-              </div>
+          <div class="sticky start-0 top-0 z-30 flex h-16 items-center border-b border-e border-gray-200 bg-white px-3 text-sm font-semibold text-[#0A2147]">
+            {{ $t('common.time') }}
+          </div>
+          <div
+            v-for="day in days"
+            :key="`head-${day.key}`"
+            class="sticky top-0 z-20 flex h-16 items-center justify-between gap-1 border-b border-e border-gray-200 px-2"
+            :class="day.isToday ? 'bg-[#eef2f8]' : 'bg-white'"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-[#0A2147]">{{ day.label }}</p>
+              <p v-if="day.isToday" class="truncate text-xs text-gray-500">{{ $t('scheduleUi.today') }}</p>
+            </div>
+            <button
+              type="button"
+              class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#0A2147] hover:bg-[#0A2147]/10"
+              :aria-label="$t('scheduleManagement.addSession')"
+              :disabled="busy"
+              @click="emit('add', day.key)"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="sticky start-0 z-10 border-e border-gray-200 bg-white">
+            <div class="relative" :style="{ height: `${timelineHeight}px` }">
+            <div
+              v-for="marker in hourMarkers"
+              :key="`gutter-${marker.position}`"
+              class="absolute end-2 text-xs text-gray-500"
+              :class="marker.edge === 'end' ? '-translate-y-full' : marker.position === 0 ? '' : '-translate-y-1/2'"
+              :style="{ top: `${marker.position}px` }"
+            >
+              {{ marker.label }}
+            </div>
             </div>
           </div>
 
           <div
-            v-for="(day, index) in days"
+            v-for="day in days"
             :key="day.key"
-            :ref="(el) => setRowEl(day.key, el)"
-            class="relative flex h-14"
-            :class="rowClass(day.key)"
+            :ref="(el) => setColEl(day.key, el)"
+            class="relative border-e border-gray-200"
+            :class="columnClass(day.key)"
+            :style="{ height: `${timelineHeight}px` }"
           >
             <div
-              v-if="index > 0"
-              class="pointer-events-none absolute inset-x-0 top-0 z-20 h-0.5 bg-gray-200"
+              v-for="(line, idx) in quarterLines"
+              :key="`q-${day.key}-${idx}`"
+              class="absolute inset-x-0 h-px bg-gray-100"
+              :style="{ top: `${line}px` }"
             />
-            <div class="sticky start-0 z-[5] flex w-[var(--tl-col)] items-center gap-1 border-e border-gray-200 bg-inherit px-3">
-              <div class="min-w-0 flex-1 py-1">
-                <p class="truncate text-sm font-medium text-[#0A2147]">{{ day.label }}</p>
-                <p v-if="day.isToday" class="truncate text-xs text-gray-500">{{ $t('scheduleUi.today') }}</p>
-              </div>
-              <button
-                type="button"
-                class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#0A2147] hover:bg-[#0A2147]/10"
-                :aria-label="$t('scheduleManagement.addSession')"
-                :disabled="busy"
-                @click="emit('add', day.key)"
+            <div
+              v-for="marker in hourMarkers"
+              :key="`h-${day.key}-${marker.position}`"
+              class="absolute inset-x-0 h-px bg-gray-200"
+              :style="{ top: `${marker.position}px` }"
+            />
+
+            <div
+              v-for="slot in slotsFor(day.key)"
+              :key="slot.id"
+              role="button"
+              tabindex="0"
+              data-tl-slot
+              class="absolute cursor-grab touch-none select-none"
+              :style="slotBox(slot)"
+              @pointerdown="onSlotPointerDown($event, slot)"
+              @pointermove="onSlotPointerMove"
+              @pointerup="onSlotPointerUp"
+              @pointercancel="clearDrag"
+              @mouseenter="onSlotHover($event, slot)"
+              @mousemove="onSlotHover($event, slot)"
+              @mouseleave="slotTip = null"
+              @keydown.enter.prevent="emit('select', slot.id)"
+              @keydown.space.prevent="emit('select', slot.id)"
+            >
+              <div
+                class="absolute inset-0.5 overflow-hidden rounded border-s-4 bg-white px-2 py-1 text-start shadow-md"
+                :class="slotCardClass(slot.id)"
+                :style="{ borderInlineStartColor: slot.color }"
               >
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" d="M12 5v14M5 12h14" />
-                </svg>
-              </button>
+                <p class="truncate text-xs font-medium leading-4" :style="{ color: slot.color }">{{ slot.title }}</p>
+                <p class="truncate text-[11px] leading-4 text-gray-500">{{ slot.startTime }}</p>
+                <p class="truncate text-[11px] leading-4 text-gray-500">{{ slot.teacher }}</p>
+              </div>
             </div>
 
-            <div class="relative h-full min-h-0 flex-1" :style="{ width: `${timelineWidth}px` }">
-              <div
-                v-for="(line, idx) in quarterLines"
-                :key="`q-${day.key}-${idx}`"
-                class="absolute inset-y-0 w-px bg-gray-200"
-                :style="{ insetInlineStart: `${line}px` }"
-              />
-              <div
-                v-for="marker in hourMarkers"
-                :key="`h-${day.key}-${marker.position}`"
-                class="absolute inset-y-0 w-px bg-gray-200"
-                :style="{ insetInlineStart: `${marker.position}px` }"
-              />
-              <div
-                v-if="endLine >= 0"
-                class="absolute inset-y-0 w-px bg-gray-200"
-                :style="{ insetInlineStart: `${endLine}px` }"
-              />
-
-              <div
-                v-for="slot in slotsFor(day.key)"
-                :key="slot.id"
-                role="button"
-                tabindex="0"
-                data-tl-slot
-                class="absolute top-0 bottom-0 cursor-grab touch-none select-none"
-                :style="slotBox(slot)"
-                @pointerdown="onSlotPointerDown($event, slot)"
-                @pointermove="onSlotPointerMove"
-                @pointerup="onSlotPointerUp"
-                @pointercancel="clearDrag"
-                @mouseenter="onSlotHover($event, slot)"
-                @mousemove="onSlotHover($event, slot)"
-                @mouseleave="slotTip = null"
-                @keydown.enter.prevent="emit('select', slot.id)"
-                @keydown.space.prevent="emit('select', slot.id)"
-              >
-                <div
-                  class="absolute inset-1 overflow-hidden rounded border-s-4 bg-white px-2 py-1 text-start shadow-md"
-                  :class="slotCardClass(slot.id)"
-                  :style="{ borderInlineStartColor: slot.color }"
-                >
-                  <p class="truncate text-xs font-medium leading-4" :style="{ color: slot.color }">{{ slot.title }}</p>
-                  <p class="flex items-center gap-2 truncate text-xs leading-4 text-gray-500">
-                    <span class="inline-flex items-center gap-0.5">
-                      <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <circle cx="12" cy="12" r="9" />
-                        <path stroke-linecap="round" d="M12 7v5l3 2" />
-                      </svg>
-                      {{ slot.startTime }}
-                    </span>
-                    <span class="inline-flex min-w-0 items-center gap-0.5">
-                      <svg class="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path stroke-linecap="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                        <circle cx="9" cy="7" r="3" />
-                      </svg>
-                      <span class="truncate">{{ slot.teacher }}</span>
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              <div
-                v-if="drag && drag.valid && drag.day === day.key"
-                class="pointer-events-none absolute z-[30] rounded-md bg-[#0A2147]/20"
-                :style="ghostStyle()"
-              />
-            </div>
+            <div
+              v-if="drag && drag.valid && drag.day === day.key"
+              class="pointer-events-none absolute z-[30] rounded-md bg-[#0A2147]/20"
+              :style="ghostStyle()"
+            />
           </div>
 
           <div
             v-if="nowMarker"
-            class="pointer-events-none absolute top-0 bottom-0 z-[15] w-0.5 bg-[#0A2147]"
-            :style="{ insetInlineStart: `${columnWidth + nowMarker.position}px` }"
+            class="pointer-events-none absolute z-[15] h-0.5 bg-[#0A2147]"
+            :style="{ top: `${headerHeight + nowMarker.position}px`, insetInlineStart: `${columnWidth}px`, insetInlineEnd: '0' }"
           >
-            <div class="absolute top-0 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-[#0A2147] px-2 py-1 text-xs font-medium text-white shadow-md">
+            <div class="absolute start-0 top-0 -translate-y-1/2 whitespace-nowrap rounded bg-[#0A2147] px-2 py-1 text-xs font-medium text-white shadow-md">
               {{ $t('scheduleUi.now') }}: {{ nowMarker.label }}
             </div>
           </div>
 
           <div
             v-if="drag?.moved"
-            class="pointer-events-none absolute top-0 bottom-0 z-[12]"
+            class="pointer-events-none absolute z-[12]"
             :style="dropRegionStyle()"
           >
             <div
-              class="absolute top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded px-3 py-1.5 text-sm font-semibold text-white shadow-md"
+              class="absolute left-1/2 top-1 -translate-x-1/2 whitespace-nowrap rounded px-3 py-1.5 text-sm font-semibold text-white shadow-md"
               :class="drag.valid ? 'bg-[#0A2147]' : 'bg-red-600'"
             >
               {{ dragLabel }}
             </div>
-            <div class="absolute inset-y-0 start-0 w-0.5" :class="drag.valid ? 'bg-[#0A2147]' : 'bg-red-600'" />
-            <div class="absolute inset-y-0 end-0 w-0.5" :class="drag.valid ? 'bg-[#0A2147]' : 'bg-red-600'" />
+            <div class="absolute inset-x-0 top-0 h-0.5" :class="drag.valid ? 'bg-[#0A2147]' : 'bg-red-600'" />
+            <div class="absolute inset-x-0 bottom-0 h-0.5" :class="drag.valid ? 'bg-[#0A2147]' : 'bg-red-600'" />
             <div class="absolute inset-0" :class="drag.valid ? 'bg-[#0A2147]/[0.07]' : 'bg-red-500/10'" />
           </div>
 
           <div
             v-else-if="hover && !slotTip"
-            class="pointer-events-none absolute top-0 bottom-0 z-20"
-            :style="{ left: `${hover.x}px` }"
+            class="pointer-events-none absolute z-20 h-0"
+            :style="{ top: `${headerHeight + hover.y}px`, insetInlineStart: `${columnWidth}px`, insetInlineEnd: '0' }"
           >
-            <div class="absolute inset-y-0 start-0 w-px bg-[#0A2147]/70" />
-            <div class="absolute top-0 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-[#0A2147] px-2 py-1 text-xs font-semibold text-white shadow-md">
+            <div class="absolute inset-x-0 top-0 h-px bg-[#0A2147]/70" />
+            <div class="absolute start-2 top-0 -translate-y-1/2 whitespace-nowrap rounded bg-[#0A2147] px-2 py-1 text-xs font-semibold text-white shadow-md">
               {{ hover.time }}
             </div>
           </div>
@@ -203,7 +179,7 @@
           left: `${dragPreview.left}px`,
           top: `${dragPreview.top}px`,
           width: `${dragPreview.width}px`,
-          height: '56px',
+          height: `${dragPreview.height}px`,
         }"
       >
         <div
@@ -212,22 +188,8 @@
           :style="{ borderInlineStartColor: dragPreview.color }"
         >
           <p class="truncate text-xs font-medium leading-4" :style="{ color: dragPreview.color }">{{ dragPreview.title }}</p>
-          <p class="flex items-center gap-2 truncate text-xs leading-4 text-gray-500">
-            <span class="inline-flex items-center gap-0.5">
-              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" />
-                <path stroke-linecap="round" d="M12 7v5l3 2" />
-              </svg>
-              {{ dragPreview.startTime }}
-            </span>
-            <span class="inline-flex min-w-0 items-center gap-0.5">
-              <svg class="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path stroke-linecap="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="3" />
-              </svg>
-              <span class="truncate">{{ dragPreview.teacher }}</span>
-            </span>
-          </p>
+          <p class="truncate text-[11px] leading-4 text-gray-500">{{ dragPreview.startTime }}</p>
+          <p class="truncate text-[11px] leading-4 text-gray-500">{{ dragPreview.teacher }}</p>
         </div>
       </div>
     </Teleport>
@@ -248,7 +210,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { hmToMinutes, minutesToHm } from '@/utils/schedule-display'
 
 export interface FlexibleTimelineSlot {
@@ -267,6 +229,9 @@ export interface FlexibleTimelineDay {
   isToday?: boolean
 }
 
+const HEADER_HEIGHT = 64
+const HOUR_PX = 72
+
 const props = withDefaults(
   defineProps<{
     slots: FlexibleTimelineSlot[]
@@ -282,7 +247,7 @@ const props = withDefaults(
     rtl: false,
     busy: false,
     snapMinutes: 15,
-    columnWidth: 160,
+    columnWidth: 72,
   },
 )
 
@@ -294,12 +259,12 @@ const emit = defineEmits<{
 }>()
 
 const columnWidth = computed(() => props.columnWidth)
+const headerHeight = HEADER_HEIGHT
 const zoom = ref(100)
 const scrollRef = ref<HTMLElement | null>(null)
-const viewportWidth = ref(0)
-const rowEls = new Map<string, HTMLElement>()
+const colEls = new Map<string, HTMLElement>()
 const now = ref(new Date())
-const hover = ref<{ x: number; time: string } | null>(null)
+const hover = ref<{ y: number; time: string } | null>(null)
 const slotTip = ref<{ title: string; teacher: string; range: string; x: number; y: number } | null>(null)
 
 type DragState = {
@@ -319,7 +284,6 @@ type DragState = {
 }
 
 const drag = ref<DragState | null>(null)
-let resizeObserver: ResizeObserver | null = null
 let nowTimer = 0
 
 const rangeStart = computed(() => Math.floor(props.startMinutes / 60) * 60)
@@ -329,11 +293,11 @@ const rangeEnd = computed(() => {
   return Math.max(snapped, rangeStart.value + 60)
 })
 const totalMinutes = computed(() => rangeEnd.value - rangeStart.value)
-const pixelsPerMinute = computed(() => {
-  const base = viewportWidth.value > 0 ? viewportWidth.value / totalMinutes.value : 1.2
-  return base * (100 / zoom.value)
-})
-const timelineWidth = computed(() => totalMinutes.value * pixelsPerMinute.value)
+const pixelsPerMinute = computed(() => (HOUR_PX / 60) * (100 / zoom.value))
+const timelineHeight = computed(() => totalMinutes.value * pixelsPerMinute.value)
+const gridColumns = computed(
+  () => `${columnWidth.value}px repeat(${Math.max(props.days.length, 1)}, minmax(0, 1fr))`,
+)
 
 const hourMarkers = computed(() => {
   const markers: { label: string; position: number; edge?: 'end' }[] = []
@@ -357,8 +321,6 @@ const quarterLines = computed(() => {
   }
   return lines
 })
-
-const endLine = computed(() => totalMinutes.value * pixelsPerMinute.value)
 
 const legend = computed(() => {
   const seen = new Map<string, { key: string; label: string; color: string }>()
@@ -396,20 +358,16 @@ const dragPreview = computed(() => {
     color: slot.color,
     startTime: minutesToHm(current.newStart),
     valid: current.valid,
-    width: Math.max(current.duration * pixelsPerMinute.value, 60),
+    width: 180,
+    height: Math.max(current.duration * pixelsPerMinute.value, 36),
     left: current.pointerX - current.grabX,
     top: current.pointerY - current.grabY,
   }
 })
 
-function measure() {
-  if (!scrollRef.value) return
-  viewportWidth.value = Math.max(0, scrollRef.value.clientWidth - columnWidth.value)
-}
-
-function setRowEl(key: string, el: unknown) {
-  if (el instanceof HTMLElement) rowEls.set(key, el)
-  else rowEls.delete(key)
+function setColEl(key: string, el: unknown) {
+  if (el instanceof HTMLElement) colEls.set(key, el)
+  else colEls.delete(key)
 }
 
 function slotsFor(day: string) {
@@ -425,11 +383,13 @@ function durationOf(slot: FlexibleTimelineSlot) {
 
 function slotBox(slot: FlexibleTimelineSlot) {
   const start = hmToMinutes(slot.startTime)
-  const left = (start - rangeStart.value) * pixelsPerMinute.value
-  const width = Math.max(durationOf(slot) * pixelsPerMinute.value, 60)
+  const top = (start - rangeStart.value) * pixelsPerMinute.value
+  const height = Math.max(durationOf(slot) * pixelsPerMinute.value, 18)
   return {
-    insetInlineStart: `${Number.isFinite(left) ? left : 0}px`,
-    width: `${width}px`,
+    top: `${Number.isFinite(top) ? top : 0}px`,
+    height: `${height}px`,
+    insetInlineStart: '4px',
+    insetInlineEnd: '4px',
   }
 }
 
@@ -454,15 +414,15 @@ function snap(minutes: number) {
   return Math.round(minutes / step) * step
 }
 
-function rowAt(clientY: number) {
-  for (const [key, el] of rowEls) {
+function columnAt(clientX: number) {
+  for (const [key, el] of colEls) {
     const rect = el.getBoundingClientRect()
-    if (clientY >= rect.top && clientY <= rect.bottom) return key
+    if (clientX >= rect.left && clientX <= rect.right) return key
   }
   return null
 }
 
-function rowClass(day: string) {
+function columnClass(day: string) {
   const active = drag.value?.moved && drag.value.day === day
   const today = day === props.days.find((item) => item.isToday)?.key
   return [
@@ -474,23 +434,30 @@ function rowClass(day: string) {
 
 function ghostStyle() {
   if (!drag.value) return {}
-  const left = (drag.value.newStart - rangeStart.value) * pixelsPerMinute.value
-  const width = Math.max(drag.value.duration * pixelsPerMinute.value, 60)
+  const top = (drag.value.newStart - rangeStart.value) * pixelsPerMinute.value
+  const height = Math.max(drag.value.duration * pixelsPerMinute.value, 18)
   return {
-    insetInlineStart: `${left}px`,
-    width: `${width}px`,
-    top: '2px',
-    bottom: '2px',
+    top: `${top}px`,
+    height: `${height}px`,
+    insetInlineStart: '4px',
+    insetInlineEnd: '4px',
   }
 }
 
 function dropRegionStyle() {
-  if (!drag.value) return {}
-  const left = (drag.value.newStart - rangeStart.value) * pixelsPerMinute.value
-  const width = Math.max(drag.value.duration * pixelsPerMinute.value, 60)
+  if (!drag.value || !scrollRef.value) return {}
+  const grid = scrollRef.value.firstElementChild as HTMLElement | null
+  const col = colEls.get(drag.value.day)
+  if (!grid || !col) return {}
+  const gridRect = grid.getBoundingClientRect()
+  const colRect = col.getBoundingClientRect()
+  const top = headerHeight + (drag.value.newStart - rangeStart.value) * pixelsPerMinute.value
+  const height = Math.max(drag.value.duration * pixelsPerMinute.value, 18)
   return {
-    insetInlineStart: `${columnWidth.value + left}px`,
-    width: `${width}px`,
+    left: `${colRect.left - gridRect.left}px`,
+    width: `${colRect.width}px`,
+    top: `${top}px`,
+    height: `${height}px`,
   }
 }
 
@@ -502,14 +469,13 @@ function onGridMouseMove(event: MouseEvent) {
   const grid = scrollRef.value.firstElementChild as HTMLElement | null
   if (!grid) return
   const rect = grid.getBoundingClientRect()
-  const x = event.clientX - rect.left
-  const trackX = props.rtl ? grid.clientWidth - x - columnWidth.value : x - columnWidth.value
-  if (trackX < 0 || trackX > timelineWidth.value) {
+  const trackY = event.clientY - rect.top - headerHeight
+  if (trackY < 0 || trackY > timelineHeight.value) {
     hover.value = null
     return
   }
-  const minutes = Math.floor(rangeStart.value + trackX / pixelsPerMinute.value)
-  hover.value = { x, time: minutesToHm(minutes) }
+  const minutes = Math.floor(rangeStart.value + trackY / pixelsPerMinute.value)
+  hover.value = { y: trackY, time: minutesToHm(minutes) }
 }
 
 function onSlotHover(event: MouseEvent, slot: FlexibleTimelineSlot) {
@@ -559,13 +525,12 @@ function onSlotPointerMove(event: PointerEvent) {
   if (!drag.value.moved && Math.hypot(dx, dy) < 8) return
   drag.value.moved = true
   slotTip.value = null
-  const sign = props.rtl ? -1 : 1
-  const deltaMinutes = (dx * sign) / pixelsPerMinute.value
+  const deltaMinutes = dy / pixelsPerMinute.value
   let next = snap(drag.value.startMinutes + deltaMinutes)
   const minStart = rangeStart.value
   const maxStart = Math.max(minStart, rangeEnd.value - drag.value.duration)
   next = Math.max(minStart, Math.min(maxStart, next))
-  const day = rowAt(event.clientY) || drag.value.day
+  const day = columnAt(event.clientX) || drag.value.day
   drag.value.day = day
   drag.value.newStart = next
   drag.value.valid = !overlaps(day, next, next + drag.value.duration, drag.value.id)
@@ -595,24 +560,13 @@ function onSlotPointerUp() {
   emit('move', { id: current.id, day: current.day, startTime, endTime })
 }
 
-watch(
-  () => [props.startMinutes, props.endMinutes, props.columnWidth],
-  () => measure(),
-)
-
 onMounted(() => {
-  measure()
-  if (scrollRef.value && typeof ResizeObserver !== 'undefined') {
-    resizeObserver = new ResizeObserver(() => measure())
-    resizeObserver.observe(scrollRef.value)
-  }
   nowTimer = window.setInterval(() => {
     now.value = new Date()
   }, 60000)
 })
 
 onBeforeUnmount(() => {
-  resizeObserver?.disconnect()
   window.clearInterval(nowTimer)
 })
 </script>

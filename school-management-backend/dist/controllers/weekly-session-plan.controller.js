@@ -45,6 +45,7 @@ let WeeklySessionPlanController = class WeeklySessionPlanController {
             const plan = await this.weeklySessionPlanService.createWeeklySessionPlan({
                 ...createDto,
                 created_by: req.user.id,
+                onlyTeacherId: req.user.role === 'teacher' ? req.user.id : undefined,
             });
             return {
                 success: true,
@@ -289,7 +290,7 @@ let WeeklySessionPlanController = class WeeklySessionPlanController {
 exports.WeeklySessionPlanController = WeeklySessionPlanController;
 __decorate([
     (0, common_1.Post)(),
-    (0, require_claim_decorator_1.RequireClaim)('weekly_session_plans', 'create'),
+    (0, require_claim_decorator_1.RequireAnyClaim)({ page: 'weekly_session_plans', action: 'create' }, { page: 'teacher_weekly_sessions', action: 'edit' }, { page: 'teacher_weekly_sessions', action: 'view' }),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
@@ -337,7 +338,7 @@ __decorate([
 ], WeeklySessionPlanController.prototype, "updateWeeklySessionPlan", null);
 __decorate([
     (0, common_1.Put)(':id/complete'),
-    (0, require_claim_decorator_1.RequireAnyClaim)({ page: 'weekly_session_plans', action: 'edit' }, { page: 'teacher_weekly_sessions', action: 'edit' }),
+    (0, require_claim_decorator_1.RequireAnyClaim)({ page: 'weekly_session_plans', action: 'edit' }, { page: 'teacher_weekly_sessions', action: 'edit' }, { page: 'teacher_weekly_sessions', action: 'view' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)()),

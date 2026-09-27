@@ -33,6 +33,7 @@ export const NOTIFICATION_TEMPLATE_KEYS = {
   BUS_BOARDED: 'bus.boarded',
   BUS_DROPPED_OFF: 'bus.dropped_off',
   BUS_APPROACHING: 'bus.approaching',
+  ONLINE_CLASS_INVITED: 'online.class_invited',
   ONLINE_CLASS_STARTED: 'online.class_started',
   ONLINE_SESSION_MISSED: 'online.session_missed',
   SCHEDULE_CANCELLED: 'schedule.cancelled',

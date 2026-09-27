@@ -159,7 +159,7 @@
       <div
         v-if="!isWeekdayMode"
         class="mt-1 hidden gap-2 lg:grid"
-        :style="{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gridTemplateRows: `repeat(${weekRowCount}, minmax(${compact ? '4.25rem' : '6rem'}, 1fr))` }"
+        :style="{ gridTemplateColumns: `repeat(${visibleWeekdayKeys.length}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${weekRowCount}, minmax(${compact ? '4.25rem' : '6rem'}, 1fr))` }"
       >
         <button
           v-for="(day, dayIdx) in days"
@@ -167,7 +167,7 @@
           type="button"
           class="fk-cal-cell flex cursor-pointer flex-col p-2 text-start"
           :class="[
-            dayIdx === 0 ? colStartClasses[day.getDay()] : '',
+            dayIdx === 0 ? colStartClasses[columnIndex(day)] : '',
             cellTone(day),
           ]"
           @click="selectDay(day)"
@@ -196,7 +196,7 @@
       <div
         v-if="!isWeekdayMode"
         class="mt-1 grid gap-1.5 lg:hidden"
-        :style="{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gridTemplateRows: `repeat(${weekRowCount}, minmax(3.5rem, 1fr))` }"
+        :style="{ gridTemplateColumns: `repeat(${visibleWeekdayKeys.length}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${weekRowCount}, minmax(3.5rem, 1fr))` }"
       >
         <button
           v-for="day in days"
@@ -270,6 +270,8 @@ const props = withDefaults(
     data?: CalendarDayData[]
     weekly?: Array<{ dayKey: string; event: CalendarEvent }>
     weekDayKeys?: string[]
+    /** Month grid drops these weekdays. Teacher sessions omit Friday and Saturday. */
+    omitWeekdays?: string[]
     mode?: 'month' | 'weekdays'
     heading?: string
     month?: Date | string | null
@@ -287,6 +289,7 @@ const props = withDefaults(
     data: () => [],
     weekly: () => [],
     weekDayKeys: () => ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'],
+    omitWeekdays: () => [],
     mode: 'month',
     heading: '',
     month: null,
@@ -314,11 +317,13 @@ const today = startOfToday()
 const currentMonth = ref(resolveMonth(props.month) ?? today)
 const selectedDay = ref(resolveDate(props.selected) ?? today)
 const isWeekdayMode = computed(() => props.mode === 'weekdays')
-const visibleWeekdayKeys = computed(() =>
-  isWeekdayMode.value
-    ? props.weekDayKeys
-    : ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
-)
+const ALL_WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+const visibleWeekdayKeys = computed(() => {
+  const omit = new Set(props.omitWeekdays.map((key) => key.toLowerCase()))
+  const source = isWeekdayMode.value ? props.weekDayKeys : ALL_WEEKDAYS
+  const keys = source.filter((key) => !omit.has(key))
+  return keys.length ? keys : source
+})
 const selectedWeekday = ref(props.weekDayKeys[0] || 'sunday')
 
 const colStartClasses = [
@@ -336,14 +341,20 @@ const firstDayCurrentMonth = computed(() =>
 )
 const monthEnd = computed(() => endOfMonth(firstDayCurrentMonth.value))
 
-const days = computed(() =>
-  eachDayOfInterval(
+const days = computed(() => {
+  const all = eachDayOfInterval(
     startOfWeek(firstDayCurrentMonth.value),
     endOfWeek(monthEnd.value),
-  ),
-)
+  )
+  if (isWeekdayMode.value || !props.omitWeekdays.length) return all
+  const omit = new Set(props.omitWeekdays.map((key) => key.toLowerCase()))
+  return all.filter((day) => !omit.has(weekdayKey(day)))
+})
 
-const weekRowCount = computed(() => Math.max(5, Math.ceil(days.value.length / 7)))
+const weekRowCount = computed(() => {
+  const cols = Math.max(1, visibleWeekdayKeys.value.length)
+  return Math.max(5, Math.ceil(days.value.length / cols))
+})
 
 const weekdayLabels = computed(() =>
   visibleWeekdayKeys.value.map((key) => weekdayLong(key)),
@@ -431,6 +442,11 @@ function formatMonthDayYear(date: Date) {
     day: 'numeric',
     year: 'numeric',
   }).format(date)
+}
+
+function columnIndex(day: Date) {
+  const index = visibleWeekdayKeys.value.indexOf(weekdayKey(day))
+  return index >= 0 ? index : 0
 }
 
 function eventsFor(day: Date) {

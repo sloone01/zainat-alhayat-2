@@ -17,7 +17,7 @@ export class SessionMedia {
   file_path: string;
 
   @Column({ length: 10 })
-  file_type: string; // 'photo' or 'video'
+  file_type: string; // 'photo' | 'video' | 'file'
 
   @Column({ type: 'int' })
   file_size: number;

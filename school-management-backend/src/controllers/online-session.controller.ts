@@ -32,6 +32,7 @@ export class OnlineSessionController {
   @RequireAnyClaim(
     { page: 'schedules', action: 'create' },
     { page: 'attendance_sessions', action: 'create' },
+    { page: 'teacher_weekly_sessions', action: 'edit' },
   )
   @HttpCode(HttpStatus.OK)
   async createOrGet(@Body() dto: CreateOnlineSessionDto, @Request() req: { user: User }) {
@@ -40,6 +41,35 @@ export class OnlineSessionController {
       success: true,
       data,
       message: data.created ? 'Online room created' : 'Joined existing online room',
+    };
+  }
+
+  /** Create or reuse the room and email + push the join link. Does not enter the call. */
+  @Post('invite')
+  @RequireAnyClaim(
+    { page: 'schedules', action: 'create' },
+    { page: 'attendance_sessions', action: 'create' },
+    { page: 'teacher_weekly_sessions', action: 'edit' },
+  )
+  @HttpCode(HttpStatus.OK)
+  async invite(@Body() dto: CreateOnlineSessionDto, @Request() req: { user: User }) {
+    const data = await this.onlineSessionService.inviteParents(req.user, dto);
+    return {
+      success: true,
+      data,
+      message: 'Invite sent',
+    };
+  }
+
+  /** Parent self: invited or live classes for linked students. No staff claim. */
+  @Get('mine')
+  async mine(@Request() req: { user: User }) {
+    const data = await this.onlineSessionService.listForParent(req.user);
+    return {
+      success: true,
+      data,
+      count: data.length,
+      message: 'Online classes',
     };
   }
 

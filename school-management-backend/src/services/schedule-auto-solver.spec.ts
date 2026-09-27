@@ -96,6 +96,54 @@ describe('solveTimetable', () => {
     }
   });
 
+  it('places a full week when every class and teacher fits', () => {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
+    const starts = ['08:00', '08:45', '09:30', '10:15', '11:00'];
+    const slots = days.flatMap((day) => starts.map((start_time) => ({ day, start_time, duration_minutes: 45 })));
+    const lessons = [];
+    for (let group = 0; group < 5; group++) {
+      for (let teacher = 0; teacher < 5; teacher++) {
+        for (let period = 0; period < 5; period++) {
+          lessons.push({
+            demand_id: `d-${group}-${teacher}-${period}`,
+            group_id: `g${group}`,
+            course_id: `c${teacher}`,
+            teacher_id: `t${teacher}`,
+          });
+        }
+      }
+    }
+    const started = Date.now();
+    const result = solveTimetable({ lessons, slots, occupied: [], deadlineMs: 2000 });
+    expect(Date.now() - started).toBeLessThan(1500);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.placements).toHaveLength(lessons.length);
+    const seen = new Set<string>();
+    for (const row of result.placements) {
+      const key = `${row.group_id}|${row.day_of_week}|${row.start_time}`;
+      const teacherKey = `${row.teacher_id}|${row.day_of_week}|${row.start_time}`;
+      expect(seen.has(key)).toBe(false);
+      expect(seen.has(teacherKey)).toBe(false);
+      seen.add(key);
+      seen.add(teacherKey);
+    }
+  });
+
+  it('keeps a lesson out of a time the teacher is already busy', () => {
+    const result = solveTimetable({
+      lessons: [{ demand_id: 'd1', group_id: 'g1', course_id: 'c1', teacher_id: 't1' }],
+      slots: [
+        { day: 'sunday', start_time: '08:00', duration_minutes: 45 },
+        { day: 'sunday', start_time: '08:45', duration_minutes: 45 },
+      ],
+      occupied: [{ teacher_id: 't1', day: 'sunday', start_min: 8 * 60, end_min: 8 * 60 + 45 }],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.placements[0].start_time).toBe('08:45');
+  });
+
   it('fails when another group already occupies the teacher', () => {
     const result = solveTimetable({
       lessons: [{ demand_id: 'd1', group_id: 'g1', course_id: 'c1', teacher_id: 't1' }],

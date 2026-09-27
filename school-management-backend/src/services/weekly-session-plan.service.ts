@@ -253,6 +253,7 @@ export class WeeklySessionPlanService {
         recipientName: recipients[0]?.name || 'ولي الأمر',
       },
       recipients,
+      channels: ['push'],
     });
   }
 

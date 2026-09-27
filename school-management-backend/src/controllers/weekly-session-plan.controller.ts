@@ -202,6 +202,7 @@ export class WeeklySessionPlanController {
   @RequireAnyClaim(
     { page: 'weekly_session_plans', action: 'edit' },
     { page: 'teacher_weekly_sessions', action: 'edit' },
+    { page: 'teacher_weekly_sessions', action: 'view' },
   )
   async markSessionComplete(
     @Request() req: { user: User },

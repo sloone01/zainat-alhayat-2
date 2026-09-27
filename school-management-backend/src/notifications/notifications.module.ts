@@ -11,6 +11,7 @@ import { User } from '../entities/user.entity';
 import { StudentCourseEnrollment } from '../entities/student-course-enrollment.entity';
 import { StudentChargeSheetInstallment } from '../entities/student-charge-sheet-installment.entity';
 import { NotificationSendLog } from '../entities/notification-send-log.entity';
+import { NotificationOutboxJob } from '../entities/notification-outbox.entity';
 import { OutboundMessageTransaction } from '../entities/outbound-message-transaction.entity';
 import { Schedule } from '../entities/schedule.entity';
 import { Course } from '../entities/course.entity';
@@ -27,6 +28,7 @@ import { PushService } from './push.service';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
 import { NotificationAudienceService } from './notification-audience.service';
 import { NotificationJobsService } from './notification-jobs.service';
+import { NotificationOutboxService } from './notification-outbox.service';
 import { PushController } from '../controllers/push.controller';
 
 @Global()
@@ -45,6 +47,7 @@ import { PushController } from '../controllers/push.controller';
       StudentCourseEnrollment,
       StudentChargeSheetInstallment,
       NotificationSendLog,
+      NotificationOutboxJob,
       OutboundMessageTransaction,
       Schedule,
       Course,
@@ -64,6 +67,7 @@ import { PushController } from '../controllers/push.controller';
     NotificationDispatcherService,
     NotificationAudienceService,
     NotificationJobsService,
+    NotificationOutboxService,
     OutboundMessageTransactionService,
   ],
   exports: [
@@ -76,6 +80,7 @@ import { PushController } from '../controllers/push.controller';
     PlatformNotificationLayoutService,
     NotificationDispatcherService,
     NotificationAudienceService,
+    NotificationOutboxService,
     OutboundMessageTransactionService,
   ],
 })

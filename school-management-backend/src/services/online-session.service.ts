@@ -20,8 +20,8 @@ import {
   OnlineSessionParticipation,
   normalizeParticipationStatus,
 } from '../constants/online-session-participation';
-import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NotificationOutboxService } from '../notifications/notification-outbox.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 
 const DAY_ORDER = [
@@ -49,7 +49,7 @@ export class OnlineSessionService {
     private readonly ossaRepo: Repository<OnlineSessionStudentAttendance>,
     private readonly config: ConfigService,
     private readonly onlineStudentAttendance: OnlineSessionStudentAttendanceService,
-    private readonly notifications: NotificationDispatcherService,
+    private readonly outbox: NotificationOutboxService,
     private readonly audience: NotificationAudienceService,
   ) {}
 
@@ -121,7 +121,100 @@ export class OnlineSessionService {
   }
 
   async createOrGetSession(user: User, dto: CreateOnlineSessionDto) {
-    const schedule = await this.scheduleRepo.findOne({ where: { id: dto.schedule_id } });
+    const { session, schedule, created } = await this.ensureSession(user, dto);
+    if (!session.started_at) {
+      session.started_at = new Date();
+      await this.sessionRepo.save(session);
+      await this.notifyParents(schedule, session, 'start');
+    }
+
+    const tokenPayload = await this.mintJoinToken(user, session.id);
+
+    return {
+      created,
+      session: this.sessionSummary(session),
+      ...tokenPayload,
+    };
+  }
+
+  /** Create or reuse the Daily room and send parents the join link. Does not enter the call. */
+  async inviteParents(user: User, dto: CreateOnlineSessionDto) {
+    const { session, schedule } = await this.ensureSession(user, dto);
+    if (!session.invited_at) {
+      session.invited_at = new Date();
+      await this.sessionRepo.save(session);
+    }
+    const notified = await this.notifyParents(schedule, session, 'invite');
+    return {
+      session: this.sessionSummary(session),
+      notified,
+      join_path: `/online-session/${session.id}`,
+    };
+  }
+
+  /**
+   * Parent self. Invited or live classes for groups of linked students.
+   * Staff and other roles get an empty list.
+   */
+  async listForParent(user: User) {
+    if (user.role !== 'parent' && user.user_type !== 'parent') return [];
+
+    const groupRows = await this.studentRepo
+      .createQueryBuilder('s')
+      .innerJoin('s.groups', 'g')
+      .innerJoin('s.parents', 'p')
+      .where('p.user_id = :uid', { uid: user.id })
+      .select('g.id', 'id')
+      .distinct(true)
+      .getRawMany<Record<string, string>>();
+    const groupIds = [
+      ...new Set(groupRows.map((row) => row.id || row.g_id).filter(Boolean)),
+    ];
+    if (!groupIds.length) return [];
+
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Muscat' }).format(new Date());
+    const sessions = await this.sessionRepo
+      .createQueryBuilder('session')
+      .innerJoinAndSelect('session.schedule', 'schedule')
+      .leftJoinAndSelect('schedule.group', 'grp')
+      .leftJoinAndSelect('schedule.course', 'course')
+      .where('schedule.group_id IN (:...groupIds)', { groupIds })
+      .andWhere('(session.invited_at IS NOT NULL OR session.started_at IS NOT NULL)')
+      .andWhere('session.session_date >= :today', { today })
+      .orderBy('session.session_date', 'ASC')
+      .addOrderBy('schedule.start_time', 'ASC')
+      .getMany();
+
+    return sessions.map((session) => {
+      const sch = session.schedule;
+      return {
+        id: session.id,
+        course_name: sch?.course?.title || sch?.course?.name || null,
+        group_name: sch?.group?.name ?? null,
+        session_date: String(session.session_date).slice(0, 10),
+        start_time: sch?.start_time ?? null,
+        end_time: sch?.end_time ?? null,
+        status: session.started_at ? 'live' : 'invited',
+      };
+    });
+  }
+
+  private sessionSummary(session: OnlineVideoSession) {
+    return {
+      id: session.id,
+      schedule_id: session.schedule_id,
+      week_start_date: session.week_start_date,
+      session_date: session.session_date,
+      room_url: session.room_url,
+      room_name: session.room_name,
+    };
+  }
+
+  private async ensureSession(user: User, dto: CreateOnlineSessionDto) {
+    const schedule = await this.scheduleRepo.findOne({
+      where: { id: dto.schedule_id },
+      relations: ['course', 'group'],
+    });
     if (!schedule) {
       throw new NotFoundException('Schedule not found');
     }
@@ -155,26 +248,14 @@ export class OnlineSessionService {
         room_name: room.name,
         room_url: room.url,
         created_by: user.id,
+        invited_at: null,
+        started_at: null,
       });
       await this.sessionRepo.save(session);
       created = true;
-      void this.notifyClassStarted(schedule, session.session_date);
     }
 
-    const tokenPayload = await this.mintJoinToken(user, session.id);
-
-    return {
-      created,
-      session: {
-        id: session.id,
-        schedule_id: session.schedule_id,
-        week_start_date: session.week_start_date,
-        session_date: session.session_date,
-        room_url: session.room_url,
-        room_name: session.room_name,
-      },
-      ...tokenPayload,
-    };
+    return { session, schedule, created };
   }
 
   async resolve(user: User, scheduleId: string, weekStart: string) {
@@ -418,28 +499,77 @@ export class OnlineSessionService {
     });
   }
 
-  private async notifyClassStarted(schedule: Schedule, sessionDate: Date | string): Promise<void> {
-    if (!schedule.group_id) return;
-    const { schoolId, recipients } = await this.audience.parentsOfGroup(schedule.group_id);
-    if (!recipients.length) return;
+  /** Queue the template send. SMTP runs after the HTTP response. */
+  private async notifyParents(
+    schedule: Schedule,
+    session: OnlineVideoSession,
+    kind: 'invite' | 'start',
+  ): Promise<number> {
+    if (!schedule.group_id) return 0;
+    const audience =
+      kind === 'invite'
+        ? await this.audience.parentsAndStudentsOfGroup(schedule.group_id)
+        : await this.audience.parentsOfGroup(schedule.group_id);
+    const { schoolId, recipients } = audience;
+    if (!recipients.length) return 0;
     const full = schedule.course
       ? schedule
-      : await this.scheduleRepo.findOne({ where: { id: schedule.id }, relations: ['course'] });
+      : await this.scheduleRepo.findOne({
+          where: { id: schedule.id },
+          relations: ['course', 'group'],
+        });
     const courseName = full?.course?.title || full?.course?.name || '';
-    const date =
-      sessionDate instanceof Date
-        ? sessionDate.toISOString().slice(0, 10)
-        : String(sessionDate).slice(0, 10);
-    await this.notifications.notifySafe({
+    const groupName = full?.group?.name || schedule.group?.name || '';
+    const when = this.sessionWhen(schedule, session);
+    const appUrl = (this.config.get<string>('PUBLIC_APP_URL') || 'http://localhost:5173').replace(
+      /\/$/,
+      '',
+    );
+    const joinPath = `/online-session/${session.id}`;
+    await this.outbox.enqueue({
       schoolId,
-      templateKey: NOTIFICATION_TEMPLATE_KEYS.ONLINE_CLASS_STARTED,
+      templateKey:
+        kind === 'invite'
+          ? NOTIFICATION_TEMPLATE_KEYS.ONLINE_CLASS_INVITED
+          : NOTIFICATION_TEMPLATE_KEYS.ONLINE_CLASS_STARTED,
       locale: 'ar',
       variables: {
         courseName,
-        date,
-        recipientName: recipients[0]?.name || 'ولي الأمر',
+        groupName,
+        date: when.dateAr,
+        dateAr: when.dateAr,
+        dateEn: when.dateEn,
+        startTime: when.startTime,
+        endTime: when.endTime,
+        recipientName: recipients[0]?.name || '',
+        joinUrl: `${appUrl}${joinPath}`,
       },
       recipients,
+      channels: ['email', 'push'],
+      pushData: {
+        route: joinPath,
+        onlineSessionId: session.id,
+      },
     });
+    return recipients.length;
+  }
+
+  /** The class stays at its timetable slot; the invite names that date and time. */
+  private sessionWhen(schedule: Schedule, session: OnlineVideoSession) {
+    const iso = String(session.session_date).slice(0, 10);
+    const atNoon = new Date(`${iso}T12:00:00`);
+    const valid = !Number.isNaN(atNoon.getTime());
+    const dateAr = valid
+      ? atNoon.toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      : iso;
+    const dateEn = valid
+      ? atNoon.toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      : iso;
+    return {
+      dateAr,
+      dateEn,
+      startTime: String(schedule.start_time || '').slice(0, 5),
+      endTime: String(schedule.end_time || '').slice(0, 5),
+    };
   }
 }

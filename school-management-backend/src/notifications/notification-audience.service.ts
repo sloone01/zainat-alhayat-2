@@ -118,6 +118,24 @@ export class NotificationAudienceService {
     return { schoolId, recipients };
   }
 
+  /** Parents and student accounts for one class. */
+  async parentsAndStudentsOfGroup(groupId: string): Promise<{
+    schoolId: string | null;
+    recipients: NotifyRecipient[];
+  }> {
+    const { schoolId, recipients } = await this.parentsOfGroup(groupId);
+    const seen = new Set(
+      recipients.map((r) => `${r.userId ?? ''}|${r.email ?? ''}|${r.phone ?? ''}`),
+    );
+    for (const student of await this.studentsOfGroup(groupId)) {
+      const key = `${student.userId ?? ''}|${student.email ?? ''}|${student.phone ?? ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      recipients.push(student);
+    }
+    return { schoolId, recipients };
+  }
+
   async parentsOfCourse(courseId: string): Promise<{
     schoolId: string | null;
     courseName: string;

@@ -9,6 +9,22 @@ export interface OnlineSessionSummary {
   room_name: string
 }
 
+export interface ParentOnlineClassRow {
+  id: string
+  course_name: string | null
+  group_name: string | null
+  session_date: string
+  start_time: string | null
+  end_time: string | null
+  status: 'live' | 'invited'
+}
+
+export interface InviteOnlineSessionResult {
+  session: OnlineSessionSummary
+  notified: number
+  join_path: string
+}
+
 export interface CreateOnlineSessionResult {
   created: boolean
   session: OnlineSessionSummary
@@ -55,6 +71,18 @@ class OnlineSessionApiService extends BaseApiService {
     week_start_date: string
   }): Promise<CreateOnlineSessionResult> {
     return this.post<CreateOnlineSessionResult>('/online-sessions', payload)
+  }
+
+  async invite(payload: {
+    schedule_id: string
+    week_start_date: string
+  }): Promise<InviteOnlineSessionResult> {
+    return this.post<InviteOnlineSessionResult>('/online-sessions/invite', payload)
+  }
+
+  /** Parent dashboard: invited and live classes for linked children. */
+  async mine(): Promise<ParentOnlineClassRow[]> {
+    return this.get<ParentOnlineClassRow[]>('/online-sessions/mine')
   }
 
   async join(sessionId: string): Promise<JoinOnlineSessionResult> {

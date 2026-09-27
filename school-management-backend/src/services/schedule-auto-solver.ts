@@ -206,6 +206,219 @@ function orderSlots(
   });
 }
 
+function slotsOverlapAny(slots: SlotRange[]): boolean {
+  const byDay = new Map<string, SlotRange[]>();
+  for (const slot of slots) {
+    const list = byDay.get(slot.day) || [];
+    list.push(slot);
+    byDay.set(slot.day, list);
+  }
+  for (const list of byDay.values()) {
+    const ordered = [...list].sort((a, b) => a.start_min - b.start_min);
+    for (let i = 1; i < ordered.length; i++) {
+      if (rangesOverlap(ordered[i - 1].start_min, ordered[i - 1].end_min, ordered[i].start_min, ordered[i].end_min)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function placementValid(placements: SolverPlacement[], occupied: OccupiedInterval[]): boolean {
+  for (let i = 0; i < placements.length; i++) {
+    const a = placements[i];
+    const a0 = hmToMinutes(a.start_time);
+    const a1 = hmToMinutes(a.end_time);
+    if (
+      occupied.some(
+        (block) =>
+          block.teacher_id === a.teacher_id &&
+          block.day === a.day_of_week &&
+          rangesOverlap(block.start_min, block.end_min, a0, a1),
+      )
+    ) {
+      return false;
+    }
+    for (let j = i + 1; j < placements.length; j++) {
+      const b = placements[j];
+      if (a.day_of_week !== b.day_of_week) continue;
+      const b0 = hmToMinutes(b.start_time);
+      const b1 = hmToMinutes(b.end_time);
+      if (!rangesOverlap(a0, a1, b0, b1)) continue;
+      if (a.group_id === b.group_id || a.teacher_id === b.teacher_id) return false;
+    }
+  }
+  return true;
+}
+
+type ColorEdge = {
+  left: string;
+  right: string;
+  lesson: SolverLesson | null;
+  taken: boolean;
+};
+
+function toPlacement(lesson: SolverLesson, slot: SlotRange): SolverPlacement {
+  return {
+    demand_id: lesson.demand_id,
+    group_id: lesson.group_id,
+    course_id: lesson.course_id,
+    teacher_id: lesson.teacher_id,
+    day_of_week: slot.day,
+    start_time: slot.start_time,
+    end_time: slot.end_time,
+    duration_minutes: slot.duration_minutes,
+  };
+}
+
+function classAllows(lessons: SolverLesson[], slot: SlotRange, occupied: OccupiedInterval[]): boolean {
+  return lessons.every((lesson) => !teacherBusy(lesson.teacher_id, slot, occupied, []));
+}
+
+function classScore(
+  lessons: SolverLesson[],
+  slot: SlotRange,
+  placed: SolverPlacement[],
+  slots: SlotRange[],
+  courseTotals: Map<string, number>,
+  dayCount: number,
+): number {
+  let sum = 0;
+  const extra = placed.slice();
+  for (const lesson of lessons) {
+    sum += slotPenalty(slot, lesson, extra, slots, courseTotals, dayCount);
+    extra.push(toPlacement(lesson, slot));
+  }
+  return sum;
+}
+
+/**
+ * A week whose classes and teachers each fit the slot count always has a timetable:
+ * lessons are edges in a bipartite graph, and that graph's edge coloring is the week.
+ * The previous search stopped after 2s and reported a real week as a clash.
+ */
+function colorLessons(
+  lessons: SolverLesson[],
+  slots: SlotRange[],
+  occupied: OccupiedInterval[],
+  courseTotals: Map<string, number>,
+  dayCount: number,
+): SolverPlacement[] | null {
+  const deg = new Map<string, number>();
+  const bump = (id: string) => deg.set(id, (deg.get(id) || 0) + 1);
+  const adj = new Map<string, number[]>();
+  const edges: ColorEdge[] = [];
+
+  const addEdge = (left: string, right: string, lesson: SolverLesson | null) => {
+    const list = adj.get(left) || [];
+    list.push(edges.length);
+    adj.set(left, list);
+    edges.push({ left, right, lesson, taken: false });
+    bump(left);
+    bump(right);
+  };
+
+  const groups: string[] = [];
+  const teachers: string[] = [];
+  const seenG = new Set<string>();
+  const seenT = new Set<string>();
+  for (const lesson of lessons) {
+    const left = `g:${lesson.group_id}`;
+    const right = `t:${lesson.teacher_id}`;
+    if (!seenG.has(left)) {
+      seenG.add(left);
+      groups.push(left);
+    }
+    if (!seenT.has(right)) {
+      seenT.add(right);
+      teachers.push(right);
+    }
+    addEdge(left, right, lesson);
+  }
+
+  let delta = 0;
+  for (const count of deg.values()) delta = Math.max(delta, count);
+  if (delta > slots.length) return null;
+
+  const left: string[] = [...groups];
+  const right: string[] = [...teachers];
+  let dummy = 0;
+  while (left.length < right.length) {
+    const id = `dl:${dummy++}`;
+    left.push(id);
+    adj.set(id, []);
+    deg.set(id, 0);
+  }
+  while (right.length < left.length) {
+    const id = `dr:${dummy++}`;
+    right.push(id);
+    deg.set(id, 0);
+  }
+
+  const guardMax = left.length * delta + edges.length + 2;
+  for (let guard = 0; guard < guardMax; guard++) {
+    const u = left.find((id) => (deg.get(id) || 0) < delta);
+    const v = right.find((id) => (deg.get(id) || 0) < delta);
+    if (!u && !v) break;
+    if (!u || !v) return null;
+    addEdge(u, v, null);
+  }
+  if (left.some((id) => (deg.get(id) || 0) !== delta) || right.some((id) => (deg.get(id) || 0) !== delta)) {
+    return null;
+  }
+
+  const classes: SolverLesson[][] = [];
+  for (let color = 0; color < delta; color++) {
+    const matchRight = new Map<string, number>();
+    const dfs = (leftId: string, seen: Set<string>): boolean => {
+      for (const edgeIndex of adj.get(leftId) || []) {
+        const edge = edges[edgeIndex];
+        if (edge.taken || seen.has(edge.right)) continue;
+        seen.add(edge.right);
+        const previous = matchRight.get(edge.right);
+        if (previous == null || dfs(edges[previous].left, seen)) {
+          matchRight.set(edge.right, edgeIndex);
+          return true;
+        }
+      }
+      return false;
+    };
+    for (const leftId of left) {
+      if (!dfs(leftId, new Set())) return null;
+    }
+    const cls: SolverLesson[] = [];
+    for (const edgeIndex of matchRight.values()) {
+      const edge = edges[edgeIndex];
+      edge.taken = true;
+      if (edge.lesson) cls.push(edge.lesson);
+    }
+    if (cls.length) classes.push(cls);
+  }
+
+  const used = new Set<number>();
+  const placed: SolverPlacement[] = [];
+  const slotBetter = (a: SlotRange, b: SlotRange) =>
+    dayIndex(a.day) - dayIndex(b.day) || a.start_min - b.start_min;
+
+  for (const cls of classes) {
+    let best = -1;
+    let bestScore = Infinity;
+    for (let i = 0; i < slots.length; i++) {
+      if (used.has(i) || !classAllows(cls, slots[i], occupied)) continue;
+      const score = classScore(cls, slots[i], placed, slots, courseTotals, dayCount);
+      if (best < 0 || score < bestScore || (score === bestScore && slotBetter(slots[i], slots[best]) < 0)) {
+        best = i;
+        bestScore = score;
+      }
+    }
+    if (best < 0) return null;
+    used.add(best);
+    for (const lesson of cls) placed.push(toPlacement(lesson, slots[best]));
+  }
+
+  return placed;
+}
+
 function pickLessonIndex(
   remaining: SolverLesson[],
   optionCounts: number[],
@@ -259,13 +472,19 @@ export function solveTimetable(args: {
     }
   }
 
-  const deadline = Date.now() + (args.deadlineMs ?? 2000);
-  const placed: SolverPlacement[] = [];
   const dayCount = new Set(slots.map((slot) => slot.day)).size;
   const courseTotals = new Map<string, number>();
   for (const lesson of args.lessons) {
     courseTotals.set(lesson.course_id, (courseTotals.get(lesson.course_id) || 0) + 1);
   }
+
+  if (!slotsOverlapAny(slots)) {
+    const colored = colorLessons(args.lessons, slots, args.occupied, courseTotals, dayCount);
+    if (colored && placementValid(colored, args.occupied)) return { ok: true, placements: colored };
+  }
+
+  const deadline = Date.now() + (args.deadlineMs ?? 2000);
+  const placed: SolverPlacement[] = [];
 
   const canPlace = (lesson: SolverLesson, slot: SlotRange) =>
     !teacherBusy(lesson.teacher_id, slot, args.occupied, placed) && !groupBusy(lesson.group_id, slot, placed);

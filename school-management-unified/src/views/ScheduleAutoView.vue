@@ -548,6 +548,31 @@
         </div>
       </div>
     </div>
+
+    <FikrDialog
+      :show="teacherLoadOpen"
+      size="md"
+      plain-footer
+      :title="$t('scheduleAuto.teacherLoadTitle')"
+      @close="teacherLoadOpen = false"
+    >
+      <ul class="max-h-80 divide-y divide-gray-100 overflow-y-auto rounded-xl border border-gray-100" role="list">
+        <li
+          v-for="row in teacherLoadRows"
+          :key="row.id"
+          class="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+          :class="row.over ? 'bg-red-50 font-semibold text-red-700' : 'text-gray-900'"
+        >
+          <span class="min-w-0 truncate">{{ row.name }}</span>
+          <span class="shrink-0 tabular-nums" dir="ltr">{{ row.total }} / {{ weeklyRequired }}</span>
+        </li>
+      </ul>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--primary" @click="teacherLoadOpen = false">
+          {{ $t('common.close') }}
+        </button>
+      </template>
+    </FikrDialog>
   </DashboardLayout>
 </template>
 
@@ -556,6 +581,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { courseService } from '@/services/course.service'
 import userService from '@/services/user.service'
@@ -614,6 +640,8 @@ type CourseBlock = {
 }
 
 const activeTab = ref<'demand' | 'split' | 'grid'>('demand')
+const teacherLoadOpen = ref(false)
+const teacherLoadRows = ref<{ id: string; name: string; total: number; over: boolean }[]>([])
 const activeCourseIndex = ref<number | null>(null)
 const activeTeacherIndex = ref<number | null>(null)
 const groups = ref<any[]>([])
@@ -808,6 +836,34 @@ function teacherTitle(row: TeacherRow, index: number) {
   return teacher?.fullName || `${t('scheduleManagement.classModal.teacher')} ${index + 1}`
 }
 
+function collectTeacherLoads() {
+  const bucket = new Map<string, { id: string; name: string; total: number }>()
+  for (const block of courseBlocks.value) {
+    const classCount = Math.max(1, groupsForLevel(courseLevelId(block.course_id)).length)
+    block.teachers.forEach((row, index) => {
+      if (!row.teacher_id) return
+      const share = Math.max(0, Math.floor(Number(row.periods_per_week) || 0))
+      if (!share) return
+      const id = String(row.teacher_id)
+      const entry = bucket.get(id) || { id, name: teacherTitle(row, index), total: 0 }
+      entry.total += share * classCount
+      bucket.set(id, entry)
+    })
+  }
+  const limit = weeklyRequired.value
+  return [...bucket.values()]
+    .map((row) => ({ ...row, over: row.total > limit }))
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, locale.value))
+}
+
+function blockTeacherOverload() {
+  const rows = collectTeacherLoads()
+  if (!rows.some((row) => row.over)) return false
+  teacherLoadRows.value = rows
+  teacherLoadOpen.value = true
+  return true
+}
+
 function coursesForBlock(block: CourseBlock) {
   const used = new Set(
     courseBlocks.value
@@ -879,10 +935,11 @@ function removeCourse(index: number) {
 function addTeacher(courseIndex: number) {
   const block = courseBlocks.value[courseIndex]
   if (!block) return
+  const assigned = block.teachers.some((row) => row.teacher_id)
   block.teachers.push({
     key: newKey(),
     teacher_id: '',
-    periods_per_week: 1,
+    periods_per_week: assigned ? 0 : Math.max(0, Math.floor(Number(block.periods_per_week) || 0)),
   })
   activeCourseIndex.value = courseIndex
   activeTeacherIndex.value = block.teachers.length - 1
@@ -1150,11 +1207,21 @@ function showGenerateError(error: unknown) {
     return
   }
   if (code === 'TEACHER_OVERLOAD') {
+    const teacherId = String(payload.teacher_id || payload.teacherId || '').trim()
+    const fromApi = String(payload.teacherName || '').trim()
+    const fromList = teachers.value.find((row) => String(row.id) === teacherId)
+    const name = (fromApi && fromApi !== teacherId ? fromApi : '') || String(fromList?.fullName || '').trim()
+    const course = String(payload.courseName || '').trim()
+    const classes = Number(payload.classes) || 0
+    const perClass = Number(payload.perClass)
+    const splitAcrossClasses = classes > 1 && Number.isFinite(perClass) && perClass > 0
     feedback.error(
-      t('scheduleAuto.teacherOverload', {
-        name: payload.teacherName || '',
+      t(splitAcrossClasses ? 'scheduleAuto.teacherOverloadClasses' : 'scheduleAuto.teacherOverload', {
+        name: course ? `${name} (${course})` : name,
         needed: payload.needed,
         available: payload.available,
+        perClass,
+        classes,
       }),
     )
     return
@@ -1256,6 +1323,7 @@ async function goToGrid() {
     activeTab.value = 'split'
     return
   }
+  if (blockTeacherOverload()) return
   const ok = await persistDemands()
   if (!ok) {
     activeTab.value = 'split'
@@ -1269,6 +1337,10 @@ async function goToGrid() {
 }
 
 async function runGenerate(apply: boolean) {
+  if (blockTeacherOverload()) {
+    activeTab.value = 'split'
+    return
+  }
   if (!(await persistDemands())) {
     activeTab.value = 'split'
     return

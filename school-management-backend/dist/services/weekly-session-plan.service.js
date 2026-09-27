@@ -82,6 +82,9 @@ let WeeklySessionPlanService = class WeeklySessionPlanService {
                 throw new common_1.NotFoundException('No schedule found for this group');
             }
         }
+        if (createDto.onlyTeacherId && schedule.teacher_id !== createDto.onlyTeacherId) {
+            throw new common_1.ForbiddenException('Teachers may only add tasks to their own sessions');
+        }
         const weekStartDate = new Date(createDto.weekStartDate + 'T00:00:00.000Z');
         if (isNaN(weekStartDate.getTime())) {
             throw new common_1.BadRequestException(`Invalid week start date format. Received: ${createDto.weekStartDate}. Expected YYYY-MM-DD format.`);
@@ -183,6 +186,7 @@ let WeeklySessionPlanService = class WeeklySessionPlanService {
                 recipientName: recipients[0]?.name || 'ولي الأمر',
             },
             recipients,
+            channels: ['push'],
         });
     }
     async deleteWeeklySessionPlan(id) {

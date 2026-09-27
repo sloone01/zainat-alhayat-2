@@ -11,16 +11,18 @@ export interface CreateSessionMediaDto {
   session_plan_id: string;
   file_name: string;
   file_path: string;
-  file_type: 'photo' | 'video';
+  file_type: 'photo' | 'video' | 'file';
   file_size: number;
   mime_type: string;
   uploaded_by: string;
+  /** When false, parents are not notified. Replacing a file uses this. */
+  notify?: boolean;
 }
 
 export interface UpdateSessionMediaDto {
   file_name?: string;
   file_path?: string;
-  file_type?: 'photo' | 'video';
+  file_type?: 'photo' | 'video' | 'file';
   file_size?: number;
   mime_type?: string;
 }
@@ -37,13 +39,14 @@ export class SessionMediaService {
   ) {}
 
   async create(createDto: CreateSessionMediaDto): Promise<SessionMedia> {
+    const { notify, ...fields } = createDto;
     const media = this.sessionMediaRepository.create({
-      ...createDto,
+      ...fields,
       uploaded_at: new Date(),
     });
     
     const saved = await this.sessionMediaRepository.save(media);
-    void this.notifySessionMedia(saved);
+    if (notify !== false) void this.notifySessionMedia(saved);
     return saved;
   }
 
@@ -79,6 +82,7 @@ export class SessionMediaService {
         recipientName: recipients[0]?.name || 'ولي الأمر',
       },
       recipients,
+      channels: ['push'],
     });
   }
 

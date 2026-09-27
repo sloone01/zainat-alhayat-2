@@ -11,6 +11,7 @@ import { Group } from '../entities/group.entity';
 import { Course } from '../entities/course.entity';
 import { Schedule } from '../entities/schedule.entity';
 import { ScheduleLessonDemand } from '../entities/schedule-lesson-demand.entity';
+import { formatStudentDisplayName } from '../common/identity/bilingual-name';
 import { assertSameSchool, resolveActorSchoolId } from '../common/security/school-access';
 import { ClassSettingsService } from './class-settings.service';
 import {
@@ -550,13 +551,29 @@ export class ScheduleAutoService {
       const demand = demands.find((row) => row.teacher_id === result.teacher_id);
       const teacher = demand?.teacher;
       const teacherName = teacher
-        ? `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.email
-        : result.teacher_id;
+        ? formatStudentDisplayName(teacher, 'ar') || teacher.email
+        : '';
+      const byGroup = new Map<string, number>();
+      const courseNames = new Set<string>();
+      for (const row of demands) {
+        if (row.teacher_id !== result.teacher_id) continue;
+        const count = Math.max(0, Number(row.periods_per_week) || 0);
+        if (!count) continue;
+        byGroup.set(row.group_id, (byGroup.get(row.group_id) || 0) + count);
+        const courseName = String(row.course?.name || row.course?.title || '').trim();
+        if (courseName) courseNames.add(courseName);
+      }
+      const totals = [...byGroup.values()];
+      const perClass = totals.length && totals.every((count) => count === totals[0]) ? totals[0] : undefined;
       return new BadRequestException({
         message: 'TEACHER_OVERLOAD',
         teacherName,
+        teacher_id: result.teacher_id,
         needed: result.needed,
         available: result.available,
+        classes: byGroup.size,
+        ...(perClass != null ? { perClass } : {}),
+        ...(courseNames.size === 1 ? { courseName: [...courseNames][0] } : {}),
       });
     }
     return new BadRequestException({ message: result.code });
