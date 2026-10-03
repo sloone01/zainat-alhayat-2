@@ -1,15 +1,15 @@
 <template>
   <DashboardLayout>
     <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div v-if="loading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
+      <div v-if="loading && !loaded" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
         <FikrLoader />
         <span>{{ $t('parent.loading') }}</span>
       </div>
 
-      <div v-else-if="error" class="fk-elev">
+      <div v-else-if="error && !loaded" class="fk-elev">
         <div class="fk-empty-panel">
           <p>{{ error }}</p>
-          <button type="button" class="fk-btn fk-btn--navy mt-4" @click="loadInitial">
+          <button type="button" class="fk-btn fk-btn--navy mt-4" @click="reload">
             {{ $t('common.retry') }}
           </button>
         </div>
@@ -143,7 +143,7 @@
             <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
               <div class="min-w-0">
                 <h2 class="fk-card__title truncate">{{ $t('parent.attendanceRecentDays') }}</h2>
-                <p class="fk-card__meta">{{ filteredHistory.length }}</p>
+                <p class="fk-card__meta">{{ historyTotal }}</p>
               </div>
               <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 <template v-if="todayChildren.length > 1">
@@ -207,26 +207,9 @@
                 class="mt-4"
                 :page="currentPage"
                 :pages="totalPages"
-                :show="showFullMonth && filteredHistory.length > 0"
+                :show="historyTotal > 0"
                 @update:page="goToPage"
               />
-
-              <button
-                v-if="canExpandMonth || historyHasMore"
-                type="button"
-                class="fk-btn fk-btn--mist mt-4 w-full"
-                :disabled="loadingMore"
-                @click="onExpandOrLoadMore"
-              >
-                <span v-if="loadingMore" class="inline-flex items-center justify-center gap-2">
-                  <FikrLoader size="xs" />
-                  {{ $t('parent.loading') }}
-                </span>
-                <span v-else-if="!showFullMonth && canExpandMonth">
-                  {{ $t('parent.attendanceViewFullMonth') }}
-                </span>
-                <span v-else>{{ $t('parent.loadMoreAttendance') }}</span>
-              </button>
             </div>
           </section>
 
@@ -249,7 +232,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -261,9 +244,10 @@ import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { parentService } from '@/services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
+import { getErrorMessage } from '@/utils/error-reporting'
 import FikrLoader from '@/components/FikrLoader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 
 type TodayChild = {
   studentId: string
@@ -301,24 +285,19 @@ type MonthCell = {
   isToday?: boolean
 }
 
-const HISTORY_PAGE = 50
-const RECENT_PREVIEW = 5
-
 const { t, locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 
-const loading = ref(true)
-const loadingMore = ref(false)
 const error = ref('')
 const today = ref<{ date: string; children: TodayChild[] } | null>(null)
-const historyItems = ref<HistoryItem[]>([])
-const historyHasMore = ref(false)
+const monthItems = ref<HistoryItem[]>([])
 const selectedId = ref<string | null>(null)
-const showFullMonth = ref(false)
+const pinnedChildId = ref('')
 const showFilters = ref(false)
 const statusFilter = ref('all')
 const { viewMode, isCards } = useListViewMode()
 const busItems = ref<any[]>([])
+const busReady = ref(false)
 
 const todayChildren = computed(() => today.value?.children || [])
 
@@ -335,8 +314,7 @@ function childChipLabel(child: TodayChild) {
 
 function selectChild(id: string) {
   selectedId.value = id
-  showFullMonth.value = false
-  currentPage.value = 1
+  pinnedChildId.value = id
 }
 
 function sliceTime(raw?: string | null) {
@@ -369,33 +347,24 @@ const todayDateLabel = computed(() => {
   return t('parent.attendanceTodayLabel', { date: formatDisplayDate(dateStr) })
 })
 
-const selectedHistory = computed(() => {
-  const id = selectedChild.value?.studentId
-  if (!id) return historyItems.value
-  return historyItems.value.filter((item) => item.student?.id === id)
-})
-
 const childMonthRecords = computed(() => {
   const id = selectedChild.value?.studentId
   const date = today.value?.date
-  const items = [...selectedHistory.value]
+  const items = monthItems.value.filter((item) => !id || item.student?.id === id)
   const record = selectedChild.value?.record
-  if (id && date && record) {
-    const already = items.some((i) => i.attendance_date === date)
-    if (!already) {
-      items.unshift({
-        id: `today-${id}`,
-        attendance_date: date,
-        status: record.status,
-        check_in_time: record.check_in_time,
-        check_out_time: record.check_out_time,
-        notes: record.notes,
-        is_excused: record.is_excused,
-        reason: record.reason,
-        student: { id, firstName: selectedChild.value!.firstName, lastName: selectedChild.value!.lastName },
-        group: record.groupName ? { id: 'today', name: record.groupName } : null,
-      })
-    }
+  if (id && date && record && !items.some((i) => i.attendance_date === date)) {
+    items.unshift({
+      id: `today-${id}`,
+      attendance_date: date,
+      status: record.status,
+      check_in_time: record.check_in_time,
+      check_out_time: record.check_out_time,
+      notes: record.notes,
+      is_excused: record.is_excused,
+      reason: record.reason,
+      student: { id, firstName: selectedChild.value!.firstName, lastName: selectedChild.value!.lastName },
+      group: record.groupName ? { id: 'today', name: record.groupName } : null,
+    })
   }
   return items
 })
@@ -513,33 +482,46 @@ const unexcusedAbsence = computed(() => {
   ) || null
 })
 
-const historyList = computed(() =>
-  childMonthRecords.value.filter((item) => item.attendance_date !== today.value?.date),
-)
-
-const filteredHistory = computed(() => {
-  if (statusFilter.value === 'all') return historyList.value
-  return historyList.value.filter((item) => {
-    const status = item.is_excused ? 'excused' : item.status
-    return status === statusFilter.value
-  })
-})
-
 const {
+  items: visibleHistory,
+  total: historyTotal,
+  loading,
+  loaded,
   currentPage,
-  paginatedItems,
   totalPages,
   goToPage,
-} = useClientPagination(filteredHistory)
-
-const visibleHistory = computed(() => {
-  if (showFullMonth.value) return paginatedItems.value
-  return filteredHistory.value.slice(0, RECENT_PREVIEW)
-})
-
-const canExpandMonth = computed(() => {
-  return !showFullMonth.value && filteredHistory.value.length > RECENT_PREVIEW
-})
+  load,
+  reload,
+} = useServerPagination<HistoryItem, { childId: string; status: string }>(
+  async (params) => {
+    error.value = ''
+    const data = await parentService.getMyAttendancePage({
+      page: params.page,
+      limit: params.limit,
+      childId: params.childId || undefined,
+      status: params.status,
+    })
+    today.value = data.today
+    monthItems.value = data.monthItems || []
+    if (!params.childId && data.childId) selectedId.value = data.childId
+    if (!busReady.value) {
+      busReady.value = true
+      void loadBus()
+    }
+    return (
+      data.history ?? { items: [], total: 0, page: params.page, limit: params.limit, pages: 1 }
+    )
+  },
+  {
+    filters: () => ({
+      childId: pinnedChildId.value,
+      status: statusFilter.value,
+    }),
+    onError: (err) => {
+      error.value = getErrorMessage(err, t('parent.error'))
+    },
+  },
+)
 
 const busForChild = computed(() => {
   const id = selectedChild.value?.studentId
@@ -649,54 +631,5 @@ async function loadBus() {
   }
 }
 
-const loadInitial = async () => {
-  try {
-    loading.value = true
-    error.value = ''
-    const data = await parentService.getMyAttendance(0, HISTORY_PAGE)
-    today.value = data.today
-    historyItems.value = [...(data.history?.items || [])]
-    historyHasMore.value = !!data.history?.hasMore
-    if (!selectedId.value && data.today?.children?.length) {
-      selectedId.value = data.today.children[0].studentId
-    }
-    await loadBus()
-  } catch (e: any) {
-    error.value = e?.message || t('parent.error')
-  } finally {
-    loading.value = false
-  }
-}
-
-const loadMore = async () => {
-  if (loadingMore.value || !historyHasMore.value) return
-  try {
-    loadingMore.value = true
-    const offset = historyItems.value.length
-    const data = await parentService.getMyAttendance(offset, HISTORY_PAGE)
-    const newItems = data.history?.items || []
-    historyItems.value = [...historyItems.value, ...newItems]
-    historyHasMore.value = !!data.history?.hasMore
-  } catch (e: any) {
-    error.value = e?.message || t('parent.error')
-  } finally {
-    loadingMore.value = false
-  }
-}
-
-async function onExpandOrLoadMore() {
-  if (!showFullMonth.value && canExpandMonth.value) {
-    showFullMonth.value = true
-    return
-  }
-  await loadMore()
-}
-
-watch(selectedId, () => {
-  showFullMonth.value = false
-})
-
-onMounted(() => {
-  loadInitial()
-})
+void load()
 </script>

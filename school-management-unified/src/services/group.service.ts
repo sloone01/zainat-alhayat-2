@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface Group {
   id: string
@@ -39,10 +40,29 @@ export interface CreateGroupRequest {
 
 export interface UpdateGroupRequest extends Partial<CreateGroupRequest> {}
 
+export interface GroupListParams {
+  page?: number
+  limit?: number
+  q?: string
+  status?: string
+  schoolId?: string
+}
+
 class GroupService extends BaseApiService {
   async getAll(schoolId?: string): Promise<Group[]> {
     const params = schoolId ? { school_id: schoolId } : {}
     return this.get<Group[]>('/groups', params)
+  }
+
+  async listPage(params: GroupListParams): Promise<PageResult<Group>> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status && params.status !== 'all') query.status = params.status
+    if (params.schoolId) query.school_id = params.schoolId
+    return this.get<PageResult<Group>>('/groups', query)
   }
 
   async getActive(schoolId?: string, paymentLevelId?: string): Promise<Group[]> {

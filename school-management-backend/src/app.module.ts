@@ -230,6 +230,7 @@ import { StudentPaymentLedgerService } from './services/student-payment-ledger.s
 import { SchoolSystemSettingService } from './services/school-system-setting.service';
 import { ReportExportConfigService } from './services/report-export-config.service';
 import { ReportExportTemplateService } from './services/report-export-template.service';
+import { ReportDocxService } from './services/report-docx.service';
 import {
   SchoolReportExportConfig,
   SchoolReportExportTemplate,
@@ -509,6 +510,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
     SchoolSystemSettingService,
     ReportExportConfigService,
     ReportExportTemplateService,
+    ReportDocxService,
     MessageLetterService,
     MessageLetterRenderService,
     StudentCourseEnrollmentService,

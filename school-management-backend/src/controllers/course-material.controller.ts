@@ -33,6 +33,7 @@ import {
   resolveActorSchoolId,
   RequestedSchoolIdPipe,
 } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 
 @Controller('course-materials')
 @UseGuards(JwtAuthGuard)
@@ -51,6 +52,9 @@ export class CourseMaterialController {
   async listCourses(
     @Request() req: { user: User },
     @Query('school_id', RequestedSchoolIdPipe) schoolId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('kind') kind?: string,
   ) {
     const scopedSchoolId = isParentOrStudentActor(req.user)
       ? schoolId || null
@@ -58,8 +62,12 @@ export class CourseMaterialController {
     const data = await this.materials.listAccessibleCourses(
       req.user,
       scopedSchoolId,
+      wantsPage(page) ? { page, limit, kind } : undefined,
     );
-    return { success: true, data, count: data.length };
+    if (Array.isArray(data)) {
+      return { success: true, data, count: data.length };
+    }
+    return { success: true, data };
   }
 
   @Get('board')

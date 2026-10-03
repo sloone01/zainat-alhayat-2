@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface Grade {
   id: string
@@ -22,6 +23,13 @@ export interface CreateGradeData {
   description?: string
 }
 
+export interface GradeListParams {
+  page?: number
+  limit?: number
+  q?: string
+  status?: 'all' | 'active' | 'inactive' | ''
+}
+
 export interface UpdateGradeData {
   nameEn?: string
   nameAr?: string
@@ -34,6 +42,16 @@ export interface UpdateGradeData {
 class GradeService extends BaseApiService {
   async getAll(): Promise<Grade[]> {
     return this.get<Grade[]>('/grades')
+  }
+
+  async listPage(params: GradeListParams): Promise<PageResult<Grade>> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status && params.status !== 'all') query.status = params.status
+    return this.get<PageResult<Grade>>('/grades', query)
   }
 
   async getActive(schoolId: string): Promise<Grade[]> {

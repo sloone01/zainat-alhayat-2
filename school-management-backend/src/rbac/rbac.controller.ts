@@ -17,6 +17,7 @@ import { RbacPermissionService } from './rbac-permission.service';
 import { RequireClaim } from './require-claim.decorator';
 import { ClaimGuard } from './claim.guard';
 import { User } from '../entities/user.entity';
+import { wantsPage } from '../common/pagination';
 
 @Controller('rbac')
 @UseGuards(JwtAuthGuard, ClaimGuard)
@@ -62,6 +63,10 @@ export class RbacController {
   async listGroups(
     @Req() req: { user: User },
     @Query('schoolId') schoolId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('type') type?: string,
   ) {
     const sid =
       schoolId === undefined || schoolId === ''
@@ -69,6 +74,10 @@ export class RbacController {
         : schoolId === '0' || schoolId === 'null'
           ? null
           : String(schoolId);
+    if (wantsPage(page)) {
+      const data = await this.groupService.listGroupsPage(req.user, sid, { page, limit, q, type });
+      return { success: true, data };
+    }
     const groups = await this.groupService.listGroups(req.user, sid);
     return { success: true, data: groups, count: groups.length };
   }

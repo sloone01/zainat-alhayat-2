@@ -4,6 +4,11 @@ import {
   normalizeDueInstallmentExportColumns,
 } from './due-installment-export-columns';
 import {
+  COURSE_EXPORT_COLUMN_KEYS,
+  DEFAULT_COURSE_EXPORT_COLUMNS,
+  normalizeCourseExportColumns,
+} from './course-export-columns';
+import {
   DEFAULT_STUDENT_EXPORT_COLUMNS,
   STUDENT_EXPORT_COLUMN_KEYS,
   normalizeStudentExportColumns,
@@ -38,6 +43,15 @@ export const REPORT_EXPORT_DEFINITIONS: ReportExportDefinition[] = [
     availableColumns: DUE_INSTALLMENT_EXPORT_COLUMN_KEYS,
     defaultColumns: DEFAULT_DUE_INSTALLMENT_EXPORT_COLUMNS,
     normalizeColumns: (raw) => normalizeDueInstallmentExportColumns(raw) as string[],
+  },
+  {
+    key: 'courses',
+    nameEn: 'Course list',
+    nameAr: 'قائمة المقررات',
+    sourcePath: '/courses',
+    availableColumns: COURSE_EXPORT_COLUMN_KEYS,
+    defaultColumns: DEFAULT_COURSE_EXPORT_COLUMNS,
+    normalizeColumns: (raw) => normalizeCourseExportColumns(raw) as string[],
   },
 ];
 

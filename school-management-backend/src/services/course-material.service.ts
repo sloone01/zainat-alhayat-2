@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createReadStream, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { extname, join } from 'path';
 import { In, Repository } from 'typeorm';
+import { paginateQueryBuilder, wantsPage, type PageResult } from '../common/pagination';
 import { Course } from '../entities/course.entity';
 import { CourseMaterial } from '../entities/course-material.entity';
 import { CourseMaterialTopic } from '../entities/course-material-topic.entity';
@@ -466,13 +467,20 @@ export class CourseMaterialService implements OnModuleInit {
   async listAccessibleCourses(
     user: User,
     schoolId?: string | null,
+    paging?: { page?: string; limit?: string; kind?: string },
   ): Promise<
-    {
-      id: string;
-      name: string;
-      course_kind: string;
-      materials_count: number;
-    }[]
+    | {
+        id: string;
+        name: string;
+        course_kind: string;
+        materials_count: number;
+      }[]
+    | PageResult<{
+        id: string;
+        name: string;
+        course_kind: string;
+        materials_count: number;
+      }>
   > {
     const family = isParentOrStudentActor(user);
     if (!family) {
@@ -546,34 +554,48 @@ export class CourseMaterialService implements OnModuleInit {
       qb.andWhere('c.id IN (:...ids)', { ids: courseIds });
     }
 
-    const courses = await qb.getMany();
-    const countQb = this.materialRepo
-      .createQueryBuilder('m')
-      .select('m.course_id', 'course_id')
-      .addSelect('COUNT(*)', 'cnt')
-      .andWhere(
-        user.role === 'admin' || user.role === 'teacher'
-          ? '1=1'
-          : 'm.is_visible = true',
-      )
-      .groupBy('m.course_id');
-    if (schoolId) {
-      countQb.andWhere('m.school_id = :sid', { sid: schoolId });
-    } else if (courseIds) {
-      countQb.andWhere('m.course_id IN (:...ids)', { ids: courseIds });
+    const kind = (paging?.kind || '').trim();
+    const paged = Boolean(paging && wantsPage(paging.page));
+    if (paged && (kind === 'milestone' || kind === 'graded' || kind === 'standalone')) {
+      qb.andWhere('c.course_kind = :kind', { kind });
     }
-    const counts = await countQb.getRawMany<{ course_id: string; cnt: string }>();
 
-    const countMap = new Map(
-      counts.map((r) => [r.course_id, Number(r.cnt) || 0]),
-    );
+    const mapRows = async (
+      courses: Course[],
+    ): Promise<
+      { id: string; name: string; course_kind: string; materials_count: number }[]
+    > => {
+      if (!courses.length) return [];
+      const countQb = this.materialRepo
+        .createQueryBuilder('m')
+        .select('m.course_id', 'course_id')
+        .addSelect('COUNT(*)', 'cnt')
+        .where('m.course_id IN (:...pageIds)', { pageIds: courses.map((c) => c.id) })
+        .andWhere(
+          user.role === 'admin' || user.role === 'teacher'
+            ? '1=1'
+            : 'm.is_visible = true',
+        )
+        .groupBy('m.course_id');
+      if (schoolId) {
+        countQb.andWhere('m.school_id = :sid', { sid: schoolId });
+      }
+      const counts = await countQb.getRawMany<{ course_id: string; cnt: string }>();
+      const countMap = new Map(counts.map((r) => [r.course_id, Number(r.cnt) || 0]));
+      return courses.map((c) => ({
+        id: c.id,
+        name: c.name || c.title || c.id,
+        course_kind: c.course_kind || 'milestone',
+        materials_count: countMap.get(c.id) || 0,
+      }));
+    };
 
-    return courses.map((c) => ({
-      id: c.id,
-      name: c.name || c.title || c.id,
-      course_kind: c.course_kind || 'milestone',
-      materials_count: countMap.get(c.id) || 0,
-    }));
+    if (paging && wantsPage(paging.page)) {
+      const page = await paginateQueryBuilder(qb, paging);
+      return { ...page, items: await mapRows(page.items) };
+    }
+
+    return mapRows(await qb.getMany());
   }
 
   async createFromUpload(

@@ -12,7 +12,7 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('meetingRooms.roomsListTitle') }}</h2>
-            <p class="fk-card__meta">{{ $t('meetingRooms.roomsCount', { count: filteredRooms.length }) }}</p>
+            <p class="fk-card__meta">{{ $t('meetingRooms.roomsCount', { count: total }) }}</p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <FikrFilterButton
@@ -38,9 +38,9 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="rooms.length">
+          <template v-else-if="total > 0 || hasActiveFilters">
             <p
-              v-if="filteredRooms.length === 0"
+              v-if="total === 0"
               class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
               {{ $t('meetingRooms.noFilterResults') }}
@@ -142,7 +142,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredRooms.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -460,7 +460,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
@@ -474,7 +474,7 @@ import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { authService } from '@/services'
 import { groupService, type Group } from '@/services/group.service'
 import userService, { type User } from '@/services/user.service'
@@ -540,36 +540,33 @@ const saving = ref(false)
 const saveMode = ref<'draft' | 'create' | 'open' | ''>('')
 const createError = ref('')
 const editingId = ref<string | null>(null)
-const rooms = ref<MeetingRoomListRow[]>([])
-const filteredRooms = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return rooms.value.filter((r) => {
-    const status = r.status || 'scheduled'
-    if (statusFilter.value !== 'all' && status !== statusFilter.value) return false
-    if (q && !r.title.toLowerCase().includes(q)) return false
-    return true
-  })
-})
 const hasActiveFilters = computed(
   () => Boolean(searchQuery.value.trim()) || statusFilter.value !== 'all',
 )
 const {
+  items: paginatedRooms,
+  total,
+  loading: roomsLoading,
   currentPage,
-  paginatedItems: paginatedRooms,
   totalPages,
   goToPage,
-} = useClientPagination(filteredRooms)
-
-watch([searchQuery, statusFilter], () => {
-  currentPage.value = 1
-})
+  reload: loadRooms,
+} = useServerPagination(
+  (params) => meetingRoomService.listPage(params),
+  {
+    filters: () => ({ q: searchQuery.value, status: statusFilter.value }),
+    debounceKeys: ['q'],
+    enabled: () => Boolean(schoolId.value),
+    onError: (e) => {
+      flashError.value = apiErrorMessage(e, t('meetingRooms.loadFailed'))
+    },
+  },
+)
 
 function clearFilters() {
   searchQuery.value = ''
   statusFilter.value = 'all'
 }
-
-const roomsLoading = ref(false)
 
 const scheduledAtLocal = ref(defaultScheduledDatetimeLocal())
 const scheduledAtValid = computed(() => {
@@ -762,19 +759,6 @@ function apiErrorMessage(e: unknown, fallback: string): string {
   return e instanceof Error ? e.message : fallback
 }
 
-async function loadRooms() {
-  roomsLoading.value = true
-  flashError.value = ''
-  try {
-    rooms.value = await meetingRoomService.list(schoolId.value)
-  } catch (e: unknown) {
-    flashError.value = apiErrorMessage(e, t('meetingRooms.loadFailed'))
-    rooms.value = []
-  } finally {
-    roomsLoading.value = false
-  }
-}
-
 async function onSave(opts: { draft: boolean; open: boolean }) {
   createError.value = ''
   saveMode.value = opts.draft ? 'draft' : opts.open ? 'open' : 'create'
@@ -821,7 +805,6 @@ onMounted(async () => {
     const [g, u] = await Promise.all([groupService.getAll(schoolId.value), userService.getAllUsers()])
     groups.value = g
     users.value = u
-    await loadRooms()
   } catch (e: unknown) {
     flashError.value = apiErrorMessage(e, t('meetingRooms.loadFailed'))
   } finally {

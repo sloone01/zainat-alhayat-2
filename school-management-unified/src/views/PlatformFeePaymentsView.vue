@@ -22,7 +22,7 @@
         <div v-if="loading" class="flex items-center justify-center py-16 text-gray-500">
           <FikrLoader size="sm" />
         </div>
-        <div v-else-if="!pending.length" class="px-6 py-12 text-center text-sm text-gray-500">
+        <div v-else-if="!total" class="px-6 py-12 text-center text-sm text-gray-500">
           {{ $t('platformFeePayments.empty') }}
         </div>
         <ul v-else class="divide-y divide-gray-100">
@@ -66,11 +66,11 @@
             </div>
           </li>
         </ul>
-        <div v-if="pending.length" class="px-6 pb-6">
+        <div v-if="total" class="px-6 pb-6">
           <FikrPagination
             :page="currentPage"
             :pages="totalPages"
-            :show="pending.length > 0"
+            :show="total > 0"
             @update:page="goToPage"
           />
         </div>
@@ -80,28 +80,37 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { feesV2Service, type FeePayment } from '@/services/fees-v2.service'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
-const pending = ref<FeePayment[]>([])
-const {
-  currentPage,
-  paginatedItems,
-  totalPages,
-  goToPage,
-} = useClientPagination(pending)
-const loading = ref(true)
 const error = ref('')
 const busyId = ref<string | null>(null)
+const {
+  items: paginatedItems,
+  total,
+  loading,
+  currentPage,
+  totalPages,
+  goToPage,
+  reload,
+} = useServerPagination(
+  (params) => feesV2Service.listPendingPaymentsPage(params),
+  {
+    onError: (e) => {
+      const err = e as { message?: string }
+      error.value = err?.message || t('platformFeePayments.loadError')
+    },
+  },
+)
 
 function studentName(p?: FeePayment | null) {
   if (!p) return '—'
@@ -132,18 +141,9 @@ async function openProof(url: string) {
   }
 }
 
-async function load() {
-  loading.value = true
+function load() {
   error.value = ''
-  try {
-    pending.value = await feesV2Service.listPendingPayments()
-  } catch (e: unknown) {
-    const err = e as { message?: string }
-    error.value = err?.message || t('platformFeePayments.loadError')
-    pending.value = []
-  } finally {
-    loading.value = false
-  }
+  return reload()
 }
 
 async function approve(id: string) {
@@ -172,5 +172,4 @@ async function reject(id: string) {
   }
 }
 
-onMounted(load)
 </script>

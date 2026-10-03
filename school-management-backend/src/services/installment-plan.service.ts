@@ -5,7 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
+import {
+  likeTerm,
+  paginateQueryBuilder,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { InstallmentPlan } from '../entities/installment-plan.entity';
 import { InstallmentPlanEntry } from '../entities/installment-plan-entry.entity';
@@ -54,6 +60,39 @@ export class InstallmentPlanService {
       relations: ['entries'],
       order: { name: 'ASC' },
     });
+  }
+
+  /** Paged plans. Entries are one-to-many, so ids are paged first, then loaded. */
+  async listPage(
+    user: User,
+    schoolId: string,
+    query: PageQuery & { q?: string; status?: string },
+  ): Promise<PageResult<InstallmentPlan>> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    const qb = this.planRepo.createQueryBuilder('p').where('p.school_id = :schoolId', { schoolId });
+    if (query.status === 'active') qb.andWhere('p.is_active = true');
+    else if (query.status === 'inactive') qb.andWhere('p.is_active = false');
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(`LOWER(CONCAT_WS(' ', p.name, COALESCE(p.description, ''))) LIKE :term`, { term });
+    }
+    qb.orderBy('p.name', 'ASC').addOrderBy('p.id', 'ASC');
+    const page = await paginateQueryBuilder(qb, query);
+    const ids = page.items.map((p) => p.id);
+    if (!ids.length) return page;
+    const loaded = await this.planRepo.find({
+      where: { id: In(ids) },
+      relations: ['entries'],
+    });
+    const byId = new Map(loaded.map((p) => [p.id, p]));
+    const items = ids
+      .map((id) => byId.get(id))
+      .filter((p): p is InstallmentPlan => !!p);
+    for (const plan of items) {
+      plan.entries?.sort((a, b) => a.sequence - b.sequence);
+    }
+    return { ...page, items };
   }
 
   async getOne(user: User, id: string) {

@@ -63,6 +63,7 @@ const bus_movement_log_entity_1 = require("../entities/bus-movement-log.entity")
 const bus_eta_1 = require("../common/geo/bus-eta");
 const school_access_1 = require("../common/security/school-access");
 const bilingual_name_1 = require("../common/identity/bilingual-name");
+const pagination_1 = require("../common/pagination");
 let ParentService = class ParentService {
     parentRepository;
     studentRepository;
@@ -548,6 +549,140 @@ let ParentService = class ParentService {
             weeklyPlans,
         };
     }
+    async getParentWeeklyPlansPage(userId, query) {
+        const students = await this.getChildrenForParentUser(userId);
+        const children = this.mapParentChildren(students);
+        const { limit } = (0, pagination_1.parsePageQuery)(query);
+        const empty = (childId) => ({
+            ...(0, pagination_1.buildPage)([], 0, 1, limit),
+            children,
+            childId,
+        });
+        const child = this.pickLinkedChild(students, query.childId);
+        if (!child)
+            return empty(null);
+        const activityTab = query.status === 'completed' || query.status === 'upcoming';
+        const groupIds = this.groupIdsForChild(students, child, activityTab);
+        if (!groupIds.length)
+            return empty(child.id);
+        const qb = this.weeklySessionPlanRepository
+            .createQueryBuilder('wsp')
+            .leftJoinAndSelect('wsp.schedule', 'schedule')
+            .leftJoinAndSelect('schedule.group', 'group')
+            .leftJoinAndSelect('schedule.course', 'course')
+            .leftJoinAndSelect('schedule.teacher', 'teacher')
+            .where('schedule.group_id IN (:...ids)', { ids: groupIds })
+            .andWhere("(schedule.status IS NULL OR schedule.status = 'active')")
+            .orderBy('wsp.week_start_date', 'DESC')
+            .addOrderBy('wsp.id', 'ASC');
+        const weekStart = (query.weekStart || '').trim();
+        const weekEnd = this.addDaysYmd(weekStart, 6);
+        if (weekEnd) {
+            qb.andWhere('wsp.week_start_date <= :weekEnd', { weekEnd });
+            qb.andWhere('COALESCE(wsp.week_end_date, wsp.week_start_date) >= :weekStart', { weekStart });
+        }
+        if (query.status === 'completed')
+            qb.andWhere('wsp.is_completed = true');
+        else if (query.status === 'upcoming')
+            qb.andWhere('wsp.is_completed = false');
+        const page = await (0, pagination_1.paginateQueryBuilder)(qb, query);
+        return { ...page, children, childId: child.id };
+    }
+    async getParentProgressPage(userId, query) {
+        const students = await this.getChildrenForParentUser(userId);
+        const children = this.mapParentChildren(students);
+        const { limit } = (0, pagination_1.parsePageQuery)(query);
+        const zero = { completed: 0, inProgress: 0, notStarted: 0 };
+        const child = this.pickLinkedChild(students, query.childId);
+        if (!child) {
+            return {
+                ...(0, pagination_1.buildPage)([], 0, 1, limit),
+                children,
+                childId: null,
+                counts: zero,
+            };
+        }
+        const counts = await this.progressStatusCounts(child.id);
+        const qb = this.studentProgressRepository
+            .createQueryBuilder('sp')
+            .leftJoinAndSelect('sp.milestone', 'milestone')
+            .addSelect('milestone.title')
+            .where('sp.student_id = :sid', { sid: child.id })
+            .orderBy('sp.created_at', 'DESC')
+            .addOrderBy('sp.id', 'ASC');
+        const status = (query.status || '').trim();
+        if (status === 'not_started') {
+            qb.andWhere(`(sp.status = 'not_started' OR sp.status IS NULL OR sp.status = '')`);
+        }
+        else if (status === 'completed' || status === 'in_progress') {
+            qb.andWhere('sp.status = :status', { status });
+        }
+        const page = await (0, pagination_1.paginateQueryBuilder)(qb, query);
+        return {
+            ...page,
+            items: page.items.map((row) => ({
+                id: row.id,
+                status: row.status || 'not_started',
+                teacher_notes: row.teacher_notes ?? null,
+                milestoneName: row.milestone?.title || row.milestone?.name || null,
+            })),
+            children,
+            childId: child.id,
+            counts,
+        };
+    }
+    async progressStatusCounts(studentId) {
+        const rows = await this.studentProgressRepository
+            .createQueryBuilder('sp')
+            .select('sp.status', 'status')
+            .addSelect('COUNT(*)', 'cnt')
+            .where('sp.student_id = :sid', { sid: studentId })
+            .groupBy('sp.status')
+            .getRawMany();
+        let completed = 0;
+        let inProgress = 0;
+        let notStarted = 0;
+        for (const row of rows) {
+            const n = Number(row.cnt) || 0;
+            const status = row.status || 'not_started';
+            if (status === 'completed')
+                completed += n;
+            else if (status === 'in_progress')
+                inProgress += n;
+            else if (status === 'not_started')
+                notStarted += n;
+        }
+        return { completed, inProgress, notStarted };
+    }
+    pickLinkedChild(students, childId) {
+        if (!students.length)
+            return null;
+        const requested = (childId || '').trim();
+        if (!requested)
+            return students[0];
+        return students.find((s) => String(s.id) === requested) ?? null;
+    }
+    groupIdsForChild(students, child, strict) {
+        const own = [...new Set((child.groups || []).map((g) => String(g.id)).filter(Boolean))];
+        if (own.length || strict)
+            return own;
+        return [
+            ...new Set(students.flatMap((s) => (s.groups || []).map((g) => String(g.id)).filter(Boolean))),
+        ];
+    }
+    addDaysYmd(ymd, days) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd))
+            return null;
+        const [y, m, d] = ymd.split('-').map(Number);
+        const dt = new Date(Date.UTC(y, m - 1, d));
+        if (Number.isNaN(dt.getTime()))
+            return null;
+        dt.setUTCDate(dt.getUTCDate() + days);
+        return dt.toISOString().slice(0, 10);
+    }
+    localYmd(d) {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
     async getChildrenForParentUser(userId) {
         let parentRecord = await this.parentRepository.findOne({
             where: { user: { id: userId } },
@@ -719,6 +854,176 @@ let ParentService = class ParentService {
             },
         };
     }
+    async getParentAttendancePage(userId, query) {
+        const students = await this.getChildrenForParentUser(userId);
+        const todayStart = this.startOfLocalDay();
+        const dateStr = this.localYmd(todayStart);
+        const { limit } = (0, pagination_1.parsePageQuery)(query);
+        const today = await this.buildParentToday(students, todayStart);
+        if (!students.length) {
+            return {
+                today,
+                childId: null,
+                monthItems: [],
+                history: (0, pagination_1.buildPage)([], 0, 1, limit),
+            };
+        }
+        const child = this.pickLinkedChild(students, query.childId);
+        if (!child) {
+            return {
+                today,
+                childId: null,
+                monthItems: [],
+                history: (0, pagination_1.buildPage)([], 0, 1, limit),
+            };
+        }
+        const monthStart = this.localYmd(new Date(todayStart.getFullYear(), todayStart.getMonth(), 1));
+        const monthEnd = this.localYmd(new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0));
+        const monthRows = await this.attendanceRepository
+            .createQueryBuilder('a')
+            .leftJoinAndSelect('a.student', 'student')
+            .leftJoinAndSelect('a.group', 'group')
+            .where('a.student_id = :sid', { sid: child.id })
+            .andWhere('a.attendance_date >= :monthStart', { monthStart })
+            .andWhere('a.attendance_date <= :monthEnd', { monthEnd })
+            .orderBy('a.attendance_date', 'DESC')
+            .addOrderBy('a.created_at', 'DESC')
+            .getMany();
+        const historyQb = this.attendanceRepository
+            .createQueryBuilder('a')
+            .leftJoinAndSelect('a.student', 'student')
+            .leftJoinAndSelect('a.group', 'group')
+            .where('a.student_id = :sid', { sid: child.id })
+            .andWhere('a.attendance_date < :today', { today: dateStr })
+            .orderBy('a.attendance_date', 'DESC')
+            .addOrderBy('a.created_at', 'DESC')
+            .addOrderBy('a.id', 'ASC');
+        this.applyParentAttendanceStatus(historyQb, query.status);
+        const history = await (0, pagination_1.paginateQueryBuilder)(historyQb, query);
+        return {
+            today,
+            childId: child.id,
+            monthItems: monthRows.map((row) => this.mapParentHistoryRow(row)),
+            history: {
+                ...history,
+                items: history.items.map((row) => this.mapParentHistoryRow(row)),
+            },
+        };
+    }
+    applyParentAttendanceStatus(qb, status) {
+        const value = (status || '').trim();
+        if (!value || value === 'all')
+            return;
+        if (value === 'excused') {
+            qb.andWhere('a.is_excused = :excused', { excused: true });
+            return;
+        }
+        if (value === 'present' || value === 'absent' || value === 'late') {
+            qb.andWhere('a.status = :status', { status: value });
+            qb.andWhere('a.is_excused = :excused', { excused: false });
+        }
+    }
+    mapParentHistoryRow(r) {
+        return {
+            id: r.id,
+            attendance_date: r.attendance_date instanceof Date
+                ? this.localYmd(r.attendance_date)
+                : String(r.attendance_date).split('T')[0],
+            status: r.status,
+            check_in_time: r.check_in_time,
+            check_out_time: r.check_out_time,
+            notes: r.notes,
+            is_excused: r.is_excused,
+            reason: r.reason,
+            student: r.student
+                ? { id: r.student.id, firstName: r.student.firstName, lastName: r.student.lastName }
+                : { id: r.student_id, firstName: '', lastName: '' },
+            group: r.group ? { id: r.group.id, name: r.group.name } : null,
+        };
+    }
+    async buildParentToday(students, todayStart) {
+        const dateStr = this.localYmd(todayStart);
+        const emptySummary = {
+            totalChildren: 0,
+            recorded: 0,
+            pending: 0,
+            present: 0,
+            absent: 0,
+            late: 0,
+            excused: 0,
+        };
+        if (!students.length) {
+            return { date: dateStr, children: [], summary: emptySummary };
+        }
+        const todayRows = await this.attendanceRepository.find({
+            where: {
+                student_id: (0, typeorm_2.In)(students.map((s) => s.id)),
+                attendance_date: todayStart,
+            },
+            relations: ['group'],
+            order: { created_at: 'DESC' },
+        });
+        const todayByStudent = new Map();
+        for (const row of todayRows) {
+            if (!todayByStudent.has(row.student_id))
+                todayByStudent.set(row.student_id, row);
+        }
+        const children = students.map((student) => {
+            const rec = todayByStudent.get(student.id);
+            return {
+                studentId: student.id,
+                firstName: student.firstName,
+                lastName: student.lastName,
+                groupNames: student.groups?.map((g) => g.name).join(', ') || '',
+                record: rec
+                    ? {
+                        id: rec.id,
+                        status: rec.status,
+                        check_in_time: rec.check_in_time,
+                        check_out_time: rec.check_out_time,
+                        notes: rec.notes,
+                        is_excused: rec.is_excused,
+                        reason: rec.reason,
+                        groupName: rec.group?.name ?? null,
+                    }
+                    : null,
+            };
+        });
+        let recorded = 0;
+        let pending = 0;
+        let present = 0;
+        let absent = 0;
+        let late = 0;
+        let excused = 0;
+        for (const c of children) {
+            if (!c.record) {
+                pending++;
+                continue;
+            }
+            recorded++;
+            if (c.record.status === 'present')
+                present++;
+            else if (c.record.status === 'absent')
+                absent++;
+            else if (c.record.status === 'late')
+                late++;
+            if (c.record.is_excused)
+                excused++;
+        }
+        return {
+            date: dateStr,
+            children,
+            summary: {
+                totalChildren: children.length,
+                recorded,
+                pending,
+                present,
+                absent,
+                late,
+                excused,
+            },
+        };
+    }
     async getParentAssignedActivities(userId) {
         const students = await this.getChildrenForParentUser(userId);
         const groupIds = new Set();
@@ -739,6 +1044,33 @@ let ParentService = class ParentService {
             relations: ['group', 'createdByUser'],
             order: { activity_date: 'DESC', created_at: 'DESC' },
         });
+    }
+    async getParentAssignedActivitiesPage(userId, query) {
+        const students = await this.getChildrenForParentUser(userId);
+        const children = this.mapParentChildren(students);
+        const { limit } = (0, pagination_1.parsePageQuery)(query);
+        const empty = (childId) => ({
+            ...(0, pagination_1.buildPage)([], 0, 1, limit),
+            children,
+            childId,
+        });
+        const child = this.pickLinkedChild(students, query.childId);
+        if (!child)
+            return empty(null);
+        const groupIds = [...new Set((child.groups || []).map((g) => String(g.id)).filter(Boolean))];
+        if (!groupIds.length)
+            return empty(child.id);
+        const qb = this.activityRepository
+            .createQueryBuilder('activity')
+            .leftJoinAndSelect('activity.group', 'group')
+            .leftJoinAndSelect('activity.createdByUser', 'createdByUser')
+            .where('activity.group_id IN (:...ids)', { ids: groupIds })
+            .andWhere('activity.is_active = true')
+            .orderBy('activity.activity_date', 'DESC')
+            .addOrderBy('activity.created_at', 'DESC')
+            .addOrderBy('activity.id', 'ASC');
+        const page = await (0, pagination_1.paginateQueryBuilder)(qb, query);
+        return { ...page, children, childId: child.id };
     }
     async getParentBusPositions(userId) {
         const user = await this.userRepository.findOne({ where: { id: userId } });

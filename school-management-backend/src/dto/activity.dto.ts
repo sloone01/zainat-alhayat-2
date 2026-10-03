@@ -180,4 +180,28 @@ export class ActivityQueryDto {
   @IsOptional()
   @IsDateString()
   to_date?: string;
+
+  /** Present only when the caller wants `{ items, total, page, limit, pages }`. */
+  @IsOptional()
+  @IsString()
+  page?: string;
+
+  @IsOptional()
+  @IsString()
+  limit?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  q?: string;
+
+  /** active | pending | completed — matches the activities screen. `all` is ignored. */
+  @IsOptional()
+  @Transform(({ value }) => {
+    const raw = value == null ? '' : String(value).trim();
+    if (!raw || raw === 'all') return undefined;
+    return raw;
+  })
+  @IsString()
+  status?: string;
 }

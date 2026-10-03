@@ -1,0 +1,32 @@
+---
+description: Printable school reports are filled Word files, with the school name and logo from settings
+globs: "**/*{report,due-installment,report-docx}*"
+alwaysApply: false
+---
+
+# Printable reports
+
+Word and PDF are one filled `.docx`. Do not paint a report page in HTML, canvas, or a hand-built `.doc` string.
+
+## Template
+
+- Super admin uploads the `.docx`. School staff only download.
+- The file must contain `{{schoolName}}` and `{{schoolLogo}}` (header or top of the page). Reject an upload that lacks either tag.
+- One repeating data row uses `{{#rows}}` … `{{/rows}}` and the report’s column tags.
+- Excel is the rows only. It does not use the Word file.
+
+## Download
+
+- Fill `{{schoolName}}` from the school record for the report language: Arabic name when the report is Arabic, English name when English. If one language is empty, use the other.
+- Embed `{{schoolLogo}}` from the school logo in settings. A missing logo leaves the name and an empty logo spot.
+- PDF is that filled file converted (`soffice`). Do not draw a second layout for PDF.
+
+```ts
+// BAD — HTML letterhead painted into Word/PDF
+applyWordPageOrientation(layoutHtml)
+
+// GOOD — one Word template, filled from the school
+renderReportDocx(template, { schoolName, rows }, logoBytes)
+```
+
+The first report on this path is due and late payments (`report-docx.ts`). New printable reports follow it. Reports that already paint HTML stay on that path until they are moved.

@@ -18,6 +18,7 @@ import { CreateGroupDto, UpdateGroupDto } from '../dto/group.dto';
 import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId, assertSameSchool, RequestedSchoolIdPipe } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 
 @Controller('groups')
 @RequireClaim('groups', 'view')
@@ -67,12 +68,27 @@ export class GroupController {
     @Query('school_id') schoolId?: string,
     @Query('is_active') isActive?: string,
     @Query('payment_level_id') paymentLevelId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
   ) {
     const requested = schoolId ? String(schoolId) : undefined;
     const schoolIdNum = this.schoolOf(req, requested);
     const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
 
     try {
+      if (wantsPage(page)) {
+        const data = await this.groupService.findPage(schoolIdNum, {
+          page,
+          limit,
+          q,
+          status,
+          isActive: isActiveBool,
+          paymentLevelId,
+        });
+        return { success: true, data };
+      }
       const groups = await this.groupService.findAll(schoolIdNum, isActiveBool, paymentLevelId);
       return {
         success: true,

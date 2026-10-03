@@ -12,14 +12,17 @@ import {
   Put,
   Query,
   Request,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequireAnyClaim } from '../rbac/require-claim.decorator';
 import { RequestedSchoolIdPipe, resolveActorSchoolId } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { ReportExportConfigService } from '../services/report-export-config.service';
 import { ReportExportTemplateService } from '../services/report-export-template.service';
+import { CourseListDocumentRow, DueDocumentRow, ReportDocxService } from '../services/report-docx.service';
 import {
   PreviewReportExportTemplateDto,
   UpdateReportExportConfigDto,
@@ -31,6 +34,7 @@ const VIEW_CLAIMS = [
   { page: 'reports_student_export', action: 'view' },
   { page: 'reports_exports', action: 'view' },
   { page: 'students', action: 'view' },
+  { page: 'courses', action: 'view' },
 ];
 
 const EDIT_CLAIMS = [
@@ -46,6 +50,7 @@ export class ReportExportController {
   constructor(
     private readonly configs: ReportExportConfigService,
     private readonly templates: ReportExportTemplateService,
+    private readonly reportDocx: ReportDocxService,
   ) {}
 
   @Get('exports')
@@ -53,9 +58,16 @@ export class ReportExportController {
   async listExports(
     @Request() req: { user: User },
     @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
   ) {
     if (resolveActorSchoolId(req.user, requestedSchoolId) == null) {
       throw new BadRequestException('school_id is required');
+    }
+    if (wantsPage(page)) {
+      const data = await this.configs.listPage(req.user, requestedSchoolId, { page, limit, q });
+      return { success: true, data };
     }
     const data = await this.configs.list(req.user, requestedSchoolId);
     return { success: true, data, count: data.length };
@@ -97,9 +109,16 @@ export class ReportExportController {
   async listTemplates(
     @Request() req: { user: User },
     @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
   ) {
     if (resolveActorSchoolId(req.user, requestedSchoolId) == null) {
       throw new BadRequestException('school_id is required');
+    }
+    if (wantsPage(page)) {
+      const data = await this.templates.listPage(req.user, requestedSchoolId, { page, limit, q });
+      return { success: true, data };
     }
     const data = await this.templates.list(req.user, requestedSchoolId);
     return { success: true, data, count: data.length };
@@ -173,6 +192,42 @@ export class ReportExportController {
     await this.templates.remove(req.user, id, requestedSchoolId);
   }
 
+  /** Course list as a filled Word file. PDF is that same file converted. Excel stays on the client. */
+  @Post('courses/document')
+  @RequireAnyClaim({ page: 'courses', action: 'view' })
+  async coursesDocument(
+    @Request() req: { user: User },
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @Body() body: CourseListDocumentBody,
+  ): Promise<StreamableFile> {
+    const schoolId = resolveActorSchoolId(req.user, requestedSchoolId);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    const format = body?.format === 'pdf' ? 'pdf' : 'docx';
+    const locale = body?.locale === 'en' ? 'en' : 'ar';
+    const rows = Array.isArray(body?.rows) ? body.rows.slice(0, 5000).map(cleanCourseRow) : [];
+    if (!rows.length) throw new BadRequestException('rows are required');
+    const labels = body?.labels || {};
+    const file = await this.reportDocx.renderCourseList({
+      schoolId,
+      locale,
+      title: text(body?.title),
+      subtitle: text(body?.subtitle),
+      labels: {
+        labelTitle: text(labels.title),
+        labelCategory: text(labels.category),
+        labelStatus: text(labels.status),
+        labelPhases: text(labels.phases),
+        labelMilestones: text(labels.milestones),
+      },
+      rows,
+      format,
+    });
+    return new StreamableFile(file.buffer, {
+      type: file.mime,
+      disposition: `attachment; filename="${file.filename}"`,
+    });
+  }
+
   /** Legacy alias used by older SPA builds. */
   @Get('student-export-config')
   @RequireAnyClaim(...VIEW_CLAIMS)
@@ -195,6 +250,49 @@ export class ReportExportController {
     };
   }
 
+  /** Due/late payments as a filled Word file. PDF is that same file converted. */
+  @Post('due-installments/document')
+  @HttpCode(HttpStatus.OK)
+  @RequireAnyClaim(
+    { page: 'reports_fees_due', action: 'export' },
+    { page: 'reports_fees_due', action: 'view' },
+  )
+  async dueInstallmentsDocument(
+    @Request() req: { user: User },
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @Body() body: DueInstallmentsDocumentBody,
+  ): Promise<StreamableFile> {
+    const schoolId = resolveActorSchoolId(req.user, requestedSchoolId);
+    if (schoolId == null) throw new BadRequestException('school_id is required');
+    const format = body?.format === 'pdf' ? 'pdf' : 'docx';
+    const locale = body?.locale === 'en' ? 'en' : 'ar';
+    const rows = Array.isArray(body?.rows) ? body.rows.slice(0, 5000).map(cleanRow) : [];
+    if (!rows.length) throw new BadRequestException('rows are required');
+    const labels = body?.labels || {};
+    const file = await this.reportDocx.renderDueInstallments({
+      schoolId,
+      locale,
+      title: text(body?.title),
+      subtitle: text(body?.subtitle),
+      labels: {
+        labelStudent: text(labels.student),
+        labelInstallment: text(labels.installment),
+        labelDueDate: text(labels.dueDate),
+        labelBalance: text(labels.balance),
+        labelStatus: text(labels.status),
+        labelAmountDue: text(labels.amountDue),
+        labelAmountPaid: text(labels.amountPaid),
+        labelDaysOverdue: text(labels.daysOverdue),
+      },
+      rows,
+      format,
+    });
+    return new StreamableFile(file.buffer, {
+      type: file.mime,
+      disposition: `attachment; filename="${file.filename}"`,
+    });
+  }
+
   @Put('student-export-config')
   @RequireAnyClaim(...EDIT_CLAIMS)
   async legacyPut(
@@ -213,4 +311,49 @@ export class ReportExportController {
       data: { columns: data.columns, layout_id: data.template_id },
     };
   }
+}
+
+type CourseListDocumentBody = {
+  format?: 'docx' | 'pdf';
+  locale?: 'en' | 'ar';
+  title?: string;
+  subtitle?: string;
+  labels?: Partial<Record<keyof CourseListDocumentRow, string>>;
+  rows?: Array<Partial<CourseListDocumentRow>>;
+};
+
+type DueInstallmentsDocumentBody = {
+  format?: 'docx' | 'pdf';
+  locale?: 'en' | 'ar';
+  title?: string;
+  subtitle?: string;
+  labels?: Partial<Record<keyof DueDocumentRow, string>>;
+  rows?: Array<Partial<DueDocumentRow>>;
+};
+
+function text(value: unknown): string {
+  return String(value ?? '').slice(0, 500);
+}
+
+function cleanCourseRow(row: Partial<CourseListDocumentRow>): CourseListDocumentRow {
+  return {
+    title: text(row?.title),
+    category: text(row?.category),
+    status: text(row?.status),
+    phases: text(row?.phases),
+    milestones: text(row?.milestones),
+  };
+}
+
+function cleanRow(row: Partial<DueDocumentRow>): DueDocumentRow {
+  return {
+    student: text(row?.student),
+    installment: text(row?.installment),
+    dueDate: text(row?.dueDate),
+    balance: text(row?.balance),
+    status: text(row?.status),
+    amountDue: text(row?.amountDue),
+    amountPaid: text(row?.amountPaid),
+    daysOverdue: text(row?.daysOverdue),
+  };
 }

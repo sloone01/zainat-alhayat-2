@@ -1,4 +1,77 @@
+import type { PageResult } from '@/composables/useServerPagination'
 import { BaseApiService } from './api'
+
+export interface ParentListChild {
+  id: string
+  firstName?: string
+  lastName?: string
+  groupNames?: string
+  groups?: Array<{ id: string; name?: string }>
+}
+
+export interface ParentPlansPage<T> extends PageResult<T> {
+  children: ParentListChild[]
+  childId: string | null
+}
+
+export interface ParentProgressRow {
+  id: string
+  status: string
+  teacher_notes?: string | null
+  milestoneName?: string | null
+}
+
+export interface ParentProgressPage extends ParentPlansPage<ParentProgressRow> {
+  counts: { completed: number; inProgress: number; notStarted: number }
+}
+
+export interface ParentAttendanceHistoryItem {
+  id: string
+  attendance_date: string
+  status: string
+  check_in_time: string | null
+  check_out_time: string | null
+  notes: string | null
+  is_excused: boolean
+  reason: string | null
+  student?: { id: string; firstName: string; lastName: string }
+  group?: { id: string; name: string } | null
+}
+
+export interface ParentAttendancePage {
+  today: {
+    date: string
+    children: Array<{
+      studentId: string
+      firstName: string
+      lastName: string
+      groupNames: string
+      record: null | {
+        id: string
+        status: string
+        check_in_time: string | null
+        check_out_time: string | null
+        notes: string | null
+        is_excused: boolean
+        reason: string | null
+        groupName: string | null
+      }
+    }>
+  }
+  childId: string | null
+  monthItems: ParentAttendanceHistoryItem[]
+  history: PageResult<ParentAttendanceHistoryItem>
+}
+
+function normalizeParentChildren(children: ParentListChild[] | undefined): ParentListChild[] {
+  return Array.isArray(children)
+    ? children.map((child) => ({
+        ...child,
+        groupNames:
+          !child.groupNames || child.groupNames === 'No group assigned' ? '' : child.groupNames,
+      }))
+    : []
+}
 
 export type ParentRelationship = 'father' | 'mother' | 'guardian'
 
@@ -117,19 +190,56 @@ class ParentService extends BaseApiService {
   }
 
   async getMyWeeklyPlans(): Promise<{ children: any[]; weeklyPlans: any[] }> {
-    const data = await this.get<{ children?: any[]; weeklyPlans?: any[] }>(
+    const data = await this.get<{ children?: ParentListChild[]; weeklyPlans?: any[] }>(
       '/parents/dashboard/weekly-plans',
     )
-    const children = Array.isArray(data?.children)
-      ? data.children.map((child: { groupNames?: string }) => ({
-          ...child,
-          groupNames:
-            !child.groupNames || child.groupNames === 'No group assigned' ? '' : child.groupNames,
-        }))
-      : []
     return {
-      children,
+      children: normalizeParentChildren(data?.children),
       weeklyPlans: Array.isArray(data?.weeklyPlans) ? data.weeklyPlans : [],
+    }
+  }
+
+  /** One page of weekly plans. `status` selects the activities tab (completed / upcoming). */
+  async getMyWeeklyPlansPage(params: {
+    page: number
+    limit: number
+    childId?: string
+    weekStart?: string
+    status?: 'completed' | 'upcoming'
+  }): Promise<ParentPlansPage<any>> {
+    const query: Record<string, string | number> = {
+      page: params.page,
+      limit: params.limit,
+    }
+    if (params.childId) query.child_id = params.childId
+    if (params.weekStart) query.week_start = params.weekStart
+    if (params.status) query.status = params.status
+    const data = await this.get<ParentPlansPage<any>>('/parents/dashboard/weekly-plans', query)
+    return {
+      ...data,
+      items: Array.isArray(data?.items) ? data.items : [],
+      children: normalizeParentChildren(data?.children),
+    }
+  }
+
+  async getMyProgressPage(params: {
+    page: number
+    limit: number
+    childId?: string
+    status?: string
+  }): Promise<ParentProgressPage> {
+    const query: Record<string, string | number> = {
+      page: params.page,
+      limit: params.limit,
+    }
+    if (params.childId) query.child_id = params.childId
+    if (params.status && params.status !== 'all') query.status = params.status
+    const data = await this.get<ParentProgressPage>('/parents/dashboard/progress', query)
+    return {
+      ...data,
+      items: Array.isArray(data?.items) ? data.items : [],
+      children: normalizeParentChildren(data?.children),
+      counts: data?.counts || { completed: 0, inProgress: 0, notStarted: 0 },
     }
   }
 
@@ -137,9 +247,43 @@ class ParentService extends BaseApiService {
     return this.get<any>('/parents/dashboard/attendance', { offset, limit })
   }
 
+  /** History page for one child. Month rows and today's card travel with the page. */
+  async getMyAttendancePage(params: {
+    page: number
+    limit: number
+    childId?: string
+    status?: string
+  }): Promise<ParentAttendancePage> {
+    const query: Record<string, string | number> = {
+      page: params.page,
+      limit: params.limit,
+    }
+    if (params.childId) query.child_id = params.childId
+    if (params.status && params.status !== 'all') query.status = params.status
+    return this.get<ParentAttendancePage>('/parents/dashboard/attendance', query)
+  }
+
   /** Group-linked activities (Activity entity) for the parent's children's groups */
   async getMyAssignedActivities(): Promise<any[]> {
     return this.get<any[]>('/parents/dashboard/activities')
+  }
+
+  async getMyAssignedActivitiesPage(params: {
+    page: number
+    limit: number
+    childId?: string
+  }): Promise<ParentPlansPage<any>> {
+    const query: Record<string, string | number> = {
+      page: params.page,
+      limit: params.limit,
+    }
+    if (params.childId) query.child_id = params.childId
+    const data = await this.get<ParentPlansPage<any>>('/parents/dashboard/activities', query)
+    return {
+      ...data,
+      items: Array.isArray(data?.items) ? data.items : [],
+      children: normalizeParentChildren(data?.children),
+    }
   }
 
   /** Bus boarding / drop-off lines for the parent's children (all schools). */

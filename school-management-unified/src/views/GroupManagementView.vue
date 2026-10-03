@@ -10,7 +10,7 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('groupManagement.listHeading') }}</h2>
-            <p class="fk-card__meta">{{ $t('groupManagement.groupsCount', { count: filteredGroups.length }) }}</p>
+            <p class="fk-card__meta">{{ $t('groupManagement.groupsCount', { count: totalGroups }) }}</p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <FikrFilterButton
@@ -32,7 +32,7 @@
         <div class="p-6">
 
         <div
-          v-if="groups.length === 0"
+          v-if="loaded && totalGroups === 0 && !hasActiveFilters"
           class="fk-empty"
         >
             <div class="fk-empty__icon">
@@ -57,14 +57,14 @@
           <template v-else>
 
             <p
-              v-if="filteredGroups.length === 0"
+              v-if="loaded && totalGroups === 0"
               class="fk-empty text-sm text-fikr-ink-soft"
             >
               {{ $t('groupManagement.noGroups') }}
             </p>
 
             <!-- Cards -->
-            <div v-else-if="viewMode === 'cards'" class="fk-grid">
+            <div v-else-if="totalGroups > 0 && viewMode === 'cards'" class="fk-grid">
               <KanbanCard
                 v-for="group in paginatedGroups"
                 :key="group.id"
@@ -105,7 +105,7 @@
             </div>
 
             <!-- List -->
-            <div v-else class="overflow-visible">
+            <div v-else-if="totalGroups > 0" class="overflow-visible">
               <table class="fk-table">
                 <thead>
                   <tr>
@@ -203,7 +203,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredGroups.length > 0"
+              :show="totalGroups > 0"
               @update:page="goToPage"
             />
           </template>
@@ -300,7 +300,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -318,8 +318,8 @@ import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
-import { groupService, type UpdateGroupRequest } from '@/services/group.service'
+import { useServerPagination } from '@/composables/useServerPagination'
+import { groupService, type Group, type GroupListParams, type UpdateGroupRequest } from '@/services/group.service'
 import { academicYearService } from '@/services/academic-year.service'
 import userService from '@/services/user.service'
 import { authService } from '@/services'
@@ -461,10 +461,8 @@ const progressState = ref('loading')
 const progressTitle = ref('')
 const progressMessage = ref('')
 const errorMessage = ref('')
-const loading = ref(true)
 
 const activeYear = ref<any>(null)
-const groups = ref<any[]>([])
 
 const loadActiveYear = async () => {
   try {
@@ -499,52 +497,6 @@ const loadActiveYear = async () => {
   }
 }
 
-const loadGroups = async () => {
-  try {
-    loading.value = true
-    const sid = getStoredSchoolId() || String(authService.getStoredUser()?.school_id ?? '').trim()
-    const apiGroups = await groupService.getAll(sid || undefined)
-
-    groups.value = await Promise.all(
-      apiGroups.map(async (group) => {
-        try {
-          const capacityInfo = await groupService.getGroupCapacity(group.id)
-          return {
-            ...group,
-            studentCount: capacityInfo.currentStudents || 0,
-            teacherCount: 0,
-            status: group.is_active ? 'active' : 'inactive',
-            color: getGroupColor(group.name),
-            yearId: group.academic_year_id || activeYear.value?.id,
-            createdAt: group.created_at,
-            supervisor: resolveSupervisorId(group),
-            supervisorName: resolveSupervisorName(group),
-            levelName: resolveLevelName(group),
-          }
-        } catch {
-          return {
-            ...group,
-            studentCount: 0,
-            teacherCount: 0,
-            status: group.is_active ? 'active' : 'inactive',
-            color: getGroupColor(group.name),
-            yearId: group.academic_year_id || activeYear.value?.id,
-            createdAt: group.created_at,
-            supervisor: resolveSupervisorId(group),
-            supervisorName: resolveSupervisorName(group),
-            levelName: resolveLevelName(group),
-          }
-        }
-      }),
-    )
-  } catch (error) {
-    console.error('Error loading groups:', error)
-    groups.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
 const getGroupColor = (name: string): string => {
   const colors = ['#0D9488', '#059669', '#0284C7', '#D97706', '#DC2626', '#4F46E5']
   const hash = name.split('').reduce((a, b) => a + b.charCodeAt(0), 0)
@@ -553,34 +505,44 @@ const getGroupColor = (name: string): string => {
 
 const isRTL = computed(() => locale.value === 'ar')
 
-const filteredGroups = computed(() => {
-  let filtered = groups.value
-
-  if (searchQuery.value) {
-    filtered = filtered.filter(
-      (group) =>
-        group.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        (group.description || '').toLowerCase().includes(searchQuery.value.toLowerCase()),
-    )
+function presentGroup(group: Group) {
+  return {
+    ...group,
+    studentCount: group.students?.length || 0,
+    teacherCount: 0,
+    status: group.is_active ? 'active' : 'inactive',
+    color: getGroupColor(group.name),
+    yearId: group.academic_year_id || activeYear.value?.id,
+    createdAt: group.created_at,
+    supervisor: resolveSupervisorId(group),
+    supervisorName: resolveSupervisorName(group),
+    levelName: resolveLevelName(group),
   }
-
-  if (statusFilter.value !== 'all') {
-    filtered = filtered.filter((group) => group.status === statusFilter.value)
-  }
-
-  return filtered
-})
+}
 
 const {
+  items: paginatedGroups,
+  total: totalGroups,
+  loaded,
   currentPage,
-  paginatedItems: paginatedGroups,
   totalPages,
   goToPage,
-} = useClientPagination(filteredGroups)
-
-watch([searchQuery, statusFilter], () => {
-  currentPage.value = 1
-})
+  reload,
+} = useServerPagination<ReturnType<typeof presentGroup>, GroupListParams>(
+  async (params) => {
+    const sid = getStoredSchoolId() || String(authService.getStoredUser()?.school_id ?? '').trim()
+    const page = await groupService.listPage({ ...params, schoolId: sid || undefined })
+    return { ...page, items: page.items.map(presentGroup) }
+  },
+  {
+    filters: () => ({
+      q: searchQuery.value,
+      status: statusFilter.value,
+    }),
+    debounceKeys: ['q'],
+    onError: (err) => console.error('Error loading groups:', err),
+  },
+)
 
 const occupancyPercent = (group: any) => {
   const capacity = Number(group.capacity) || 0
@@ -615,17 +577,8 @@ const toggleGroupStatus = async (group: any) => {
   try {
     const newIsActive = group.status !== 'active'
     await groupService.update(group.id, { is_active: newIsActive })
-
-    const groupIndex = groups.value.findIndex((g) => g.id === group.id)
-    if (groupIndex !== -1) {
-      const newStatus = newIsActive ? 'active' : 'inactive'
-      groups.value[groupIndex] = {
-        ...groups.value[groupIndex],
-        status: newStatus,
-        is_active: newIsActive,
-      }
-      progressMessage.value = newIsActive ? 'تم تفعيل المجموعة بنجاح!' : 'تم إلغاء تفعيل المجموعة بنجاح!'
-    }
+    await reload()
+    progressMessage.value = newIsActive ? 'تم تفعيل المجموعة بنجاح!' : 'تم إلغاء تفعيل المجموعة بنجاح!'
 
     progressState.value = 'success'
     setTimeout(() => {
@@ -676,26 +629,8 @@ const saveGroup = async (groupData: any) => {
       if (typeof groupData.status === 'string') {
         updatePayload.is_active = groupData.status === 'active'
       }
-      const updatedGroup = await groupService.update(editingGroup.value.id, updatePayload)
-
-      const groupIndex = groups.value.findIndex((g) => g.id === editingGroup.value.id)
-      if (groupIndex !== -1) {
-        const supId = normalizeLevelId(updatedGroup.supervisor_id ?? groupData.supervisor)
-        const lid = normalizeLevelId(updatedGroup.level_id ?? groupData.level_id)
-        groups.value[groupIndex] = {
-          ...updatedGroup,
-          level_id: lid,
-          studentCount: groups.value[groupIndex].studentCount,
-          teacherCount: groups.value[groupIndex].teacherCount,
-          status: updatedGroup.is_active ? 'active' : 'inactive',
-          color: getGroupColor(updatedGroup.name),
-          yearId: updatedGroup.academic_year_id || activeYear.value?.id,
-          createdAt: updatedGroup.created_at,
-          supervisor: supId,
-          supervisorName: resolveSupervisorIdToName(supId),
-          levelName: resolveLevelName({ ...updatedGroup, level_id: lid }),
-        }
-      }
+      await groupService.update(editingGroup.value.id, updatePayload)
+      await reload()
       progressMessage.value = 'تم تحديث المجموعة بنجاح!'
     } else {
       const newGroupData = {
@@ -709,22 +644,8 @@ const saveGroup = async (groupData: any) => {
         supervisor_id: normalizeLevelId(groupData.supervisor),
       }
 
-      const createdGroup = await groupService.create(newGroupData)
-      const supId = normalizeLevelId(createdGroup.supervisor_id ?? groupData.supervisor)
-      const lid = normalizeLevelId(createdGroup.level_id ?? groupData.level_id)
-      groups.value.push({
-        ...createdGroup,
-        level_id: lid,
-        studentCount: 0,
-        teacherCount: 0,
-        status: 'active',
-        color: getGroupColor(createdGroup.name),
-        yearId: createdGroup.academic_year_id || activeYear.value?.id,
-        createdAt: createdGroup.created_at,
-        supervisor: supId,
-        supervisorName: resolveSupervisorIdToName(supId),
-        levelName: resolveLevelName({ ...createdGroup, level_id: lid }),
-      })
+      await groupService.create(newGroupData)
+      await reload()
       progressMessage.value = 'تم إنشاء المجموعة بنجاح!'
     }
 
@@ -754,7 +675,7 @@ onMounted(async () => {
   await loadTeacherNames()
   await loadPaymentLevels()
   await loadActiveYear()
-  await loadGroups()
+  await reload()
 })
 
 onUnmounted(() => {

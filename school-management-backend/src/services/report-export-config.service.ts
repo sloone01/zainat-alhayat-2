@@ -1,6 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import {
+  buildPage,
+  clampPage,
+  likeTerm,
+  parsePageQuery,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import { SchoolReportExportConfig } from '../entities/school-report-export.entity';
 import { SchoolSystemSetting } from '../entities/school-system-setting.entity';
 import { User } from '../entities/user.entity';
@@ -51,6 +59,23 @@ export class ReportExportConfigService {
         configured: Boolean(saved),
       };
     });
+  }
+
+  async listPage(
+    user: User,
+    requestedSchoolId: string | null | undefined,
+    query: PageQuery & { q?: string },
+  ): Promise<PageResult<Awaited<ReturnType<ReportExportConfigService['list']>>[number]>> {
+    const rows = await this.list(user, requestedSchoolId);
+    const needle = likeTerm(query.q);
+    const q = needle ? needle.slice(1, -1) : '';
+    const filtered = q
+      ? rows.filter((row) => `${row.name_en} ${row.name_ar} ${row.source_path}`.toLowerCase().includes(q))
+      : rows;
+    const { page, limit } = parsePageQuery(query);
+    const total = filtered.length;
+    const safePage = clampPage(page, total, limit);
+    return buildPage(filtered.slice((safePage - 1) * limit, safePage * limit), total, safePage, limit);
   }
 
   async getOne(

@@ -6,7 +6,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Repository, type ObjectLiteral, type SelectQueryBuilder } from 'typeorm';
+import {
+  buildPage,
+  clampPage,
+  likeTerm,
+  paginateQueryBuilder,
+  parsePageQuery,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { SchoolPaymentLevel } from '../entities/school-payment-level.entity';
 import { PaymentChargeType } from '../entities/payment-charge-type.entity';
@@ -280,6 +289,33 @@ export class PaymentConfigService {
     });
   }
 
+  /** Levels are synced from grades, then filtered and sliced to one page. */
+  async listLevelsSummaryPage(
+    user: User,
+    schoolId: string,
+    query: PageQuery & { q?: string; status?: string; config?: string },
+  ) {
+    const rows = await this.listLevelsWithProfileStatus(user, schoolId);
+    const needle = likeTerm(query.q);
+    const q = needle ? needle.slice(1, -1) : '';
+    const filtered = rows.filter((lv) => {
+      if (query.config === 'configured' && !lv.profile_configured) return false;
+      if (query.config === 'not_configured' && lv.profile_configured) return false;
+      if (query.status === 'active' && !lv.is_active) return false;
+      if (query.status === 'inactive' && lv.is_active) return false;
+      if (q) {
+        const hay = `${lv.name} ${lv.name_en} ${lv.name_ar} ${lv.code}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    const { page, limit } = parsePageQuery(query);
+    const total = filtered.length;
+    const safePage = clampPage(page, total, limit);
+    const items = filtered.slice((safePage - 1) * limit, safePage * limit);
+    return buildPage(items, total, safePage, limit);
+  }
+
   private isLevelProfileConfigured(profile: LevelPaymentProfile | undefined): boolean {
     if (!profile) return false;
     const lines = profile.chargeLines ?? [];
@@ -360,6 +396,23 @@ export class PaymentConfigService {
   }
 
   // --- Charge types ---
+  /** Label + code search and active/inactive, shared by the catalog list screens. */
+  private applyCatalogListFilters<T extends ObjectLiteral>(
+    qb: SelectQueryBuilder<T>,
+    alias: string,
+    schoolId: string,
+    query: { q?: string; status?: string },
+  ): void {
+    qb.where(`${alias}.school_id = :schoolId`, { schoolId });
+    if (query.status === 'active') qb.andWhere(`${alias}.is_active = true`);
+    else if (query.status === 'inactive') qb.andWhere(`${alias}.is_active = false`);
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(`LOWER(CONCAT_WS(' ', ${alias}.label, ${alias}.code)) LIKE :term`, { term });
+    }
+    qb.orderBy(`${alias}.sort_order`, 'ASC').addOrderBy(`${alias}.label`, 'ASC').addOrderBy(`${alias}.id`, 'ASC');
+  }
+
   async listChargeTypes(user: User, schoolId: string): Promise<PaymentChargeType[]> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
@@ -367,6 +420,18 @@ export class PaymentConfigService {
       where: { school_id: schoolId },
       order: { sort_order: 'ASC', label: 'ASC' },
     });
+  }
+
+  async listChargeTypesPage(
+    user: User,
+    schoolId: string,
+    query: PageQuery & { q?: string; status?: string },
+  ): Promise<PageResult<PaymentChargeType>> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    const qb = this.chargeTypeRepo.createQueryBuilder('row');
+    this.applyCatalogListFilters(qb, 'row', schoolId, query);
+    return paginateQueryBuilder(qb, query);
   }
 
   async createChargeType(user: User, schoolId: string, dto: UpsertCatalogDto): Promise<PaymentChargeType> {
@@ -454,6 +519,23 @@ export class PaymentConfigService {
     });
     const usage = await this.discountUsageById(rows.map((row) => row.id));
     return rows.map((row) => Object.assign(row, usage.get(row.id) ?? { package_names: [], used_on_charges: false }));
+  }
+
+  async listDiscountTypesPage(
+    user: User,
+    schoolId: string,
+    query: PageQuery & { q?: string; status?: string },
+  ): Promise<PageResult<PaymentDiscountType>> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    const qb = this.discountTypeRepo.createQueryBuilder('row');
+    this.applyCatalogListFilters(qb, 'row', schoolId, query);
+    const page = await paginateQueryBuilder(qb, query);
+    const usage = await this.discountUsageById(page.items.map((row) => row.id));
+    const items = page.items.map((row) =>
+      Object.assign(row, usage.get(row.id) ?? { package_names: [], used_on_charges: false }),
+    );
+    return { ...page, items };
   }
 
   async packagesUsingDiscountType(user: User, id: string): Promise<string[]> {
@@ -561,6 +643,18 @@ export class PaymentConfigService {
     });
   }
 
+  async listExtraTypesPage(
+    user: User,
+    schoolId: string,
+    query: PageQuery & { q?: string; status?: string },
+  ): Promise<PageResult<PaymentExtraType>> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    const qb = this.extraTypeRepo.createQueryBuilder('row');
+    this.applyCatalogListFilters(qb, 'row', schoolId, query);
+    return paginateQueryBuilder(qb, query);
+  }
+
   async createExtraType(user: User, schoolId: string, dto: UpsertCatalogDto): Promise<PaymentExtraType> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
@@ -621,6 +715,23 @@ export class PaymentConfigService {
     });
     const usage = await this.inclusionUsageById(rows.map((row) => row.id));
     return rows.map((row) => Object.assign(row, usage.get(row.id) ?? { package_names: [], used_on_charges: false }));
+  }
+
+  async listInclusionTypesPage(
+    user: User,
+    schoolId: string,
+    query: PageQuery & { q?: string; status?: string },
+  ): Promise<PageResult<PaymentInclusionType>> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    const qb = this.inclusionTypeRepo.createQueryBuilder('row');
+    this.applyCatalogListFilters(qb, 'row', schoolId, query);
+    const page = await paginateQueryBuilder(qb, query);
+    const usage = await this.inclusionUsageById(page.items.map((row) => row.id));
+    const items = page.items.map((row) =>
+      Object.assign(row, usage.get(row.id) ?? { package_names: [], used_on_charges: false }),
+    );
+    return { ...page, items };
   }
 
   async packagesUsingInclusionType(user: User, id: string): Promise<string[]> {
@@ -988,6 +1099,74 @@ export class PaymentConfigService {
         fee_package_name: feePackageId ? (packageNameById.get(feePackageId) ?? null) : null,
       };
     });
+  }
+
+  /**
+   * Schedulable courses only (submitted + active), paged in SQL. Profiles are
+   * loaded for the page so charge lines do not inflate the count.
+   */
+  async listCoursesPaymentSummaryPage(
+    user: User,
+    schoolId: string,
+    query: PageQuery & { q?: string; status?: string; config?: string },
+  ): Promise<PageResult<Awaited<ReturnType<PaymentConfigService['listCoursesPaymentSummary']>>[number]>> {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    const qb = this.courseRepo
+      .createQueryBuilder('c')
+      .where('c.school_id = :schoolId', { schoolId })
+      .andWhere('(c.is_active = true OR c.is_active IS NULL)')
+      .andWhere(`LOWER(COALESCE(c.status, '')) NOT IN ('', 'draft', 'archived')`);
+    if (query.status === 'inactive') qb.andWhere('c.is_active = false');
+    const configuredSql = `EXISTS (
+      SELECT 1 FROM course_payment_profiles p
+      INNER JOIN course_payment_charge_lines l ON l.profile_id = p.id
+      WHERE p.course_id = c.id AND p.school_id = c.school_id
+        AND p.course_pricing_basis IS NOT NULL
+        AND l.charge_type_id IS NOT NULL
+        AND CAST(l.amount AS decimal) > 0
+    )`;
+    if (query.config === 'configured') qb.andWhere(configuredSql);
+    if (query.config === 'not_configured') qb.andWhere(`NOT ${configuredSql}`);
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(`LOWER(CONCAT_WS(' ', COALESCE(c.name, ''), COALESCE(c.title, ''))) LIKE :term`, { term });
+    }
+    qb.orderBy('c.name', 'ASC').addOrderBy('c.title', 'ASC').addOrderBy('c.id', 'ASC');
+    const page = await paginateQueryBuilder(qb, query);
+    if (!page.items.length) return page as PageResult<never>;
+    const ids = page.items.map((c) => c.id);
+    const profiles = await this.coursePaymentProfileRepo.find({
+      where: { school_id: schoolId, course_id: In(ids) },
+      relations: ['chargeLines'],
+    });
+    const byCourse = new Map(profiles.map((p) => [p.course_id, p]));
+    const packageIds = [...new Set(profiles.map((p) => p.fee_package_id).filter((id): id is string => !!id))];
+    const packageRows =
+      packageIds.length > 0
+        ? await this.coursePaymentProfileRepo.manager.find(FeePackage, {
+            where: { id: In(packageIds) },
+            select: ['id', 'name'],
+          })
+        : [];
+    const packageNameById = new Map(packageRows.map((p) => [p.id, p.name]));
+    const items = page.items.map((c) => {
+      const p = byCourse.get(c.id);
+      const feePackageId = p?.fee_package_id ?? null;
+      return {
+        id: c.id,
+        name: (c.name ?? c.title ?? '').trim() || '—',
+        title: c.title ?? null,
+        status: c.status ?? null,
+        course_kind: c.course_kind ?? null,
+        is_active: c.is_active,
+        profile_configured: this.isCoursePaymentProfileConfigured(p),
+        course_pricing_basis: p?.course_pricing_basis ?? null,
+        fee_package_id: feePackageId,
+        fee_package_name: feePackageId ? (packageNameById.get(feePackageId) ?? null) : null,
+      };
+    });
+    return { ...page, items };
   }
 
   async getProfileForCourse(user: User, courseId: string, schoolId: string) {

@@ -84,12 +84,15 @@ export class OnlineSessionController {
       ...query,
       school_id: schoolId ?? undefined,
     });
-    return {
-      success: true,
-      data,
-      count: data.length,
-      message: 'Session attendance records',
-    };
+    if (Array.isArray(data)) {
+      return {
+        success: true,
+        data,
+        count: data.length,
+        message: 'Session attendance records',
+      };
+    }
+    return { success: true, data, message: 'Session attendance records' };
   }
 
   @Get('resolve')

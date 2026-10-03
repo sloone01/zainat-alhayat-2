@@ -20,7 +20,7 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('platformBilling.plansListHeading') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('platformBilling.plansCount', { count: filteredPlans.length }) }}
+              {{ $t('platformBilling.plansCount', { count: total }) }}
             </p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -41,7 +41,7 @@
           </div>
         </header>
 
-        <div v-if="!loading && plans.length" class="grid grid-cols-2 gap-3 border-b border-fikr-hairline px-5 py-4 sm:grid-cols-3 sm:px-6">
+        <div v-if="!loading && planStats.total" class="grid grid-cols-2 gap-3 border-b border-fikr-hairline px-5 py-4 sm:grid-cols-3 sm:px-6">
           <div class="fk-stat">
             <div class="fk-stat__label">{{ $t('platformBilling.plansStats.total') }}</div>
             <div class="fk-stat__value text-lg sm:text-2xl">{{ planStats.total }}</div>
@@ -63,13 +63,13 @@
           </div>
 
           <div
-            v-else-if="plans.length && !filteredPlans.length"
+            v-else-if="total === 0 && hasActiveFilters"
             class="fk-empty text-sm text-fikr-ink-soft"
           >
             {{ $t('platformBilling.noPlanFilterResults') }}
           </div>
 
-          <template v-else-if="filteredPlans.length">
+          <template v-else-if="total > 0">
             <div v-if="isCards" class="fk-grid">
               <KanbanCard
                 v-for="plan in paginatedPlans"
@@ -189,7 +189,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredPlans.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -352,7 +352,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFeedback } from '@/composables/useFeedback'
 import { useRouter } from 'vue-router'
@@ -370,7 +370,7 @@ import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import {
   platformBillingService,
   type PlatformBillingPeriod,
@@ -384,10 +384,9 @@ const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
 const isRTL = computed(() => locale.value === 'ar')
 
-const loading = ref(true)
 const error = ref('')
-const plans = ref<PlatformPlan[]>([])
 const periods = ref<PlatformBillingPeriod[]>(['monthly', 'semester', 'yearly', 'summer'])
+const planStats = ref({ total: 0, active: 0, seats: 0 })
 const summaryPeriods = computed(() =>
   periods.value.filter((p) => p === 'monthly' || p === 'yearly'),
 )
@@ -401,33 +400,30 @@ const hasActiveFilters = computed(
   () => searchQuery.value.trim().length > 0 || statusFilter.value !== 'all',
 )
 
-const filteredPlans = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return plans.value.filter((plan) => {
-    if (statusFilter.value === 'active' && !plan.is_active) return false
-    if (statusFilter.value === 'inactive' && plan.is_active) return false
-    if (!q) return true
-    return [plan.name_ar, plan.name_en, plan.code, plan.description_ar, plan.description_en]
-      .some((value) => (value || '').toLowerCase().includes(q))
-  })
-})
-
 const {
+  items: paginatedPlans,
+  total,
+  loading,
   currentPage,
-  paginatedItems: paginatedPlans,
   totalPages,
   goToPage,
-} = useClientPagination(filteredPlans)
-
-watch([searchQuery, statusFilter], () => {
-  currentPage.value = 1
-})
-
-const planStats = computed(() => ({
-  total: plans.value.length,
-  active: plans.value.filter((p) => p.is_active).length,
-  seats: plans.value.reduce((max, p) => Math.max(max, p.included_student_seats), 0),
-}))
+  reload,
+} = useServerPagination(
+  async (params) => {
+    error.value = ''
+    const page = await platformBillingService.listAdminPlansPage(params)
+    if (page.stats) planStats.value = page.stats
+    return page
+  },
+  {
+    filters: () => ({ q: searchQuery.value, status: statusFilter.value }),
+    debounceKeys: ['q'],
+    onError: (e) => {
+      const err = e as { message?: string }
+      error.value = err?.message || t('platformBilling.loadError')
+    },
+  },
+)
 
 function clearFilters() {
   searchQuery.value = ''
@@ -481,9 +477,8 @@ async function onSetActive(plan: PlatformPlan, is_active: boolean) {
     if (!ok) return
   }
   try {
-    const detail = await platformBillingService.updatePlan(plan.code, { is_active })
-    const next = plans.value.find((p) => p.code === plan.code)
-    if (next) next.is_active = detail.plan.is_active
+    await platformBillingService.updatePlan(plan.code, { is_active })
+    await reload()
     feedback.saved(is_active ? t('platformBilling.activated') : t('platformBilling.deactivated'))
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { message?: string } }; message?: string }
@@ -569,27 +564,23 @@ async function submitCreate() {
 }
 
 async function load() {
-  loading.value = true
   error.value = ''
+  await reload()
+}
+
+async function loadModules() {
   try {
-    const [catalog, mods] = await Promise.all([
-      platformBillingService.listAdminPlans(),
-      platformBillingService.listModules(),
-    ])
-    plans.value = catalog.plans
+    const mods = await platformBillingService.listModules()
     allModules.value = mods.modules
-    if (catalog.billing_periods?.length) periods.value = catalog.billing_periods
-  } catch (e: unknown) {
-    const err = e as { message?: string }
-    error.value = err?.message || t('platformBilling.loadError')
-  } finally {
-    loading.value = false
+    if (mods.billing_periods?.length) periods.value = mods.billing_periods
+  } catch {
+    /* plan list surfaces its own error */
   }
 }
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  load()
+  void loadModules()
 })
 
 onUnmounted(() => {

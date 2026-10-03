@@ -25,6 +25,9 @@ RUN mkdir -p uploads
 # Clean up build dependencies to reduce image size
 RUN apk del python3 make g++
 
+# Word reports convert to PDF with the same file. soffice is the converter.
+RUN apk add --no-cache libreoffice
+
 # Expose port (Railway will set PORT environment variable)
 EXPOSE 3000
 

@@ -6,15 +6,15 @@
         :subtitle="$t('parent.assignedActivitiesSubtitle')"
       />
 
-      <div v-if="loading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
+      <div v-if="loading && !loaded" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
         <FikrLoader />
         <span>{{ $t('parent.loading') }}</span>
       </div>
 
-      <div v-else-if="error" class="fk-alert fk-alert--error">
+      <div v-else-if="error && !loaded" class="fk-alert fk-alert--error">
         <h3 class="mb-2 text-lg font-semibold">{{ $t('parent.error') }}</h3>
         <p>{{ error }}</p>
-        <button type="button" class="fk-btn fk-btn--primary mt-4" @click="loadData">
+        <button type="button" class="fk-btn fk-btn--primary mt-4" @click="reload">
           {{ $t('common.retry') }}
         </button>
       </div>
@@ -40,7 +40,7 @@
               class="fk-fchip"
               :class="selectedChildId === child.id ? 'fk-fchip--active' : ''"
               :aria-pressed="selectedChildId === child.id"
-              @click="selectedChildId = child.id"
+              @click="selectChild(child.id)"
             >
               {{ childChipLabel(child) }}
             </button>
@@ -51,14 +51,14 @@
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="min-w-0">
               <h2 class="fk-card__title truncate">{{ $t('parent.assignedActivities') }}</h2>
-              <p class="fk-card__meta">{{ $t('activities.activitiesCount', { count: filteredActivities.length }) }}</p>
+              <p class="fk-card__meta">{{ $t('activities.activitiesCount', { count: activitiesTotal }) }}</p>
             </div>
             <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
               <ListViewModeToggle v-model="viewMode" />
             </div>
           </header>
 
-          <div v-if="filteredActivities.length" class="p-4 sm:p-6">
+          <div v-if="activitiesTotal" class="p-4 sm:p-6">
             <div v-if="isCards" class="fk-grid">
               <ParentActivityCard
                 v-for="item in paginatedActivities"
@@ -120,7 +120,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredActivities.length > 0"
+              :show="activitiesTotal > 0"
               @update:page="goToPage"
             />
           </div>
@@ -135,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -143,9 +143,10 @@ import FikrPagination from '@/components/FikrPagination.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import ParentActivityCard from '@/components/ParentActivityCard.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
-import { useClientPagination } from '@/composables/useClientPagination'
-import { parentService } from '../services/parent.service'
+import { useServerPagination } from '@/composables/useServerPagination'
+import { parentService, type ParentListChild } from '../services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
+import { getErrorMessage } from '@/utils/error-reporting'
 import { translateActivityType as translateActivityTypeLabel } from '@/utils/activity-types'
 import FikrLoader from '@/components/FikrLoader.vue'
 
@@ -154,44 +155,51 @@ const { viewMode, isCards } = useListViewMode()
 
 const isRTL = computed(() => locale.value === 'ar')
 
-const loading = ref(true)
 const error = ref('')
-const activities = ref<any[]>([])
-const children = ref<any[]>([])
+const children = ref<ParentListChild[]>([])
 const selectedChildId = ref<string | null>(null)
+const pinnedChildId = ref('')
 
-const selectedChild = computed(() => {
-  if (!selectedChildId.value) return children.value[0]
-  return children.value.find((c) => c.id === selectedChildId.value) || children.value[0]
-})
-
-function childGroupIds(child: any): string[] {
-  return (child?.groups?.map((g: { id: string }) => String(g.id)) || []) as string[]
+function selectChild(id: string) {
+  selectedChildId.value = id
+  pinnedChildId.value = id
 }
 
-function childChipLabel(child: any) {
+function childChipLabel(child: ParentListChild) {
   const name = `${child.firstName || ''} ${child.lastName || ''}`.trim() || t('parent.childName')
   const group = formatParentGroupNames(child.groupNames, '')
   return group ? `${name} · ${group}` : name
 }
 
-const filteredActivities = computed(() => {
-  if (!selectedChild.value) return activities.value
-  const ids = new Set(childGroupIds(selectedChild.value))
-  if (ids.size === 0) return []
-  return activities.value.filter((a) => a.group_id && ids.has(String(a.group_id)))
-})
-
 const {
+  items: paginatedActivities,
+  total: activitiesTotal,
+  loading,
+  loaded,
   currentPage,
-  paginatedItems: paginatedActivities,
   totalPages,
   goToPage,
-} = useClientPagination(filteredActivities)
-
-watch(selectedChildId, () => {
-  currentPage.value = 1
-})
+  load,
+  reload,
+} = useServerPagination<any, { childId: string }>(
+  async (params) => {
+    error.value = ''
+    const data = await parentService.getMyAssignedActivitiesPage({
+      page: params.page,
+      limit: params.limit,
+      childId: params.childId || undefined,
+    })
+    children.value = data.children || []
+    if (!params.childId && data.childId) selectedChildId.value = data.childId
+    return data
+  },
+  {
+    filters: () => ({ childId: pinnedChildId.value }),
+    onError: (err) => {
+      error.value = getErrorMessage(err, t('parent.error'))
+    },
+  },
+)
 
 function todayKeyLocal() {
   const n = new Date()
@@ -313,28 +321,5 @@ function activityWhen(item: { activity_date?: string | Date; start_time?: string
 
 const formatActivityType = (type: string) => translateActivityTypeLabel(t, type)
 
-const loadData = async () => {
-  try {
-    loading.value = true
-    error.value = ''
-    const [acts, dash] = await Promise.all([
-      parentService.getMyAssignedActivities(),
-      parentService.getMyDashboardData(),
-    ])
-    activities.value = Array.isArray(acts) ? acts : []
-    const ch = dash?.children || []
-    children.value = ch
-    if (ch.length > 0) {
-      selectedChildId.value = ch[0].id
-    }
-  } catch (e: any) {
-    error.value = e?.message || t('parent.error')
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(() => {
-  loadData()
-})
+void load()
 </script>

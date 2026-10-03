@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface OnlineSessionSummary {
   id: string
@@ -96,6 +97,25 @@ class OnlineSessionApiService extends BaseApiService {
     to_date?: string
   }): Promise<SessionAttendanceRecordRow[]> {
     return this.get<SessionAttendanceRecordRow[]>('/online-sessions/attendance-records', params)
+  }
+
+  async listAttendanceRecordsPage(params: {
+    school_id?: string
+    group_id?: string
+    from_date?: string
+    to_date?: string
+    page?: number
+    limit?: number
+  }): Promise<PageResult<SessionAttendanceRecordRow>> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.school_id) query.school_id = params.school_id
+    if (params.group_id) query.group_id = params.group_id
+    if (params.from_date) query.from_date = params.from_date
+    if (params.to_date) query.to_date = params.to_date
+    return this.get('/online-sessions/attendance-records', query)
   }
 
   async resolve(scheduleId: string, weekStart: string): Promise<ResolveOnlineSessionResult> {

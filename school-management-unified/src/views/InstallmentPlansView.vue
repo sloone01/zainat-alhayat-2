@@ -38,9 +38,9 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="plans.length">
+          <template v-else-if="total > 0 || hasActiveFilters">
             <p
-              v-if="filteredPlans.length === 0"
+              v-if="total === 0"
               class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
               {{ $t('feesV2.noPlanFilterResults') }}
@@ -138,7 +138,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredPlans.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -237,7 +237,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFeedback } from '@/composables/useFeedback'
 import { useRouter } from 'vue-router'
@@ -254,13 +254,12 @@ import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import {
   feesV2Service,
   type InstallmentPlan,
   type InstallmentPlanUsageItem,
 } from '@/services/fees-v2.service'
-import { authService } from '@/services'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
@@ -272,42 +271,34 @@ const showFilters = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
 const activeMenuId = ref<string | null>(null)
-const schoolId = computed(() => {
-  const id = authService.getStoredUser()?.school_id
-  return id != null && String(id).trim() !== '' ? String(id) : ''
-})
 
 const hasActiveFilters = computed(() =>
   Boolean(searchQuery.value.trim()) || statusFilter.value !== 'all',
 )
 
-const loading = ref(false)
 const flashError = ref('')
 const deletingId = ref<string | null>(null)
-const plans = ref<InstallmentPlan[]>([])
 const blockedPlan = ref<{ id: string; name: string } | null>(null)
 const blockedUsages = ref<InstallmentPlanUsageItem[]>([])
 
-const filteredPlans = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return plans.value.filter((plan) => {
-    if (statusFilter.value === 'active' && !plan.is_active) return false
-    if (statusFilter.value === 'inactive' && plan.is_active) return false
-    if (q && !`${plan.name} ${plan.description || ''}`.toLowerCase().includes(q)) return false
-    return true
-  })
-})
-
 const {
+  items: paginatedPlans,
+  total,
+  loading,
   currentPage,
-  paginatedItems: paginatedPlans,
   totalPages,
   goToPage,
-} = useClientPagination(filteredPlans)
-
-watch([searchQuery, statusFilter], () => {
-  currentPage.value = 1
-})
+  reload,
+} = useServerPagination<InstallmentPlan, { q: string; status: string }>(
+  (params) => feesV2Service.listInstallmentPlansPage(params),
+  {
+    filters: () => ({ q: searchQuery.value, status: statusFilter.value }),
+    debounceKeys: ['q'],
+    onError: (err) => {
+      flashError.value = (err as Error)?.message || t('common.error')
+    },
+  },
+)
 
 function clearFilters() {
   searchQuery.value = ''
@@ -359,22 +350,15 @@ function extractUsagesFromError(e: unknown): InstallmentPlanUsageItem[] | null {
   return null
 }
 
-async function load() {
-  loading.value = true
+function load() {
   flashError.value = ''
-  try {
-    plans.value = await feesV2Service.listInstallmentPlans(schoolId.value)
-  } catch (e: unknown) {
-    flashError.value = (e as Error)?.message || t('common.error')
-  } finally {
-    loading.value = false
-  }
+  return reload()
 }
 
 async function onSetActive(plan: InstallmentPlan, is_active: boolean) {
   closeMenu()
   try {
-    const updated = await feesV2Service.saveInstallmentPlan(
+    await feesV2Service.saveInstallmentPlan(
       {
         school_id: plan.school_id,
         name: plan.name,
@@ -389,10 +373,9 @@ async function onSetActive(plan: InstallmentPlan, is_active: boolean) {
       },
       plan.id,
     )
-    const i = plans.value.findIndex((x) => x.id === plan.id)
-    if (i !== -1) plans.value[i] = updated
+    await reload()
   } catch {
-    await load()
+    await reload()
   }
 }
 
@@ -437,7 +420,6 @@ async function tryDelete(plan: { id: string; name: string }) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  void load()
 })
 
 onUnmounted(() => {

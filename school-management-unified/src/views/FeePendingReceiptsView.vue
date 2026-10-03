@@ -11,8 +11,8 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('feesV2.pendingApprovals') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('feesV2.pendingApprovalsCount', { count: payments.length }) }}
-              <template v-if="payments.length"> · {{ pendingTotalLine }}</template>
+              {{ $t('feesV2.pendingApprovalsCount', { count: total }) }}
+              <template v-if="total"> · {{ pendingTotalLine }}</template>
             </p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -34,9 +34,9 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="payments.length">
+          <template v-else-if="total > 0 || hasActiveFilters">
             <p
-              v-if="filteredPayments.length === 0"
+              v-if="total === 0"
               class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
               {{ $t('feesV2.noReceiptFilterResults') }}
@@ -144,7 +144,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredPayments.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -283,7 +283,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -297,7 +297,7 @@ import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { feesV2Service, type FeePayment } from '@/services/fees-v2.service'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 import { getErrorMessage } from '@/utils/error-reporting'
@@ -309,38 +309,35 @@ const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 const feedback = useFeedback()
 
-const payments = ref<FeePayment[]>([])
-const loading = ref(true)
 const showFilters = ref(false)
 const searchQuery = ref('')
 const activeMenuId = ref<string | null>(null)
 const openingProof = ref(false)
 const proofError = ref('')
 const busyId = ref<string | null>(null)
+const amountTotal = ref('0')
 
 const hasActiveFilters = computed(() => Boolean(searchQuery.value.trim()))
 
-const filteredPayments = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return payments.value
-  return payments.value.filter((p) => {
-    const name = studentName(p).toLowerCase()
-    const remarks = (p.remarks || '').toLowerCase()
-    const amount = fmt(p.amount)
-    return name.includes(q) || remarks.includes(q) || amount.includes(q)
-  })
-})
-
 const {
+  items: paginatedPayments,
+  total,
+  loading,
   currentPage,
-  paginatedItems: paginatedPayments,
   totalPages,
   goToPage,
-} = useClientPagination(filteredPayments)
-
-watch(searchQuery, () => {
-  currentPage.value = 1
-})
+  reload,
+} = useServerPagination(
+  async (params) => {
+    const page = await feesV2Service.listPendingPaymentsPage(params)
+    amountTotal.value = page.amount_total ?? '0'
+    return page
+  },
+  {
+    filters: () => ({ q: searchQuery.value }),
+    debounceKeys: ['q'],
+  },
+)
 
 function studentName(p: FeePayment) {
   return p.student ? `${p.student.firstName} ${p.student.lastName}` : p.student_id
@@ -357,10 +354,7 @@ function statusPillClass(status: FeePayment['status']) {
   return status === 'pending_reconcile' ? 'fk-pill--outline' : 'fk-pill--navy'
 }
 
-const pendingTotalLine = computed(() => {
-  const total = payments.value.reduce((sum, p) => sum + Number(p.amount || 0), 0)
-  return `${fmt(total)} OMR`
-})
+const pendingTotalLine = computed(() => `${fmt(amountTotal.value)} OMR`)
 
 function fmt(v: string | number) {
   return Number(v || 0).toFixed(3)
@@ -387,13 +381,13 @@ async function confirmPaid(id: string) {
   activeMenuId.value = null
   try {
     await feesV2Service.approvePayment(id)
-    payments.value = payments.value.filter((p) => p.id !== id)
+    await reload()
     feedback.success(t('common.savedSuccessfully'))
   } catch (e) {
     const msg = getErrorMessage(e, t('common.error'))
     // Overpayment: let the admin split the amount across open items (leftover → credit).
     if (/exceeds balance/i.test(msg)) {
-      const payment = payments.value.find((p) => p.id === id)
+      const payment = paginatedPayments.value.find((p) => p.id === id)
       if (payment) {
         void openAllocation(payment)
         return
@@ -501,7 +495,7 @@ async function confirmAllocation() {
       }))
       .filter((a) => a.amount > 0)
     await feesV2Service.approvePaymentAllocated(payment.id, allocations)
-    payments.value = payments.value.filter((p) => p.id !== payment.id)
+    await reload()
     allocPayment.value = null
     allocItems.value = []
     feedback.success(t('common.savedSuccessfully'))
@@ -518,7 +512,7 @@ async function rejectReceipt(id: string) {
   activeMenuId.value = null
   try {
     await feesV2Service.rejectPayment(id)
-    payments.value = payments.value.filter((p) => p.id !== id)
+    await reload()
     feedback.success(t('common.savedSuccessfully'))
   } catch (e) {
     feedback.error(getErrorMessage(e, t('common.error')), t('common.error'))
@@ -541,16 +535,8 @@ function handleClickOutside(event: Event) {
   }
 }
 
-onMounted(async () => {
+onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  loading.value = true
-  try {
-    payments.value = await feesV2Service.listPendingPayments()
-  } catch {
-    payments.value = []
-  } finally {
-    loading.value = false
-  }
 })
 
 onUnmounted(() => {

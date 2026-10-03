@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface Course {
   id: string
@@ -130,6 +131,27 @@ class CourseService extends BaseApiService {
     if (courseKind) params.set('course_kind', courseKind)
     const qs = params.toString()
     return this.get<Course[]>(qs ? `/courses?${qs}` : '/courses')
+  }
+
+  async listPage(params: {
+    page?: number
+    limit?: number
+    q?: string
+    status?: string
+    category?: string
+    course_kind?: string
+    school_id?: string
+  }): Promise<PageResult<Course>> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.school_id) query.school_id = params.school_id
+    if (params.course_kind) query.course_kind = params.course_kind
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status) query.status = params.status
+    if (params.category) query.category = params.category
+    return this.get('/courses', query)
   }
 
   async getCourseById(id: string): Promise<Course> {

@@ -15,7 +15,7 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('roleManagement.listHeading') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('roleManagement.rolesCount', { count: filteredRoles.length }) }}
+              {{ $t('roleManagement.rolesCount', { count: totalRoles }) }}
             </p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -36,19 +36,19 @@
         </header>
 
         <div class="p-4 sm:p-6">
-          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
+          <div v-if="loading && !loaded && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
             <FikrLoader size="sm" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <p
-            v-else-if="roles.length && !filteredRoles.length"
+            v-else-if="loaded && hasActiveFilters && totalRoles === 0"
             class="fk-empty text-sm text-fikr-ink-soft"
           >
             {{ $t('roleManagement.noRoleFilterResults') }}
           </p>
 
-          <template v-else-if="filteredRoles.length">
+          <template v-else-if="paginatedRoles.length">
             <div v-if="isCards" class="fk-grid">
               <KanbanCard
                 v-for="role in paginatedRoles"
@@ -183,12 +183,12 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredRoles.length > 0"
+              :show="totalRoles > 0"
               @update:page="goToPage"
             />
           </template>
 
-          <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
+          <div v-else-if="loaded" class="flex min-h-[16rem] flex-col items-center justify-center text-center">
             <div class="fk-empty__icon">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -265,7 +265,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFeedback } from '@/composables/useFeedback'
 import { useRouter } from 'vue-router'
@@ -284,8 +284,8 @@ import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
-import { rbacService, type RbacGroup } from '@/services/rbac.service'
+import { useServerPagination } from '@/composables/useServerPagination'
+import { rbacService, type RbacGroup, type RbacGroupListParams } from '@/services/rbac.service'
 
 const { locale, t } = useI18n()
 const feedback = useFeedback()
@@ -293,11 +293,9 @@ const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
 const isRTL = computed(() => locale.value === 'ar')
 
-const loading = ref(false)
 const loadError = ref('')
 const searchQuery = ref('')
 const typeFilter = ref<'all' | 'staff' | 'parent' | 'student' | 'system'>('all')
-const roles = ref<RbacGroup[]>([])
 const showFilters = ref(false)
 const activeMenuId = ref<string | null>(null)
 
@@ -305,30 +303,32 @@ const hasActiveFilters = computed(() =>
   Boolean(searchQuery.value.trim()) || typeFilter.value !== 'all',
 )
 
-const filteredRoles = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return roles.value.filter((r) => {
-    const type = r.groupType || (r.isSystem ? 'system' : 'staff')
-    if (typeFilter.value !== 'all' && type !== typeFilter.value) return false
-    if (!q) return true
-    return (
-      r.name.toLowerCase().includes(q)
-      || (r.code || '').toLowerCase().includes(q)
-      || (r.description || '').toLowerCase().includes(q)
-    )
-  })
-})
-
 const {
+  items: paginatedRoles,
+  total: totalRoles,
+  loading,
+  loaded,
   currentPage,
-  paginatedItems: paginatedRoles,
   totalPages,
   goToPage,
-} = useClientPagination(filteredRoles, 10)
-
-watch([searchQuery, typeFilter], () => {
-  currentPage.value = 1
-})
+  reload: loadAll,
+} = useServerPagination<RbacGroup, RbacGroupListParams>(
+  (params) => {
+    loadError.value = ''
+    return rbacService.listPage(params)
+  },
+  {
+    pageSize: 10,
+    filters: () => ({
+      q: searchQuery.value,
+      type: typeFilter.value,
+    }),
+    debounceKeys: ['q'],
+    onError: (err) => {
+      loadError.value = apiMessage(err) || 'Failed to load user groups'
+    },
+  },
+)
 
 function getClaimCount(role: RbacGroup) {
   let count = 0
@@ -362,21 +362,6 @@ function clearFilters() {
   typeFilter.value = 'all'
 }
 
-async function loadAll() {
-  loading.value = true
-  loadError.value = ''
-  try {
-    roles.value = await rbacService.listGroups()
-  } catch (e: unknown) {
-    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
-    const api = ax.response?.data?.message
-    loadError.value =
-      (Array.isArray(api) ? api.join(', ') : api) || ax.message || 'Failed to load user groups'
-  } finally {
-    loading.value = false
-  }
-}
-
 function onEdit(role: RbacGroup) {
   closeMenu()
   void router.push({ name: 'role-edit', params: { id: role.id } })
@@ -398,7 +383,7 @@ async function setRoleActive(role: RbacGroup, isActive: boolean) {
   closeMenu()
   try {
     await rbacService.updateGroup(role.id, { isActive })
-    role.isActive = isActive
+    await loadAll()
     feedback.saved(isActive ? t('roleManagement.activated') : t('roleManagement.deactivated'))
   } catch (e: unknown) {
     feedback.error(apiMessage(e) || t('common.error'))

@@ -14,7 +14,7 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('messageLetters.listHeading') }}</h2>
             <p v-if="!pageLoading" class="fk-card__meta">
-              {{ $t('messageLetters.lettersCount', { count: letters.length }) }}
+              {{ $t('messageLetters.lettersCount', { count: total }) }}
             </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
@@ -38,7 +38,7 @@
             </template>
           </div>
 
-          <template v-else-if="letters.length">
+          <template v-else-if="total > 0">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <KanbanCard
                 v-for="row in paginatedLetters"
@@ -165,7 +165,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="letters.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -742,7 +742,7 @@ import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { useFeedback } from '@/composables/useFeedback'
 import NotificationEmailContentFrame from '@/components/NotificationEmailContentFrame.vue'
 import NotificationTemplateEmailEditor from '@/components/NotificationTemplateEmailEditor.vue'
@@ -803,14 +803,23 @@ function onDocumentClick(event: MouseEvent) {
 
 const schoolId = computed(() => Number((authService.getStoredUser() as { school_id?: string } | null)?.school_id ?? 1))
 
-const pageLoading = ref(true)
-const letters = ref<SchoolMessageLetterRow[]>([])
 const {
+  items: paginatedLetters,
+  total,
+  loading: pageLoading,
   currentPage,
-  paginatedItems: paginatedLetters,
   totalPages,
   goToPage,
-} = useClientPagination(letters)
+  reload: loadLetters,
+} = useServerPagination(
+  (params) => messageLetterService.listPage(params),
+  {
+    onError: (e) => {
+      const err = e as { message?: string }
+      flashError.value = err?.message || t('messageLetters.loadListError')
+    },
+  },
+)
 
 const approvalSheetOpen = ref(false)
 const approvalSheetLetterId = ref<string | null>(null)
@@ -1380,10 +1389,6 @@ function formatDate(iso: string) {
   }
 }
 
-async function loadLetters() {
-  letters.value = await messageLetterService.list(schoolId.value)
-}
-
 const runPreview = useDebounceFn(async () => {
   if (!showPreviewDialog.value) return
   if (!subject.value.trim()) {
@@ -1427,7 +1432,6 @@ watch(
 )
 
 async function boot() {
-  pageLoading.value = true
   flashError.value = ''
   try {
     const [g, u, hints, samples] = await Promise.all([
@@ -1442,12 +1446,9 @@ async function boot() {
     Object.keys(sampleVars).forEach((k) => delete sampleVars[k])
     Object.assign(sampleVars, samples)
     mergeSampleKeysFromHints(hints, samples)
-    await loadLetters()
   } catch (e: unknown) {
     const err = e as { message?: string }
     flashError.value = err?.message || t('messageLetters.loadListError')
-  } finally {
-    pageLoading.value = false
   }
 }
 
@@ -1534,7 +1535,7 @@ async function dispatchLetter() {
     if (dispatchChannel.value === 'chat_approval') {
       await loadLetters()
       if (editingId.value) {
-        const current = letters.value.find((l) => l.id === editingId.value)
+        const current = paginatedLetters.value.find((l) => l.id === editingId.value)
         if (current?.requires_approval) {
           openApprovalTracking(current)
         }

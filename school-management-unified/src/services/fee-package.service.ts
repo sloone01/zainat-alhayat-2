@@ -1,4 +1,31 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
+
+export interface FeePackageListParams {
+  page?: number
+  limit?: number
+  q?: string
+  status?: 'all' | 'active' | 'inactive' | ''
+  schoolId?: string
+}
+
+/** Row the packages screen lists and toggles. Charge lines are loaded for that page only. */
+export interface FeePackagePageRow {
+  id: string
+  school_id: string
+  name: string
+  currency: string
+  is_active: boolean
+  charge_lines: Array<{
+    charge_type_id: string
+    charge_type?: { id: string; code: string; label: string } | null
+    payment_timing: 'upfront' | 'installment'
+    billing_frequency: 'per_year' | 'once_only'
+  }>
+  discount_type_ids: string[]
+  extra_type_ids: string[]
+  inclusion_type_ids: string[]
+}
 
 export interface FeePackageListRow {
   id: string
@@ -81,6 +108,17 @@ export interface UpsertFeePackagePayload {
 class FeePackageService extends BaseApiService {
   list(schoolId: string) {
     return this.get<FeePackageListRow[]>('/fee-packages', { school_id: schoolId })
+  }
+
+  listPage(params: FeePackageListParams) {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status && params.status !== 'all') query.status = params.status
+    if (params.schoolId) query.school_id = params.schoolId
+    return this.get<PageResult<FeePackagePageRow>>('/fee-packages', query)
   }
 
   getOne(id: string) {

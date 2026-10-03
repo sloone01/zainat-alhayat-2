@@ -6,16 +6,16 @@
         :subtitle="$t('parent.weeklyActivitiesSubtitle')"
       />
 
-      <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
+      <div v-if="loading && !loaded" class="flex items-center justify-center gap-3 py-12">
         <FikrLoader />
         <span class="text-fikr-ink-muted">{{ $t('parent.loading') }}</span>
       </div>
 
-      <div v-else-if="error" class="fk-elev">
+      <div v-else-if="error && !loaded" class="fk-elev">
         <div class="flex flex-col items-center justify-center px-4 py-10 text-center">
           <p class="fk-display text-lg font-bold text-navy-800">{{ $t('parent.error') }}</p>
           <p class="mt-1 text-sm text-fikr-ink-muted">{{ error }}</p>
-          <button type="button" class="fk-btn fk-btn--navy mt-4" @click="loadActivitiesData">
+          <button type="button" class="fk-btn fk-btn--navy mt-4" @click="reload">
             {{ $t('common.retry') }}
           </button>
         </div>
@@ -36,7 +36,7 @@
               class="fk-fchip"
               :class="selectedChildId === child.id ? 'fk-fchip--active' : ''"
               :aria-pressed="selectedChildId === child.id"
-              @click="selectedChildId = child.id"
+              @click="selectChild(child.id)"
             >
               {{ child.firstName }} {{ child.lastName }}
             </button>
@@ -75,7 +75,7 @@
             </div>
           </header>
 
-          <div v-if="filteredActivities.length > 0" class="p-5 sm:p-6">
+          <div v-if="activitiesTotal > 0" class="p-5 sm:p-6">
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <ParentActivityCard
                 v-for="activity in paginatedItems"
@@ -98,7 +98,7 @@
               <FikrPagination
                 :page="currentPage"
                 :pages="totalPages"
-                :show="filteredActivities.length > 0"
+                :show="activitiesTotal > 0"
                 @update:page="goToPage"
               />
             </div>
@@ -122,15 +122,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import ParentActivityCard from '@/components/ParentActivityCard.vue'
-import { parentService } from '../services/parent.service'
+import { parentService, type ParentListChild } from '../services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
+import { getErrorMessage } from '@/utils/error-reporting'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
@@ -140,77 +141,61 @@ function formatGroupNames(names?: string | null) {
 }
 const isRTL = computed(() => locale.value === 'ar')
 
-function planGroupId(plan: any): string {
-  const raw = plan?.group_id ?? plan?.schedule?.group_id
-  return raw != null ? String(raw) : ''
-}
-
 function activityUiStatus(activity: any): string {
   if (activity.is_completed === true || activity.status === 'completed') return 'completed'
   if (activity.status === 'in_progress') return 'in_progress'
   return 'not_started'
 }
 
-const loading = ref(true)
 const error = ref('')
-const dashboardData = ref<any>({})
+const children = ref<ParentListChild[]>([])
 const selectedChildId = ref<string | null>(null)
+const pinnedChildId = ref('')
 const activeTab = ref<'completed' | 'upcoming'>('completed')
 
-const children = computed(() => dashboardData.value.children || [])
-const weeklyPlans = computed(() => dashboardData.value.weeklyPlans || [])
+function selectChild(id: string) {
+  selectedChildId.value = id
+  pinnedChildId.value = id
+}
 
 const selectedChild = computed(() => {
   if (!selectedChildId.value) return children.value[0]
-  return children.value.find(child => child.id === selectedChildId.value) || children.value[0]
-})
-
-const filteredActivities = computed(() => {
-  if (!selectedChild.value) return []
-
-  const childGroupIds = (selectedChild.value.groups?.map((g: { id: string }) => String(g.id)) || [])
-  const childPlans = weeklyPlans.value.filter((plan: any) => {
-    const gid = planGroupId(plan)
-    return gid && childGroupIds.includes(gid)
-  })
-
-  if (activeTab.value === 'completed') {
-    return childPlans.filter((plan: any) => activityUiStatus(plan) === 'completed')
-  }
-  return childPlans.filter((plan: any) => activityUiStatus(plan) !== 'completed')
+  return children.value.find((child) => child.id === selectedChildId.value) || children.value[0]
 })
 
 const {
+  items: paginatedItems,
+  total: activitiesTotal,
+  loading,
+  loaded,
   currentPage,
-  paginatedItems,
   totalPages,
   goToPage,
-} = useClientPagination(filteredActivities)
-
-watch([selectedChildId, activeTab], () => {
-  currentPage.value = 1
-})
-
-const loadActivitiesData = async () => {
-  try {
-    loading.value = true
+  load,
+  reload,
+} = useServerPagination<any, { childId: string; status: 'completed' | 'upcoming' }>(
+  async (params) => {
     error.value = ''
-
-    const data = await parentService.getMyDashboardData()
-    dashboardData.value = data
-
-    if (data.children && data.children.length > 0) {
-      selectedChildId.value = data.children[0].id
-    }
-
-    console.log('Parent activities data loaded:', data)
-  } catch (err: any) {
-    console.error('Error loading parent activities data:', err)
-    error.value = err.message || t('parent.error')
-  } finally {
-    loading.value = false
-  }
-}
+    const data = await parentService.getMyWeeklyPlansPage({
+      page: params.page,
+      limit: params.limit,
+      childId: params.childId || undefined,
+      status: params.status,
+    })
+    children.value = data.children || []
+    if (!params.childId && data.childId) selectedChildId.value = data.childId
+    return data
+  },
+  {
+    filters: () => ({
+      childId: pinnedChildId.value,
+      status: activeTab.value,
+    }),
+    onError: (err) => {
+      error.value = getErrorMessage(err, t('parent.error'))
+    },
+  },
+)
 
 const formatDate = (dateString: string) => {
   if (!dateString) return t('parent.noData')
@@ -278,7 +263,5 @@ function weeklyWeekdayShort(activity: any) {
   }
 }
 
-onMounted(() => {
-  loadActivitiesData()
-})
+void load()
 </script>

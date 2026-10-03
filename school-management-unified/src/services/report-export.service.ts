@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export type ReportExportListItem = {
   key: string
@@ -46,6 +47,12 @@ class ReportExportApiService extends BaseApiService {
     return this.get<ReportExportListItem[]>('/reports/exports')
   }
 
+  listExportsPage(params: { page: number; limit: number; q?: string }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.q?.trim()) query.q = params.q.trim()
+    return this.get<PageResult<ReportExportListItem>>('/reports/exports', query)
+  }
+
   getExport(key: string, locale: string): Promise<ReportExportDetail> {
     return this.get<ReportExportDetail>(`/reports/exports/${encodeURIComponent(key)}`, {
       locale: locale.startsWith('en') ? 'en' : 'ar',
@@ -61,6 +68,12 @@ class ReportExportApiService extends BaseApiService {
 
   listTemplates(): Promise<ReportExportTemplate[]> {
     return this.get<ReportExportTemplate[]>('/reports/export-templates')
+  }
+
+  listTemplatesPage(params: { page: number; limit: number; q?: string }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.q?.trim()) query.q = params.q.trim()
+    return this.get<PageResult<ReportExportTemplate>>('/reports/export-templates', query)
   }
 
   getTemplate(id: string): Promise<ReportExportTemplate> {
@@ -95,6 +108,32 @@ class ReportExportApiService extends BaseApiService {
 
   removeTemplate(id: string): Promise<void> {
     return this.delete(`/reports/export-templates/${encodeURIComponent(id)}`)
+  }
+
+  downloadCourseDocument(payload: {
+    format: 'docx' | 'pdf'
+    locale: 'en' | 'ar'
+    title: string
+    subtitle: string
+    labels: Record<string, string>
+    rows: Array<Record<string, string>>
+  }): Promise<ArrayBuffer> {
+    return this.client
+      .post('/reports/courses/document', payload, { responseType: 'arraybuffer', timeout: 120000 })
+      .then((response) => response.data as ArrayBuffer)
+  }
+
+  downloadDueDocument(payload: {
+    format: 'docx' | 'pdf'
+    locale: 'en' | 'ar'
+    title: string
+    subtitle: string
+    labels: Record<string, string>
+    rows: Array<Record<string, string>>
+  }): Promise<ArrayBuffer> {
+    return this.client
+      .post('/reports/due-installments/document', payload, { responseType: 'arraybuffer', timeout: 120000 })
+      .then((response) => response.data as ArrayBuffer)
   }
 
   previewTemplate(payload: {

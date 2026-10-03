@@ -49,7 +49,17 @@
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>FIKR uses your location to set the child’s bus pickup stop and to share the live bus position during a trip.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>FIKR uses your location to set the child’s bus pickup stop and to share the live bus position during a trip.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>FIKR uses the camera for live class meetings.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>FIKR uses the microphone for live class meetings.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FIKR uses your photos when you attach a picture to a message, excuse, or school record.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

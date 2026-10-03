@@ -17,6 +17,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { resolveActorSchoolId } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 import { User } from '../entities/user.entity';
 import {
   PaymentConfigService,
@@ -56,8 +57,26 @@ export class PaymentConfigController {
   }
 
   @Get('levels-summary')
-  async listLevelsSummary(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+  async listLevelsSummary(
+    @Query('school_id') requestedSchoolId: string | undefined,
+    @Request() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('config') config?: string,
+  ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (wantsPage(page)) {
+      const data = await this.paymentConfigService.listLevelsSummaryPage(req.user, schoolId, {
+        page,
+        limit,
+        q,
+        status,
+        config,
+      });
+      return { success: true, data };
+    }
     const data = await this.paymentConfigService.listLevelsWithProfileStatus(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
@@ -87,8 +106,24 @@ export class PaymentConfigController {
 
   // --- Charge types ---
   @Get('charge-types')
-  async listChargeTypes(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+  async listChargeTypes(
+    @Query('school_id') requestedSchoolId: string | undefined,
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Query('q') q: string | undefined,
+    @Query('status') status: string | undefined,
+    @Request() req: { user: User },
+  ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (wantsPage(page)) {
+      const data = await this.paymentConfigService.listChargeTypesPage(req.user, schoolId, {
+        page,
+        limit,
+        q,
+        status,
+      });
+      return { success: true, data };
+    }
     const data = await this.paymentConfigService.listChargeTypes(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
@@ -126,8 +161,24 @@ export class PaymentConfigController {
 
   // --- Discount types ---
   @Get('discount-types')
-  async listDiscountTypes(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+  async listDiscountTypes(
+    @Query('school_id') requestedSchoolId: string | undefined,
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Query('q') q: string | undefined,
+    @Query('status') status: string | undefined,
+    @Request() req: { user: User },
+  ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (wantsPage(page)) {
+      const data = await this.paymentConfigService.listDiscountTypesPage(req.user, schoolId, {
+        page,
+        limit,
+        q,
+        status,
+      });
+      return { success: true, data };
+    }
     const data = await this.paymentConfigService.listDiscountTypes(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
@@ -169,8 +220,24 @@ export class PaymentConfigController {
 
   // --- Extra types (same gate as discount types: @Roles('admin') + school from JWT) ---
   @Get('extra-types')
-  async listExtraTypes(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+  async listExtraTypes(
+    @Query('school_id') requestedSchoolId: string | undefined,
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Query('q') q: string | undefined,
+    @Query('status') status: string | undefined,
+    @Request() req: { user: User },
+  ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (wantsPage(page)) {
+      const data = await this.paymentConfigService.listExtraTypesPage(req.user, schoolId, {
+        page,
+        limit,
+        q,
+        status,
+      });
+      return { success: true, data };
+    }
     const data = await this.paymentConfigService.listExtraTypes(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
@@ -204,8 +271,24 @@ export class PaymentConfigController {
 
   // --- Inclusion types (same gate as extra types: @Roles('admin') + school from JWT) ---
   @Get('inclusion-types')
-  async listInclusionTypes(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+  async listInclusionTypes(
+    @Query('school_id') requestedSchoolId: string | undefined,
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Query('q') q: string | undefined,
+    @Query('status') status: string | undefined,
+    @Request() req: { user: User },
+  ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (wantsPage(page)) {
+      const data = await this.paymentConfigService.listInclusionTypesPage(req.user, schoolId, {
+        page,
+        limit,
+        q,
+        status,
+      });
+      return { success: true, data };
+    }
     const data = await this.paymentConfigService.listInclusionTypes(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
@@ -288,8 +371,26 @@ export class PaymentConfigController {
   }
 
   @Get('courses-payment-summary')
-  async coursesPaymentSummary(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+  async coursesPaymentSummary(
+    @Query('school_id') requestedSchoolId: string | undefined,
+    @Request() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('config') config?: string,
+  ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (wantsPage(page)) {
+      const data = await this.paymentConfigService.listCoursesPaymentSummaryPage(req.user, schoolId, {
+        page,
+        limit,
+        q,
+        status,
+        config,
+      });
+      return { success: true, data };
+    }
     const data = await this.paymentConfigService.listCoursesPaymentSummary(req.user, schoolId);
     return { success: true, data, count: data.length };
   }

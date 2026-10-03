@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export type PaymentTiming = 'upfront' | 'installment'
 export type BillingFrequency = 'per_year' | 'once_only'
@@ -101,6 +102,29 @@ export interface ChargeSheetInstallment {
   amount_due: string
   amount_paid: string
   status: 'pending' | 'paid' | 'partial'
+}
+
+export interface ParentDesktopInstallmentRow {
+  key: string
+  studentId: string
+  studentName: string
+  planName: string
+  levelName: string
+  installment: ChargeSheetInstallment
+  remaining: number
+  bucket: 'late' | 'due' | 'partial' | 'upcoming' | 'wait'
+}
+
+export interface ParentInstallmentSummary {
+  due_total: string
+  paid_total: string
+  late_amount: string
+  due_today_amount: string
+  pending_receipts: number
+  counts: { all: number; late: number; due: number; partial: number; upcoming: number; wait: number }
+  child_dues: Array<{ student_id: string; due_total: string }>
+  next_payable: ParentDesktopInstallmentRow | null
+  late_promo: ParentDesktopInstallmentRow | null
 }
 
 export type DueInstallmentState = 'upcoming' | 'due' | 'late' | 'unscheduled'
@@ -264,6 +288,13 @@ class FeesV2Service extends BaseApiService {
     return this.get<InstallmentPlan[]>('/fees/v2/installment-plans', { school_id: String(schoolId) })
   }
 
+  listInstallmentPlansPage(params: { page: number; limit: number; q?: string; status?: string }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status && params.status !== 'all') query.status = params.status
+    return this.get<PageResult<InstallmentPlan>>('/fees/v2/installment-plans', query)
+  }
+
   getInstallmentPlan(id: string) {
     return this.get<InstallmentPlan>(`/fees/v2/installment-plans/${id}`)
   }
@@ -347,6 +378,42 @@ class FeesV2Service extends BaseApiService {
     return this.get<DueInstallmentsReport>('/fees/v2/reports/due-installments', query)
   }
 
+  dueInstallmentsReportPage(params: {
+    page: number
+    limit: number
+    as_of?: string
+    bucket?: 'all' | 'due' | 'late' | 'upcoming'
+  }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.as_of) query.as_of = params.as_of
+    if (params.bucket) query.bucket = params.bucket
+    return this.get<PageResult<DueInstallmentRow> & { summary: DueInstallmentsReport['summary'] }>(
+      '/fees/v2/reports/due-installments',
+      query,
+    )
+  }
+
+  listMyInstallmentsPage(params: {
+    page: number
+    limit: number
+    surface: 'desktop' | 'mobile'
+    student_id?: string
+    bucket?: string
+  }) {
+    const query: Record<string, string | number> = {
+      page: params.page,
+      limit: params.limit,
+      surface: params.surface,
+    }
+    if (params.student_id && params.student_id !== 'all') query.student_id = params.student_id
+    if (params.bucket && params.bucket !== 'all') query.bucket = params.bucket
+    return this.get<
+      PageResult<ChargeSheetInstallment | ParentDesktopInstallmentRow> & {
+        summary: ParentInstallmentSummary
+      }
+    >('/fees/v2/my-installments', query)
+  }
+
   listChargeSheetSummaries(params?: { studentIds?: string[] }) {
     const query: Record<string, string> = {}
     if (params?.studentIds?.length) {
@@ -407,12 +474,35 @@ class FeesV2Service extends BaseApiService {
     return this.get<FeePayment[]>('/fees/v2/payments/pending')
   }
 
+  listPendingPaymentsPage(params: { page: number; limit: number; q?: string }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.q?.trim()) query.q = params.q.trim()
+    return this.get<PageResult<FeePayment> & { amount_total?: string }>('/fees/v2/payments/pending', query)
+  }
+
   listPendingReconcile() {
     return this.get<FeePayment[]>('/fees/v2/payments/pending-reconcile')
   }
 
   listFeeTransfers() {
     return this.get<FeeTransfer[]>('/fees/v2/transfers')
+  }
+
+  listFeeTransfersPage(params: {
+    page: number
+    limit: number
+    q?: string
+    status?: string
+    school_id?: string
+  }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status && params.status !== 'all') query.status = params.status
+    if (params.school_id && params.school_id !== 'all') query.school_id = params.school_id
+    return this.get<PageResult<FeeTransfer> & { schools?: Array<{ id: string; name: string }>; amount_total?: string }>(
+      '/fees/v2/transfers',
+      query,
+    )
   }
 
   createFeeTransfer(data: {

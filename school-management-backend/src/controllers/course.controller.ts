@@ -20,6 +20,7 @@ import type { CreateCourseDto, UpdateCourseDto } from '../services/course.servic
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId, assertSameSchool, RequestedSchoolIdPipe } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 
 @Controller('courses')
 @RequireClaim('courses', 'view')
@@ -65,12 +66,28 @@ export class CourseController {
     @Request() req: { user: User },
     @Query('school_id') schoolId?: string,
     @Query('course_kind') courseKind?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('category') category?: string,
   ) {
     const requested = schoolId ? String(schoolId) : undefined;
     const schoolIdNum = this.schoolOf(req, requested);
     this.logger.log(
       `GET /courses - school_id: ${schoolIdNum}, course_kind: ${courseKind ?? 'any'}`,
     );
+    if (wantsPage(page)) {
+      const data = await this.courseService.findPage(schoolIdNum, {
+        page,
+        limit,
+        q,
+        status: status?.trim() || undefined,
+        category: category?.trim() || undefined,
+        course_kind: courseKind?.trim() || undefined,
+      });
+      return { success: true, data };
+    }
     const courses = await this.courseService.findAll(schoolIdNum, courseKind);
     this.logger.log(`GET /courses - Retrieved ${courses.length} courses for school_id: ${schoolIdNum}`);
     return {

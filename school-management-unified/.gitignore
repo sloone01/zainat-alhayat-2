@@ -41,4 +41,6 @@ android/local.properties
 *.apk
 *.aab
 *.keystore
+*.jks
+keystore.properties
 !debug.keystore

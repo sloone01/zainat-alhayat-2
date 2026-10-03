@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Not, Repository } from 'typeorm';
+import { likeTerm, paginateQueryBuilder, type PageQuery } from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { FeePackage } from '../entities/fee-package.entity';
 import { FeePackageChargeType } from '../entities/fee-package-charge-type.entity';
@@ -116,6 +117,62 @@ export class FeePackageService {
       level_count: new Set((p.levelAmounts ?? []).map((a) => a.level_id)).size,
       course_count: new Set((p.courseAmounts ?? []).map((a) => a.course_id)).size,
     }));
+  }
+
+  /**
+   * Paged package list for the packages screen. Rows are counted without the
+   * charge-line join, then only that page is loaded with its lines.
+   */
+  async listPage(user: User, schoolId: string, query: PageQuery & { q?: string; status?: string }) {
+    this.assertAdmin(user);
+    this.assertSchool(user, schoolId);
+    const qb = this.packageRepo.createQueryBuilder('p').where('p.school_id = :schoolId', { schoolId });
+    if (query.status === 'active') qb.andWhere('p.is_active = true');
+    else if (query.status === 'inactive') qb.andWhere('p.is_active = false');
+    const term = likeTerm(query.q);
+    if (term) qb.andWhere('LOWER(p.name) LIKE :term', { term });
+    qb.orderBy('p.name', 'ASC').addOrderBy('p.id', 'ASC');
+    const page = await paginateQueryBuilder(qb, query);
+    const ids = page.items.map((row) => row.id);
+    if (!ids.length) return { ...page, items: [] };
+    const full = await this.packageRepo.find({
+      where: { id: In(ids) },
+      relations: [
+        'chargeTypeLinks',
+        'chargeTypeLinks.chargeType',
+        'discountTypeLinks',
+        'extraTypeLinks',
+        'inclusionTypeLinks',
+      ],
+    });
+    const byId = new Map(full.map((row) => [row.id, row]));
+    const items = ids
+      .map((id) => byId.get(id))
+      .filter((row): row is FeePackage => !!row)
+      .map((row) => this.serializeStructure(row));
+    return { ...page, items };
+  }
+
+  /** Shape the packages screen edits (charge lines live on the links, not the package row). */
+  private serializeStructure(pkg: FeePackage) {
+    return {
+      id: pkg.id,
+      school_id: pkg.school_id,
+      name: pkg.name,
+      currency: pkg.currency,
+      is_active: pkg.is_active,
+      charge_lines: (pkg.chargeTypeLinks ?? []).map((l) => ({
+        charge_type_id: l.charge_type_id,
+        charge_type: l.chargeType
+          ? { id: l.chargeType.id, code: l.chargeType.code, label: l.chargeType.label }
+          : null,
+        payment_timing: l.payment_timing ?? 'installment',
+        billing_frequency: l.billing_frequency ?? 'per_year',
+      })),
+      discount_type_ids: (pkg.discountTypeLinks ?? []).map((d) => d.discount_type_id),
+      extra_type_ids: (pkg.extraTypeLinks ?? []).map((e) => e.extra_type_id),
+      inclusion_type_ids: (pkg.inclusionTypeLinks ?? []).map((e) => e.inclusion_type_id),
+    };
   }
 
   async getOne(user: User, id: string) {

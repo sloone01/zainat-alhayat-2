@@ -14,7 +14,7 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('paymentSettings.levelsGridTitle') }}</h2>
-            <p class="fk-card__meta">{{ $t('paymentSettings.levelsCount', { count: filteredLevels.length }) }}</p>
+            <p class="fk-card__meta">{{ $t('paymentSettings.levelsCount', { count: total }) }}</p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
               <FikrToolbarSearch
@@ -38,9 +38,9 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="levels.length">
+          <template v-else-if="total > 0 || hasActiveFilters">
             <p
-              v-if="filteredLevels.length === 0"
+              v-if="total === 0"
               class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
               {{ $t('paymentSettings.noLevelFilterResults') }}
@@ -134,7 +134,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredLevels.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -216,7 +216,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -238,7 +238,7 @@ import {
 } from '@/components/ui/table'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { authService } from '@/services'
 import paymentConfigService, { type SchoolPaymentLevelSummary } from '@/services/payment-config.service'
 import FikrLoader from '@/components/FikrLoader.vue'
@@ -278,49 +278,43 @@ function levelDisplayName(lv: SchoolPaymentLevelSummary) {
   return lv.name
 }
 
-function levelInitial(lv: SchoolPaymentLevelSummary) {
-  const name = levelDisplayName(lv).trim()
-  return name ? name.charAt(0) : '?'
-}
-
 const schoolId = computed(() => {
   const id = authService.getStoredUser()?.school_id
   return id != null && String(id).trim() !== '' ? String(id) : ''
 })
 
-const loading = ref(true)
 const flashError = ref('')
-const levels = ref<SchoolPaymentLevelSummary[]>([])
 
 const drawerFilterCount = computed(() =>
   Number(configFilter.value !== 'all') + Number(statusFilter.value !== 'all'),
 )
 
-const filteredLevels = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return levels.value.filter((lv) => {
-    if (configFilter.value === 'configured' && !lv.profile_configured) return false
-    if (configFilter.value === 'not_configured' && lv.profile_configured) return false
-    if (statusFilter.value === 'active' && !lv.is_active) return false
-    if (statusFilter.value === 'inactive' && lv.is_active) return false
-    if (q) {
-      const haystack = `${levelDisplayName(lv)} ${lv.code} ${lv.name}`.toLowerCase()
-      if (!haystack.includes(q)) return false
-    }
-    return true
-  })
-})
+const hasActiveFilters = computed(() =>
+  Boolean(searchQuery.value.trim()) || configFilter.value !== 'all' || statusFilter.value !== 'all',
+)
 
 const {
+  items: paginatedLevels,
+  total,
+  loading,
   currentPage,
-  paginatedItems: paginatedLevels,
   totalPages,
   goToPage,
-} = useClientPagination(filteredLevels)
-
-watch([searchQuery, statusFilter, configFilter], () => {
-  currentPage.value = 1
-})
+} = useServerPagination(
+  (params) => paymentConfigService.listLevelsSummaryPage(params),
+  {
+    filters: () => ({
+      q: searchQuery.value,
+      status: statusFilter.value,
+      config: configFilter.value,
+    }),
+    debounceKeys: ['q'],
+    enabled: () => Boolean(schoolId.value),
+    onError: (e) => {
+      flashError.value = (e as Error)?.message || t('paymentSettings.loadError')
+    },
+  },
+)
 
 function clearFilters() {
   searchQuery.value = ''
@@ -328,27 +322,8 @@ function clearFilters() {
   statusFilter.value = 'all'
 }
 
-async function load() {
-  loading.value = true
-  flashError.value = ''
-  if (!schoolId.value) {
-    flashError.value = t('paymentSettings.loadError')
-    loading.value = false
-    return
-  }
-  try {
-    const lv = await paymentConfigService.listLevelsSummary(schoolId.value)
-    levels.value = [...lv].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
-  } catch (e: unknown) {
-    flashError.value = (e as Error)?.message || t('paymentSettings.loadError')
-  } finally {
-    loading.value = false
-  }
-}
-
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  void load()
 })
 
 onUnmounted(() => {

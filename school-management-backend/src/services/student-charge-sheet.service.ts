@@ -7,6 +7,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import {
+  buildPage,
+  clampPage,
+  parsePageQuery,
+  wantsPage,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { Student } from '../entities/student.entity';
 import { Parent } from '../entities/parent.entity';
@@ -628,9 +636,143 @@ export class StudentChargeSheetService {
     });
   }
 
+  private dueStateSql(): string {
+    return `CASE
+      WHEN i.due_date IS NULL THEN 'unscheduled'
+      WHEN i.due_date < CAST(:asOf AS date) THEN 'late'
+      WHEN i.due_date = CAST(:asOf AS date) THEN 'due'
+      ELSE 'upcoming'
+    END`;
+  }
+
+  /** One page of the due report plus summary counts over the full filtered set. */
+  private async dueInstallmentsReportPage(
+    schoolId: string,
+    asOf: string,
+    bucket: 'all' | 'due' | 'late' | 'upcoming',
+    query: PageQuery,
+  ) {
+    const state = this.dueStateSql();
+    const base = () =>
+      this.instRepo
+        .createQueryBuilder('i')
+        .innerJoin('i.sheet', 's')
+        .innerJoin('s.student', 'st')
+        .where('s.school_id = :schoolId', { schoolId })
+        .andWhere('i.status IN (:...statuses)', { statuses: ['pending', 'partial'] })
+        .andWhere('CAST(i.amount_due AS decimal) > CAST(i.amount_paid AS decimal)')
+        .setParameter('asOf', asOf);
+
+    const summaryRaw = await base()
+      .select('COUNT(*)', 'total')
+      .addSelect(`COUNT(*) FILTER (WHERE ${state} = 'upcoming')`, 'upcoming')
+      .addSelect(`COUNT(*) FILTER (WHERE ${state} = 'due')`, 'due')
+      .addSelect(`COUNT(*) FILTER (WHERE ${state} = 'late')`, 'late')
+      .addSelect(`COUNT(*) FILTER (WHERE ${state} = 'unscheduled')`, 'unscheduled')
+      .addSelect(
+        `COALESCE(SUM(GREATEST(CAST(i.amount_due AS decimal) - CAST(i.amount_paid AS decimal), 0)), 0)`,
+        'balance_total',
+      )
+      .getRawOne<Record<string, string>>();
+
+    const filtered = base();
+    if (bucket !== 'all') filtered.andWhere(`${state} = :bucket`, { bucket });
+    const total = await filtered.clone().getCount();
+    const { page, limit } = parsePageQuery(query);
+    const safePage = clampPage(page, total, limit);
+    const rows = await filtered
+      .select([
+        'i.id AS installment_id',
+        'i.sequence AS sequence',
+        'i.month_number AS month_number',
+        'i.label AS label',
+        'i.due_date AS due_date',
+        'i.amount_due AS amount_due',
+        'i.amount_paid AS amount_paid',
+        'i.status AS status',
+        's.id AS sheet_id',
+        'st.id AS student_id',
+        'st.firstName AS first_name',
+        'st.secondName AS second_name',
+        'st.secondNameEn AS second_name_en',
+        'st.lastName AS last_name',
+        'st.first_name_ar AS first_name_ar',
+        'st.first_name_en AS first_name_en',
+        'st.last_name_ar AS last_name_ar',
+        'st.last_name_en AS last_name_en',
+      ])
+      .addSelect(state, 'state')
+      .addSelect(
+        `CASE WHEN i.due_date IS NOT NULL AND i.due_date < CAST(:asOf AS date) THEN (CAST(:asOf AS date) - i.due_date) ELSE 0 END`,
+        'days_overdue',
+      )
+      .orderBy('i.due_date', 'ASC', 'NULLS LAST')
+      .addOrderBy('st.firstName', 'ASC')
+      .addOrderBy('i.id', 'ASC')
+      .offset((safePage - 1) * limit)
+      .limit(limit)
+      .getRawMany();
+
+    const items = rows.map((r) => {
+      const dueDate = dueDateYmd(r.due_date);
+      const amountDue = num(r.amount_due);
+      const amountPaid = num(r.amount_paid);
+      const balance = Math.max(0, amountDue - amountPaid);
+      return {
+        installment_id: r.installment_id,
+        student_id: r.student_id,
+        student_name: formatStudentDisplayName({
+          firstName: r.first_name,
+          secondName: r.second_name,
+          secondNameEn: r.second_name_en,
+          lastName: r.last_name,
+          first_name_ar: r.first_name_ar,
+          first_name_en: r.first_name_en,
+          last_name_ar: r.last_name_ar,
+          last_name_en: r.last_name_en,
+        }),
+        first_name: r.first_name,
+        second_name: r.second_name,
+        second_name_en: r.second_name_en,
+        last_name: r.last_name,
+        first_name_ar: r.first_name_ar,
+        first_name_en: r.first_name_en,
+        last_name_ar: r.last_name_ar,
+        last_name_en: r.last_name_en,
+        sheet_id: r.sheet_id,
+        sequence: Number(r.sequence),
+        month_number: r.month_number == null ? null : Number(r.month_number),
+        label: r.label,
+        due_date: dueDate,
+        amount_due: moneyStr(amountDue),
+        amount_paid: moneyStr(amountPaid),
+        balance: moneyStr(balance),
+        status: r.status,
+        state: r.state,
+        days_overdue: Number(r.days_overdue) || 0,
+      };
+    });
+
+    const summary = {
+      as_of: asOf,
+      total: Number(summaryRaw?.total) || 0,
+      upcoming: Number(summaryRaw?.upcoming) || 0,
+      due: Number(summaryRaw?.due) || 0,
+      late: Number(summaryRaw?.late) || 0,
+      unscheduled: Number(summaryRaw?.unscheduled) || 0,
+      balance_total: moneyStr(num(summaryRaw?.balance_total)),
+    };
+    return { ...buildPage(items, total, safePage, limit), summary };
+  }
+
   async dueInstallmentsReport(
     user: User,
-    opts: { asOf?: string; bucket?: 'all' | 'due' | 'late' | 'upcoming' },
+    opts: {
+      asOf?: string;
+      bucket?: 'all' | 'due' | 'late' | 'upcoming';
+      page?: string;
+      limit?: string;
+    },
   ) {
     if (user.role !== 'admin' || user.school_id == null) {
       throw new ForbiddenException('Admin only');
@@ -641,6 +783,10 @@ export class StudentChargeSheetService {
     const bucket = opts.bucket && ['all', 'due', 'late', 'upcoming'].includes(opts.bucket)
       ? opts.bucket
       : 'all';
+
+    if (wantsPage(opts.page)) {
+      return this.dueInstallmentsReportPage(String(user.school_id), asOf, bucket, opts);
+    }
 
     const rows = await this.instRepo
       .createQueryBuilder('i')
@@ -727,6 +873,345 @@ export class StudentChargeSheetService {
       balance_total: moneyStr(classified.reduce((s, i) => s + num(i.balance), 0)),
     };
     return { summary, items };
+  }
+
+  private async linkedFeeStudentIds(user: User): Promise<string[]> {
+    if (user.role === 'student' || user.user_type === 'student') {
+      const student = await this.studentRepo.findOne({
+        where: { user_id: user.id },
+        select: ['id'],
+      });
+      return student ? [student.id] : [];
+    }
+    if (!this.isParentActor(user)) throw new ForbiddenException('Not allowed');
+    const rows: Array<{ student_id: string }> = await this.parentRepo.manager.query(
+      `SELECT sp.student_id
+       FROM parents p
+       INNER JOIN student_parents sp ON sp.parent_id = p.id
+       WHERE p.user_id = $1`,
+      [user.id],
+    );
+    return rows.map((r) => r.student_id);
+  }
+
+  /**
+   * One page of a parent's installments. Desktop is unpaid rows across linked
+   * children; mobile is one child's full schedule. Sheets that do not exist yet
+   * are built so the first visit is not empty.
+   */
+  async listMyInstallmentsPage(
+    user: User,
+    query: PageQuery & {
+      surface?: 'desktop' | 'mobile';
+      studentId?: string;
+      bucket?: string;
+    },
+  ): Promise<
+    PageResult<Record<string, unknown>> & {
+      summary: {
+        due_total: string;
+        paid_total: string;
+        late_amount: string;
+        due_today_amount: string;
+        pending_receipts: number;
+        counts: { all: number; late: number; due: number; partial: number; upcoming: number; wait: number };
+        child_dues: Array<{ student_id: string; due_total: string }>;
+        next_payable: Record<string, unknown> | null;
+        late_promo: Record<string, unknown> | null;
+      };
+    }
+  > {
+    const surface = query.surface === 'mobile' ? 'mobile' : 'desktop';
+    const linked = await this.linkedFeeStudentIds(user);
+    const requested = (query.studentId || '').trim();
+    let scope = linked;
+    if (requested) {
+      if (!linked.includes(requested)) throw new ForbiddenException('Not allowed');
+      scope = [requested];
+    }
+    if (surface === 'mobile' && !requested) {
+      throw new BadRequestException('student_id is required');
+    }
+
+    const { page, limit } = parsePageQuery(query);
+    const emptySummary = {
+      due_total: moneyStr(0),
+      paid_total: moneyStr(0),
+      late_amount: moneyStr(0),
+      due_today_amount: moneyStr(0),
+      pending_receipts: 0,
+      counts: { all: 0, late: 0, due: 0, partial: 0, upcoming: 0, wait: 0 },
+      child_dues: [] as Array<{ student_id: string; due_total: string }>,
+      next_payable: null,
+      late_promo: null,
+    };
+    if (!scope.length) return { ...buildPage([], 0, 1, limit), summary: emptySummary };
+
+    const students = await this.studentRepo.find({
+      where: { id: In(scope) },
+      select: ['id', 'school_id'],
+    });
+    const bySchool = new Map<string, string[]>();
+    for (const student of students) {
+      const schoolId = String(student.school_id);
+      const list = bySchool.get(schoolId) || [];
+      list.push(student.id);
+      bySchool.set(schoolId, list);
+    }
+    for (const [schoolId, ids] of bySchool) {
+      let yearId: string;
+      try {
+        yearId = (await this.resolveYear(schoolId)).id;
+      } catch {
+        continue;
+      }
+      const existing: Array<{ student_id: string }> = await this.sheetRepo.manager.query(
+        `SELECT student_id FROM student_charge_sheets WHERE academic_year_id = $1 AND student_id = ANY($2::uuid[])`,
+        [yearId, ids],
+      );
+      const have = new Set(existing.map((r) => r.student_id));
+      for (const id of ids) {
+        if (have.has(id)) continue;
+        try {
+          await this.buildOrRefresh(user, id);
+        } catch {
+          /* student has no grade yet */
+        }
+      }
+    }
+
+    const bucketSql = `CASE
+      WHEN EXISTS (
+        SELECT 1 FROM student_fee_payments pay
+        WHERE pay.installment_id = i.id
+          AND (
+            pay.status IN ('pending_approval', 'pending_reconcile')
+            OR (pay.status = 'pending' AND pay.method = 'thawani')
+          )
+      ) THEN 'wait'
+      WHEN i.due_date IS NOT NULL AND i.due_date < CURRENT_DATE THEN 'late'
+      WHEN i.due_date IS NOT NULL AND i.due_date = CURRENT_DATE THEN 'due'
+      WHEN CAST(i.amount_paid AS decimal) > 0 THEN 'partial'
+      ELSE 'upcoming'
+    END`;
+
+    const yearJoin = `
+      FROM student_charge_sheet_installments i
+      INNER JOIN student_charge_sheets s ON s.id = i.sheet_id
+      INNER JOIN academic_years y ON y.id = s.academic_year_id AND y.is_active = true
+      INNER JOIN students st ON st.id = s.student_id
+      LEFT JOIN installment_plans ip ON ip.id = s.installment_plan_id
+      LEFT JOIN school_payment_levels lv ON lv.id = st.payment_level_id
+      WHERE s.student_id = ANY($1::uuid[])
+    `;
+
+    const childDues: Array<{ student_id: string; due_total: string }> = await this.sheetRepo.manager.query(
+      `SELECT s.student_id, s.due_total
+       FROM student_charge_sheets s
+       INNER JOIN academic_years y ON y.id = s.academic_year_id AND y.is_active = true
+       WHERE s.student_id = ANY($1::uuid[])`,
+      [linked],
+    );
+    const sheetTotals: Array<{ due_total: string; paid_total: string }> = await this.sheetRepo.manager.query(
+      `SELECT COALESCE(SUM(s.due_total), 0) AS due_total, COALESCE(SUM(s.paid_total), 0) AS paid_total
+       FROM student_charge_sheets s
+       INNER JOIN academic_years y ON y.id = s.academic_year_id AND y.is_active = true
+       WHERE s.student_id = ANY($1::uuid[])`,
+      [scope],
+    );
+    const pendingRows: Array<{ cnt: string }> = await this.sheetRepo.manager.query(
+      `SELECT COUNT(*)::int AS cnt
+       FROM student_fee_payments
+       WHERE student_id = ANY($1::uuid[])
+         AND status IN ('pending_approval', 'pending_reconcile')`,
+      [scope],
+    );
+
+    if (surface === 'mobile') {
+      const countRows: Array<{ cnt: string }> = await this.instRepo.manager.query(
+        `SELECT COUNT(*)::int AS cnt ${yearJoin}`,
+        [scope],
+      );
+      const total = Number(countRows[0]?.cnt) || 0;
+      const safePage = clampPage(page, total, limit);
+      const rows: Array<Record<string, unknown>> = await this.instRepo.manager.query(
+        `SELECT i.id, i.sequence, i.month_number, i.label, i.due_date, i.amount_due, i.amount_paid, i.status
+         ${yearJoin}
+         ORDER BY i.sequence ASC, i.id ASC
+         LIMIT $2 OFFSET $3`,
+        [scope, limit, (safePage - 1) * limit],
+      );
+      const items = rows.map((r) => ({
+        id: r.id,
+        sequence: Number(r.sequence),
+        month_number: r.month_number == null ? null : Number(r.month_number),
+        label: r.label,
+        due_date: r.due_date ? dueDateYmd(r.due_date) : null,
+        amount_due: moneyStr(num(r.amount_due as string | number | null)),
+        amount_paid: moneyStr(num(r.amount_paid as string | number | null)),
+        status: r.status,
+      }));
+      return {
+        ...buildPage(items, total, safePage, limit),
+        summary: {
+          ...emptySummary,
+          due_total: moneyStr(num(sheetTotals[0]?.due_total)),
+          paid_total: moneyStr(num(sheetTotals[0]?.paid_total)),
+          pending_receipts: Number(pendingRows[0]?.cnt) || 0,
+          child_dues: childDues.map((r) => ({
+            student_id: r.student_id,
+            due_total: moneyStr(num(r.due_total)),
+          })),
+        },
+      };
+    }
+
+    const unpaid = `${yearJoin} AND CAST(i.amount_due AS decimal) > CAST(i.amount_paid AS decimal)`;
+    const countRaw: Array<Record<string, string>> = await this.instRepo.manager.query(
+      `SELECT
+         COUNT(*)::int AS cnt_all,
+         COUNT(*) FILTER (WHERE (${bucketSql}) = 'late')::int AS late,
+         COUNT(*) FILTER (WHERE (${bucketSql}) = 'due')::int AS due,
+         COUNT(*) FILTER (WHERE (${bucketSql}) = 'partial')::int AS partial,
+         COUNT(*) FILTER (WHERE (${bucketSql}) = 'upcoming')::int AS upcoming,
+         COUNT(*) FILTER (WHERE (${bucketSql}) = 'wait')::int AS wait,
+         COALESCE(SUM(GREATEST(CAST(i.amount_due AS decimal) - CAST(i.amount_paid AS decimal), 0)) FILTER (WHERE (${bucketSql}) = 'late'), 0) AS late_amount,
+         COALESCE(SUM(GREATEST(CAST(i.amount_due AS decimal) - CAST(i.amount_paid AS decimal), 0)) FILTER (WHERE (${bucketSql}) = 'due'), 0) AS due_today_amount
+       ${unpaid}`,
+      [scope],
+    );
+    const counts = countRaw[0] || {};
+    const bucket = ['late', 'due', 'partial', 'upcoming', 'wait'].includes(String(query.bucket))
+      ? String(query.bucket)
+      : 'all';
+    const bucketWhere = bucket === 'all' ? '' : ` AND (${bucketSql}) = $2`;
+    const countParams: unknown[] = bucket === 'all' ? [scope] : [scope, bucket];
+    const filteredCount: Array<{ cnt: string }> = await this.instRepo.manager.query(
+      `SELECT COUNT(*)::int AS cnt ${unpaid}${bucketWhere}`,
+      countParams,
+    );
+    const total = Number(filteredCount[0]?.cnt) || 0;
+    const safePage = clampPage(page, total, limit);
+    const pageParams: unknown[] =
+      bucket === 'all'
+        ? [scope, limit, (safePage - 1) * limit]
+        : [scope, bucket, limit, (safePage - 1) * limit];
+    const limitSql =
+      bucket === 'all' ? 'LIMIT $2 OFFSET $3' : 'LIMIT $3 OFFSET $4';
+    const pageRows: Array<Record<string, unknown>> = await this.instRepo.manager.query(
+      `SELECT
+         i.id, i.sequence, i.month_number, i.label, i.due_date, i.amount_due, i.amount_paid, i.status,
+         s.student_id,
+         st."firstName" AS first_name,
+         st."secondName" AS second_name,
+         st."secondNameEn" AS second_name_en,
+         st."lastName" AS last_name,
+         st.first_name_ar, st.first_name_en, st.last_name_ar, st.last_name_en,
+         ip.name AS plan_name,
+         lv.name AS level_name,
+         (${bucketSql}) AS bucket,
+         GREATEST(CAST(i.amount_due AS decimal) - CAST(i.amount_paid AS decimal), 0) AS remaining
+       ${unpaid}${bucketWhere}
+       ORDER BY
+         CASE (${bucketSql})
+           WHEN 'late' THEN 0 WHEN 'due' THEN 1 WHEN 'partial' THEN 2 WHEN 'wait' THEN 3 ELSE 4
+         END,
+         i.due_date ASC NULLS LAST,
+         i.id ASC
+       ${limitSql}`,
+      pageParams,
+    );
+
+    const mapRow = (r: Record<string, unknown>) => {
+      const installment = {
+        id: String(r.id),
+        sequence: Number(r.sequence),
+        month_number: r.month_number == null ? null : Number(r.month_number),
+        label: (r.label as string | null) ?? null,
+        due_date: r.due_date ? dueDateYmd(r.due_date) : null,
+        amount_due: moneyStr(num(r.amount_due as string | number | null)),
+        amount_paid: moneyStr(num(r.amount_paid as string | number | null)),
+        status: r.status as 'pending' | 'paid' | 'partial',
+      };
+      const remaining = num(r.remaining as string | number | null);
+      return {
+        key: `${r.student_id}-${r.id}`,
+        studentId: String(r.student_id),
+        studentName: formatStudentDisplayName({
+          firstName: r.first_name as string,
+          secondName: r.second_name as string,
+          secondNameEn: r.second_name_en as string,
+          lastName: r.last_name as string,
+          first_name_ar: r.first_name_ar as string,
+          first_name_en: r.first_name_en as string,
+          last_name_ar: r.last_name_ar as string,
+          last_name_en: r.last_name_en as string,
+        }),
+        planName: (r.plan_name as string | null) ?? '',
+        levelName: (r.level_name as string | null) ?? '',
+        installment,
+        remaining,
+        bucket: String(r.bucket),
+      };
+    };
+
+    const items = pageRows.map(mapRow);
+    const promoParams = [scope];
+    const latePromoRows: Array<Record<string, unknown>> = await this.instRepo.manager.query(
+      `SELECT
+         i.id, i.sequence, i.month_number, i.label, i.due_date, i.amount_due, i.amount_paid, i.status,
+         s.student_id,
+         st."firstName" AS first_name, st."secondName" AS second_name, st."secondNameEn" AS second_name_en,
+         st."lastName" AS last_name, st.first_name_ar, st.first_name_en, st.last_name_ar, st.last_name_en,
+         ip.name AS plan_name, lv.name AS level_name,
+         'late' AS bucket,
+         GREATEST(CAST(i.amount_due AS decimal) - CAST(i.amount_paid AS decimal), 0) AS remaining
+       ${unpaid} AND (${bucketSql}) = 'late'
+       ORDER BY i.due_date ASC NULLS LAST, i.id ASC
+       LIMIT 1`,
+      promoParams,
+    );
+    const nextRows: Array<Record<string, unknown>> = await this.instRepo.manager.query(
+      `SELECT
+         i.id, i.sequence, i.month_number, i.label, i.due_date, i.amount_due, i.amount_paid, i.status,
+         s.student_id,
+         st."firstName" AS first_name, st."secondName" AS second_name, st."secondNameEn" AS second_name_en,
+         st."lastName" AS last_name, st.first_name_ar, st.first_name_en, st.last_name_ar, st.last_name_en,
+         ip.name AS plan_name, lv.name AS level_name,
+         (${bucketSql}) AS bucket,
+         GREATEST(CAST(i.amount_due AS decimal) - CAST(i.amount_paid AS decimal), 0) AS remaining
+       ${unpaid} AND (${bucketSql}) <> 'wait'
+       ORDER BY
+         CASE (${bucketSql}) WHEN 'late' THEN 0 WHEN 'due' THEN 1 WHEN 'partial' THEN 2 ELSE 4 END,
+         i.due_date ASC NULLS LAST
+       LIMIT 1`,
+      promoParams,
+    );
+
+    return {
+      ...buildPage(items, total, safePage, limit),
+      summary: {
+        due_total: moneyStr(num(sheetTotals[0]?.due_total)),
+        paid_total: moneyStr(num(sheetTotals[0]?.paid_total)),
+        late_amount: moneyStr(num(counts.late_amount)),
+        due_today_amount: moneyStr(num(counts.due_today_amount)),
+        pending_receipts: Number(pendingRows[0]?.cnt) || 0,
+        counts: {
+          all: Number(counts.cnt_all) || 0,
+          late: Number(counts.late) || 0,
+          due: Number(counts.due) || 0,
+          partial: Number(counts.partial) || 0,
+          upcoming: Number(counts.upcoming) || 0,
+          wait: Number(counts.wait) || 0,
+        },
+        child_dues: childDues.map((r) => ({
+          student_id: r.student_id,
+          due_total: moneyStr(num(r.due_total)),
+        })),
+        next_payable: nextRows[0] ? mapRow(nextRows[0]) : null,
+        late_promo: latePromoRows[0] ? mapRow(latePromoRows[0]) : null,
+      },
+    };
   }
 
   private async applyDiscountTotals(sheet: StudentChargeSheet, recalcInstallments = true) {

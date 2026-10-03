@@ -7,6 +7,15 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import {
+  buildPage,
+  clampPage,
+  paginateQueryBuilder,
+  parsePageQuery,
+  wantsPage,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { School } from '../entities/school.entity';
 import { SchoolMessageLetter } from '../entities/school-message-letter.entity';
@@ -415,8 +424,10 @@ export class MessageLetterService {
       activity_id?: string;
       approval_status?: MessageLetterApprovalStatus;
       locale?: LetterLocale;
+      page?: string;
+      limit?: string;
     },
-  ): Promise<MessageLetterApprovalRecipientRow[]> {
+  ): Promise<MessageLetterApprovalRecipientRow[] | (PageResult<MessageLetterApprovalRecipientRow> & { pending_total: number })> {
     this.assertAdminSchool(user, schoolId);
 
     type RawRow = {
@@ -482,8 +493,7 @@ export class MessageLetterService {
       paramIdx += 1;
     }
 
-    const rows: RawRow[] = await this.chatMessageRepo.manager.query(
-      `
+    const unionSql = `
       SELECT
         m.id AS message_id,
         m.thread_id AS thread_id,
@@ -589,12 +599,10 @@ export class MessageLetterService {
           OR m.metadata->'approval' IS NOT NULL
         )
         ${adhocExtraWhere}
-      ORDER BY sent_at DESC
-      `,
-      params,
-    );
+    `;
+    const orderedSql = `${unionSql} ORDER BY sent_at DESC`;
 
-    const mapped = rows.map((r) => {
+    const mapRows = (rawRows: RawRow[]) => rawRows.map((r) => {
       const meta =
         r.metadata && typeof r.metadata === 'object'
           ? r.metadata
@@ -631,6 +639,35 @@ export class MessageLetterService {
     });
 
     const loc = filters?.locale ?? 'ar';
+
+    if (wantsPage(filters?.page) && !filters?.letter_id) {
+      const { page, limit } = parsePageQuery(filters || {});
+      const counts: Array<{ total: string; pending_total: string }> =
+        await this.chatMessageRepo.manager.query(
+          `SELECT COUNT(*)::int AS total,
+             COUNT(*) FILTER (
+               WHERE COALESCE(metadata->'approval'->>'status', 'pending') NOT IN ('approved', 'rejected')
+             )::int AS pending_total
+           FROM (${unionSql}) inbox`,
+          params,
+        );
+      const total = Number(counts[0]?.total) || 0;
+      const safePage = clampPage(page, total, limit);
+      const rawRows: RawRow[] = await this.chatMessageRepo.manager.query(
+        `SELECT * FROM (${unionSql}) inbox
+         ORDER BY
+           CASE WHEN COALESCE(inbox.metadata->'approval'->>'status', '') IN ('approved', 'rejected') THEN 1 ELSE 0 END,
+           inbox.sent_at DESC
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, (safePage - 1) * limit],
+      );
+      const enriched = await this.enrichApprovalRowsWithRendered(mapRows(rawRows), loc);
+      const items = this.applyApprovalRecipientFilters(enriched, filters);
+      return { ...buildPage(items, total, safePage, limit), pending_total: 0 };
+    }
+
+    const rows: RawRow[] = await this.chatMessageRepo.manager.query(orderedSql, params);
+    const mapped = mapRows(rows);
 
     if (!filters?.letter_id) {
       const enriched = await this.enrichApprovalRowsWithRendered(mapped, loc);
@@ -769,6 +806,28 @@ export class MessageLetterService {
       );
     }
     return out;
+  }
+
+  async listPage(
+    user: User,
+    schoolId: string,
+    query: PageQuery,
+  ): Promise<PageResult<SchoolMessageLetterRow>> {
+    this.assertAdminSchool(user, schoolId);
+    const qb = this.letterRepo
+      .createQueryBuilder('l')
+      .where('l.school_id = :schoolId', { schoolId })
+      .orderBy('l.updated_at', 'DESC')
+      .addOrderBy('l.id', 'ASC');
+    const page = await paginateQueryBuilder(qb, query);
+    const requiresApprovalByLetterId = await this.resolveRequiresApprovalFlags(schoolId, page.items);
+    const items: SchoolMessageLetterRow[] = [];
+    for (const r of page.items) {
+      const audience = await this.syncLinkedActivityAudience(r);
+      const recipient_count = await this.recipientCount(schoolId, audience);
+      items.push(this.toRow(r, recipient_count, requiresApprovalByLetterId.get(r.id) ?? false));
+    }
+    return { ...page, items };
   }
 
   async getOne(user: User, schoolId: string, id: string): Promise<SchoolMessageLetterRow> {

@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   UnauthorizedException,
   ConflictException,
   ForbiddenException,
@@ -21,6 +22,8 @@ import { LoginDto, RegisterDto } from '../dto/auth.dto';
 import { RbacGroupService } from '../rbac/rbac-group.service';
 import { RbacPermissionService } from '../rbac/rbac-permission.service';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { MailService } from '../services/mail.service';
+import { PushService } from '../notifications/push.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { isParentOrStudentActor, resolveActorSchoolId } from '../common/security/school-access';
 import { ensureStaffMembership, hasStaffMembership } from '../common/identity/staff-membership';
@@ -76,6 +79,7 @@ const RESET_SENT = 'If that account exists, a password reset link has been sent.
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly userCache = new Map<string, { at: number; user: User }>();
 
   constructor(
@@ -93,6 +97,8 @@ export class AuthService {
     @Inject(forwardRef(() => RbacPermissionService))
     private readonly permissionService: RbacPermissionService,
     private readonly notifications: NotificationDispatcherService,
+    private readonly mail: MailService,
+    private readonly push: PushService,
   ) {}
 
   async register(registerDto: RegisterDto, actor: User): Promise<any> {
@@ -842,6 +848,110 @@ export class AuthService {
     });
     this.invalidateUser(user.id);
     return { message: 'Password updated' };
+  }
+
+  /**
+   * In-app account deletion (App Store 5.1.1 / Play account-deletion).
+   * Turns the login off and clears the person's contact fields.
+   * Student attendance, grades, and fee rows stay with the school.
+   */
+  async deleteOwnAccount(userId: string, password: string): Promise<{ message: string }> {
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.id = :userId', { userId })
+      .getOne();
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    if (user.isSuperAdmin) {
+      throw new BadRequestException('This account cannot be deleted in the app');
+    }
+
+    const current = String(password || '');
+    if (!current || !(await bcrypt.compare(current, user.password))) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+    const deadPassword = await bcrypt.hash(randomBytes(32).toString('hex'), saltRounds);
+    const priorEmail = user.email;
+    const priorRole = user.role;
+    const priorType = user.user_type;
+    const priorSchool = user.school_id;
+
+    await this.userRepository.update(userId, {
+      email: `deleted.${userId}@deleted.fikr.invalid`,
+      username: `deleted.${userId}`,
+      phone: null,
+      civil_id: null,
+      address: null,
+      firstName: 'Deleted',
+      lastName: 'Account',
+      first_name_ar: null,
+      first_name_en: null,
+      last_name_ar: null,
+      last_name_en: null,
+      password: deadPassword,
+      isActive: false,
+      must_change_password: false,
+      password_reset_token_hash: null,
+      password_reset_expires_at: null,
+    });
+
+    await this.parentRepository.update(
+      { user_id: userId },
+      {
+        email: null,
+        phone: null,
+        civil_id: null,
+        address: null,
+        firstName: 'Deleted',
+        lastName: 'Account',
+        first_name_ar: null,
+        first_name_en: null,
+        last_name_ar: null,
+        last_name_en: null,
+        tribe: null,
+        workplace: null,
+        workPhone: null,
+        maritalStatus: null,
+        organizationName: null,
+        responsiblePerson: null,
+        responsiblePhone: null,
+      },
+    );
+
+    try {
+      await this.push.unregisterToken({ userId });
+    } catch (err) {
+      this.logger.warn(`Push token cleanup failed for deleted user ${userId}: ${err}`);
+    }
+
+    this.invalidateUser(userId);
+
+    const inbox =
+      process.env.PLATFORM_INQUIRY_EMAIL?.trim() || 'admin@fikr.om';
+    try {
+      await this.mail.sendMail({
+        to: inbox,
+        subject: `FIKR account deleted (${userId})`,
+        text: [
+          'A user deleted their login from the app.',
+          `User id: ${userId}`,
+          `Previous email: ${priorEmail}`,
+          `Role: ${priorRole}`,
+          `User type: ${priorType}`,
+          `School id: ${priorSchool ?? 'none'}`,
+          'Login and parent contact fields were cleared. Student attendance, grades, and fee records were kept.',
+        ].join('\n'),
+      });
+    } catch (err) {
+      this.logger.warn(`Account-deletion notice failed for ${userId}: ${err}`);
+    }
+
+    return { message: 'Account deleted' };
   }
 
   async deactivateUser(userId: string): Promise<any> {

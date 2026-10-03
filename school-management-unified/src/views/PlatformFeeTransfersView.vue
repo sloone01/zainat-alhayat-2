@@ -13,7 +13,7 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('platformFeePayments.transfersTitle') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('platformFeeTransfers.count', { count: filteredTransfers.length }) }}
+              {{ $t('platformFeeTransfers.count', { count: total }) }}
             </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
@@ -40,14 +40,14 @@
           </div>
 
           <div
-            v-else-if="!transfers.length"
+            v-else-if="total === 0 && !hasActiveFilters"
             class="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-12 text-center text-sm text-gray-500"
           >
             {{ $t('platformFeePayments.transfersEmpty') }}
           </div>
 
           <p
-            v-else-if="!filteredTransfers.length"
+            v-else-if="total === 0"
             class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
           >
             {{ $t('feesV2.noTransferFilterResults') }}
@@ -130,7 +130,7 @@
               class="mt-5 border-t border-fikr-hairline pt-4"
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredTransfers.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -202,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -215,7 +215,7 @@ import RowActionsItem from '@/components/RowActionsItem.vue'
 import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { feesV2Service, type FeeTransfer, type FeeTransferStatus } from '@/services/fees-v2.service'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
@@ -225,24 +225,13 @@ const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
-const transfers = ref<FeeTransfer[]>([])
-const loading = ref(true)
 const error = ref('')
 const activeMenuId = ref<string | null>(null)
 const showFilters = ref(false)
 const searchQuery = ref('')
 const schoolFilter = ref('all')
 const statusFilter = ref<'all' | FeeTransferStatus>('all')
-
-const schoolOptions = computed(() => {
-  const map = new Map<string, { id: string; name: string }>()
-  for (const tr of transfers.value) {
-    const id = String(tr.school_id || '')
-    if (!id || map.has(id)) continue
-    map.set(id, { id, name: schoolLabel(tr) })
-  }
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
-})
+const schoolOptions = ref<Array<{ id: string; name: string }>>([])
 
 const hasActiveFilters = computed(
   () =>
@@ -251,29 +240,38 @@ const hasActiveFilters = computed(
     statusFilter.value !== 'all',
 )
 
-const filteredTransfers = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return transfers.value.filter((tr) => {
-    if (schoolFilter.value !== 'all' && String(tr.school_id) !== schoolFilter.value) return false
-    if (statusFilter.value !== 'all' && tr.status !== statusFilter.value) return false
-    if (!q) return true
-    const haystack = [
-      schoolLabel(tr),
-      tr.reference || '',
-      String(tr.total_amount || ''),
-      formatMoney(tr.total_amount),
-    ]
-      .join(' ')
-      .toLowerCase()
-    return haystack.includes(q)
-  })
-})
+const {
+  items: paginatedItems,
+  total,
+  loading,
+  currentPage,
+  totalPages,
+  goToPage,
+  reload,
+} = useServerPagination(
+  async (params) => {
+    const page = await feesV2Service.listFeeTransfersPage(params)
+    if (page.schools) schoolOptions.value = page.schools
+    return page
+  },
+  {
+    filters: () => ({
+      q: searchQuery.value,
+      status: statusFilter.value,
+      school_id: schoolFilter.value,
+    }),
+    debounceKeys: ['q'],
+    onError: (e) => {
+      const err = e as { message?: string }
+      error.value = err?.message || t('platformFeeTransfers.loadError')
+    },
+  },
+)
 
-const { currentPage, totalPages, paginatedItems, goToPage } = useClientPagination(filteredTransfers)
-
-watch([searchQuery, schoolFilter, statusFilter], () => {
-  currentPage.value = 1
-})
+function load() {
+  error.value = ''
+  return reload()
+}
 
 function clearFilters() {
   searchQuery.value = ''
@@ -348,19 +346,4 @@ function transferStatusClass(status: string) {
   return 'bg-amber-100 text-amber-800'
 }
 
-async function load() {
-  loading.value = true
-  error.value = ''
-  try {
-    transfers.value = await feesV2Service.listFeeTransfers()
-  } catch (e: unknown) {
-    const err = e as { message?: string }
-    error.value = err?.message || t('platformFeeTransfers.loadError')
-    transfers.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(load)
 </script>

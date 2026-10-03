@@ -23,6 +23,7 @@ import {
   RequestedSchoolIdPipe,
   resolveActorSchoolId,
 } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 
 @Controller('meeting-rooms')
 @UseGuards(JwtAuthGuard)
@@ -74,23 +75,25 @@ export class MeetingRoomController {
   async mine(
     @Query('school_id', RequestedSchoolIdPipe) requested: string | undefined,
     @Request() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
   ) {
-    // Parents/students are school-less on JWT; list invites for this user only.
-    if (isParentOrStudentActor(req.user)) {
-      const data = await this.meetingRoomService.listMine(req.user, requested ?? null);
-      return {
-        success: true,
-        data,
-        count: data.length,
-      };
+    const schoolId = isParentOrStudentActor(req.user)
+      ? (requested ?? null)
+      : this.resolveSchool(req, requested);
+    if (wantsPage(page)) {
+      const data = await this.meetingRoomService.listMinePage(req.user, schoolId, {
+        page,
+        limit,
+        q,
+        status,
+      });
+      return { success: true, data };
     }
-    const schoolId = this.resolveSchool(req, requested);
     const data = await this.meetingRoomService.listMine(req.user, schoolId);
-    return {
-      success: true,
-      data,
-      count: data.length,
-    };
+    return { success: true, data, count: data.length };
   }
 
   @Get()
@@ -98,14 +101,23 @@ export class MeetingRoomController {
   async list(
     @Query('school_id', RequestedSchoolIdPipe) requested: string | undefined,
     @Request() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
   ) {
     const schoolId = this.resolveSchool(req, requested);
+    if (wantsPage(page)) {
+      const data = await this.meetingRoomService.listForAdminPage(req.user, schoolId, {
+        page,
+        limit,
+        q,
+        status,
+      });
+      return { success: true, data };
+    }
     const data = await this.meetingRoomService.listForAdmin(req.user, schoolId);
-    return {
-      success: true,
-      data,
-      count: data.length,
-    };
+    return { success: true, data, count: data.length };
   }
 
   @Get(':id')

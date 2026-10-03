@@ -94,6 +94,18 @@ const router = createRouter({
       component: () => import('../views/LoginView.vue'),
     },
     {
+      path: '/privacy',
+      name: 'privacy',
+      component: () => import('../views/LegalPageView.vue'),
+      meta: { legalDoc: 'privacy' },
+    },
+    {
+      path: '/terms',
+      name: 'terms',
+      component: () => import('../views/LegalPageView.vue'),
+      meta: { legalDoc: 'terms' },
+    },
+    {
       path: '/change-password',
       name: 'change-password',
       component: () => import('../views/ChangePasswordView.vue'),

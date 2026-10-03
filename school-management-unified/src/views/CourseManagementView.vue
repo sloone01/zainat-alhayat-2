@@ -17,7 +17,7 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ listHeading }}</h2>
-            <p class="fk-card__meta">{{ $t('courseManagement.coursesCount', { count: filteredCourses.length }) }}</p>
+            <p class="fk-card__meta">{{ $t('courseManagement.coursesCount', { count: courseTotal }) }}</p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <FikrToolbarSearch
@@ -31,6 +31,52 @@
               :count="drawerFilterCount"
               @click="showFilters = true"
             />
+            <div class="relative" data-export-menu>
+              <button
+                type="button"
+                class="fk-iconbtn"
+                :aria-label="$t('courseManagement.exportMenu')"
+                :aria-expanded="showExportMenu"
+                aria-haspopup="true"
+                :disabled="exporting"
+                @click="toggleExportMenu"
+              >
+                <IconDownload />
+              </button>
+              <div
+                v-if="showExportMenu"
+                role="menu"
+                class="absolute end-0 z-30 mt-1 w-44 rounded-xl border border-fikr-hairline bg-white py-1 text-start shadow-product"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium text-navy-800 hover:bg-fikr-mist"
+                  @click="onExport('word')"
+                >
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-fikr-mist text-[10px] font-bold text-navy-800">W</span>
+                  {{ $t('courseManagement.exportAsWord') }}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium text-navy-800 hover:bg-fikr-mist"
+                  @click="onExport('pdf')"
+                >
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-navy-800 text-[10px] font-bold text-white">PDF</span>
+                  {{ $t('courseManagement.exportAsPdf') }}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium text-navy-800 hover:bg-fikr-mist"
+                  @click="onExport('excel')"
+                >
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-primary-500 text-[10px] font-bold text-white">XLS</span>
+                  {{ $t('courseManagement.exportAsExcel') }}
+                </button>
+              </div>
+            </div>
             <ListViewModeToggle v-model="viewMode" />
             <button
               v-if="canCreateCourse"
@@ -50,14 +96,8 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="courses.length">
-            <p
-              v-if="filteredCourses.length === 0"
-              class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
-            >
-              {{ noFilterMessage }}
-            </p>
-            <template v-else>
+          <template v-else-if="courseTotal > 0">
+            <template>
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <KanbanCard
                 v-for="course in paginatedCourses"
@@ -236,7 +276,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredCourses.length > 0"
+              :show="courseTotal > 0"
               @update:page="goToPage"
             />
             </template>
@@ -248,7 +288,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m-6 4h6m-6 4h4M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
               </svg>
             </div>
-            <p class="text-sm font-medium text-gray-600">{{ emptyMessage }}</p>
+            <p class="text-sm font-medium text-gray-600">{{ hasActiveFilters ? noFilterMessage : emptyMessage }}</p>
           </div>
         </div>
       </section>
@@ -334,6 +374,7 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import FikrToolbarSearch from '@/components/FikrToolbarSearch.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import IconPlus from '@/components/icons/IconPlus.vue'
+import IconDownload from '@/components/icons/IconDownload.vue'
 import ProgressDialog from '@/components/ProgressDialog.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
@@ -342,11 +383,12 @@ import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { useClaims } from '@/composables/useClaims'
 import { useFeedback } from '@/composables/useFeedback'
 import courseService, { type Course } from '@/services/course.service'
-import { courseActivity, courseDisplayStatus, courseLifecycleStatus } from '@/utils/course-status'
+import { courseDisplayStatus, courseLifecycleStatus } from '@/utils/course-status'
+import { exportCourseList, type CourseExportKey } from '@/utils/course-list-export'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
@@ -408,10 +450,15 @@ const searchQuery = ref('')
 const selectedStatus = ref('')
 const selectedCategory = ref('')
 const showFilters = ref(false)
+const showExportMenu = ref(false)
+const exporting = ref(false)
 const activeDropdown = ref<string | number | null>(null)
 
 const drawerFilterCount = computed(() =>
   Number(selectedStatus.value !== '') + Number(selectedCategory.value !== ''),
+)
+const hasActiveFilters = computed(
+  () => Boolean(searchQuery.value.trim()) || drawerFilterCount.value > 0,
 )
 
 function clearFilters() {
@@ -425,91 +472,54 @@ const progressTitle = ref('')
 const progressMessage = ref('')
 const errorMessage = ref('')
 
-const courses = ref<Course[]>([])
-const loading = ref(false)
-
-const loadCourses = async () => {
-  loading.value = true
-  errorMessage.value = ''
-  try {
-    const response = await courseService.getAllCourses(schoolId.value, courseKind.value)
-
-    if (response && Array.isArray(response)) {
-      courses.value = response.map((course) => ({
+const {
+  items: paginatedCourses,
+  total: courseTotal,
+  loading,
+  currentPage,
+  totalPages,
+  goToPage,
+  reload: reloadCourses,
+} = useServerPagination<Course, { q: string; status: string; category: string; course_kind: string; school_id?: string }>(
+  async (params) => {
+    errorMessage.value = ''
+    const page = await courseService.listPage(params)
+    return {
+      ...page,
+      items: (page.items || []).map((course) => ({
         ...course,
         title: course.name || course.title,
         status: courseLifecycleStatus(course),
         category: course.category || 'general',
-      }))
-    } else {
-      courses.value = []
-      errorMessage.value = 'Database connection error. Please check your database setup.'
+      })),
     }
-  } catch (error: unknown) {
-    courses.value = []
-    const err = error as Error
-    if (err.message?.includes('does not exist')) {
-      errorMessage.value = 'Database tables not found. Please run database migrations.'
-    } else if (err.message?.includes('connect')) {
-      errorMessage.value = 'Cannot connect to database. Please check database connection.'
-    } else {
-      errorMessage.value = `Database error: ${err.message || t('courseManagement.loadError')}`
-    }
-  } finally {
-    loading.value = false
-  }
-}
-
-const filteredCourses = computed(() => {
-  let filtered = courses.value
-
-  const query = searchQuery.value.trim().toLowerCase()
-  if (query) {
-    filtered = filtered.filter((course) => {
-      const title = (course.title || course.name || '').toLowerCase()
-      const description = (course.description || '').toLowerCase()
-      return title.includes(query) || description.includes(query)
-    })
-  }
-
-  if (selectedStatus.value) {
-    if (selectedStatus.value === 'inactive') {
-      filtered = filtered.filter((course) => courseActivity(course) === 'inactive')
-    } else if (selectedStatus.value === 'active') {
-      filtered = filtered.filter(
-        (course) =>
-          courseLifecycleStatus(course) === 'active' && courseActivity(course) === 'active',
-      )
-    } else {
-      filtered = filtered.filter(
-        (course) => courseLifecycleStatus(course) === selectedStatus.value,
-      )
-    }
-  }
-
-  if (selectedCategory.value) {
-    filtered = filtered.filter((course) => course.category === selectedCategory.value)
-  }
-
-  return filtered
-})
-
-const {
-  currentPage,
-  paginatedItems: paginatedCourses,
-  totalPages,
-  goToPage,
-} = useClientPagination(filteredCourses)
-
-watch([searchQuery, selectedStatus, selectedCategory], () => {
-  currentPage.value = 1
-})
+  },
+  {
+    filters: () => ({
+      q: searchQuery.value,
+      status: selectedStatus.value,
+      category: selectedCategory.value,
+      course_kind: courseKind.value,
+      school_id: schoolId.value,
+    }),
+    debounceKeys: ['q'],
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : ''
+      if (message.includes('does not exist')) {
+        errorMessage.value = 'Database tables not found. Please run database migrations.'
+      } else if (message.includes('connect')) {
+        errorMessage.value = 'Cannot connect to database. Please check database connection.'
+      } else {
+        errorMessage.value = `Database error: ${message || t('courseManagement.loadError')}`
+      }
+    },
+  },
+)
 
 watch(courseKind, () => {
   searchQuery.value = ''
   selectedStatus.value = ''
   selectedCategory.value = ''
-  void loadCourses()
 })
 
 const getCourseDisplayBadge = (course: Course) => {
@@ -532,10 +542,10 @@ const milestoneCount = (course: Course) => {
 }
 
 const maxPhases = computed(() =>
-  Math.max(1, ...filteredCourses.value.map((course) => phaseCount(course))),
+  Math.max(1, ...paginatedCourses.value.map((course) => phaseCount(course))),
 )
 const maxMilestones = computed(() =>
-  Math.max(1, ...filteredCourses.value.map((course) => milestoneCount(course))),
+  Math.max(1, ...paginatedCourses.value.map((course) => milestoneCount(course))),
 )
 
 function meterPct(value: number, max: number) {
@@ -551,7 +561,91 @@ const courseDisplayLabel = (course: Course) => {
 }
 
 const toggleCourseActions = (courseId: string | number) => {
+  showExportMenu.value = false
   activeDropdown.value = activeDropdown.value === courseId ? null : courseId
+}
+
+function toggleExportMenu() {
+  activeDropdown.value = null
+  showExportMenu.value = !showExportMenu.value
+}
+
+function exportColumnLabel(key: CourseExportKey) {
+  if (key === 'title') return t('courseManagement.courseTitle')
+  if (key === 'category') return t('courseManagement.category')
+  if (key === 'status') return t('courseManagement.status')
+  if (key === 'phases') return t('courseManagement.phases')
+  return t('courseManagement.milestones')
+}
+
+function exportCell(course: Course, key: CourseExportKey) {
+  if (key === 'title') return course.title || course.name || ''
+  if (key === 'category') {
+    return course.category
+      ? t(`courseManagement.${course.category}`)
+      : t('courseManagement.general')
+  }
+  if (key === 'status') return courseDisplayLabel(course)
+  if (key === 'phases') return String(phaseCount(course))
+  return String(milestoneCount(course))
+}
+
+async function coursesForExport(): Promise<Course[]> {
+  const collected: Course[] = []
+  let page = 1
+  let pages = 1
+  do {
+    const result = await courseService.listPage({
+      page,
+      limit: 100,
+      q: searchQuery.value,
+      status: selectedStatus.value,
+      category: selectedCategory.value,
+      course_kind: courseKind.value,
+      school_id: schoolId.value,
+    })
+    collected.push(
+      ...(result.items || []).map((course) => ({
+        ...course,
+        title: course.name || course.title,
+        status: courseLifecycleStatus(course),
+        category: course.category || 'general',
+      })),
+    )
+    pages = result.pages || 1
+    page += 1
+  } while (page <= pages && page <= 50)
+  return collected
+}
+
+async function onExport(format: 'word' | 'pdf' | 'excel') {
+  showExportMenu.value = false
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const rows = await coursesForExport()
+    const dateSeg = new Date().toISOString().slice(0, 10)
+    const stem = courseKind.value === 'standalone' ? 'standalone-courses' : 'courses'
+    const result = await exportCourseList({
+      format,
+      rows,
+      locale: locale.value === 'ar' ? 'ar' : 'en',
+      rtl: isRTL.value,
+      title: pageTitle.value,
+      subtitle: listHeading.value,
+      filename: `${stem}_${dateSeg}`,
+      header: exportColumnLabel,
+      cell: exportCell,
+    })
+    if (result === 'empty') {
+      feedback.error(t('courseManagement.exportEmpty'), t('common.error'))
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : ''
+    feedback.error(message || t('courseManagement.exportFailed'), t('common.error'))
+  } finally {
+    exporting.value = false
+  }
 }
 
 const viewCourse = (course: Course) => {
@@ -576,7 +670,7 @@ const duplicateCourse = async (course: Course) => {
     const base = (course.title || course.name || '').trim()
     const newName = base ? `${base} ${suffix}` : undefined
     const created = await courseService.duplicateCourse(String(course.id), newName)
-    courses.value = [created, ...courses.value.filter((c) => c.id !== created.id)]
+    await reloadCourses()
     feedback.success(t('courseManagement.duplicateOk'), t('common.success'))
     router.push(`${coursesBasePath.value}/${created.id}/edit`)
   } catch (err: any) {
@@ -596,7 +690,7 @@ const deleteDraftCourse = async (course: Course) => {
   if (!ok) return
   try {
     await courseService.deleteCourse(String(course.id))
-    courses.value = courses.value.filter((c) => c.id !== course.id)
+    await reloadCourses()
     feedback.success(t('courseManagement.deleteOk'), t('common.success'))
   } catch (err: any) {
     feedback.error(err?.message || t('courseManagement.deleteFailed'), t('common.error'))
@@ -604,15 +698,19 @@ const deleteDraftCourse = async (course: Course) => {
 }
 
 const handleClickOutside = (event: Event) => {
-  if (activeDropdown.value && !(event.target as Element).closest('.relative')) {
+  const target = event.target as Element
+  if (activeDropdown.value && !target.closest('.relative')) {
     activeDropdown.value = null
+  }
+  if (showExportMenu.value && !target.closest('[data-export-menu]')) {
+    showExportMenu.value = false
   }
 }
 
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
   await loadClaims()
-  await loadCourses()
+  await reloadCourses()
 })
 
 onUnmounted(() => {

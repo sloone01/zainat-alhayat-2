@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface SchoolSubscriptionResult {
   school_id: string
@@ -86,6 +87,12 @@ class SchoolSubscriptionApiService extends BaseApiService {
 
   async listCustomPlanRequests(): Promise<CustomPlanRequest[]> {
     return this.get<CustomPlanRequest[]>('/platform/custom-plan-requests')
+  }
+
+  async listCustomPlanRequestsPage(params: { page: number; limit: number; status?: string }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.status && params.status !== 'all') query.status = params.status
+    return this.get<PageResult<CustomPlanRequest>>('/platform/custom-plan-requests', query)
   }
 
   async getCustomPlanRequest(id: string): Promise<CustomPlanRequest> {

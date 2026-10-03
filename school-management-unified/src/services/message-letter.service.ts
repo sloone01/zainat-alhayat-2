@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 import type { CreateMeetingRoomInvite } from './meeting-room.service'
 
 export interface MessageLetterVariableHint {
@@ -99,6 +100,31 @@ export type UpdateMessageLetterPayload = Omit<CreateMessageLetterPayload, 'schoo
 class MessageLetterApiService extends BaseApiService {
   list(schoolId: string): Promise<SchoolMessageLetterRow[]> {
     return this.get<SchoolMessageLetterRow[]>('/message-letters', { school_id: schoolId })
+  }
+
+  listPage(params: { page: number; limit: number; school_id?: string }) {
+    return this.get<PageResult<SchoolMessageLetterRow>>('/message-letters', {
+      page: params.page,
+      limit: params.limit,
+      ...(params.school_id ? { school_id: params.school_id } : {}),
+    })
+  }
+
+  listApprovalRecipientsPage(params: {
+    page: number
+    limit: number
+    school_id?: string
+    locale?: 'en' | 'ar'
+  }) {
+    return this.get<PageResult<MessageLetterApprovalRecipientRow> & { pending_total: number }>(
+      '/message-letters/approval-recipients',
+      {
+        page: params.page,
+        limit: params.limit,
+        ...(params.school_id ? { school_id: params.school_id } : {}),
+        ...(params.locale ? { locale: params.locale } : {}),
+      },
+    )
   }
 
   listApprovalRecipients(

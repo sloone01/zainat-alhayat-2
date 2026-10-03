@@ -6,6 +6,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import {
+  buildPage,
+  paginateQueryBuilder,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { Student } from '../entities/student.entity';
 import { Course } from '../entities/course.entity';
@@ -251,6 +257,47 @@ export class StudentCourseEnrollmentService {
     });
   }
 
+  /** Same filters as `list`, one page of enrollment rows (relations are many-to-one). */
+  async listPage(
+    user: User,
+    filters: { school_id?: string; course_id?: string; student_id?: string; status?: string },
+    query: PageQuery,
+  ): Promise<PageResult<StudentCourseEnrollment>> {
+    if (!['admin', 'teacher', 'parent'].includes(user.role)) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+
+    const qb = this.enrollmentRepo
+      .createQueryBuilder('e')
+      .leftJoinAndSelect('e.student', 'student')
+      .leftJoinAndSelect('e.course', 'course')
+      .leftJoinAndSelect('e.studentPayment', 'studentPayment')
+      .orderBy('e.enrolled_at', 'DESC')
+      .addOrderBy('e.id', 'ASC');
+
+    if (filters.status) qb.andWhere('e.status = :status', { status: filters.status });
+    if (filters.course_id) qb.andWhere('e.course_id = :courseId', { courseId: filters.course_id });
+    if (filters.student_id) {
+      if (user.role === 'parent') {
+        await this.assertParentLinkedToStudent(user, filters.student_id);
+      }
+      qb.andWhere('e.student_id = :studentId', { studentId: filters.student_id });
+    }
+    if (filters.school_id != null) {
+      this.assertSchool(user, filters.school_id);
+      qb.andWhere('e.school_id = :schoolId', { schoolId: filters.school_id });
+    } else if (user.school_id != null) {
+      qb.andWhere('e.school_id = :schoolId', { schoolId: user.school_id });
+    }
+
+    if (user.role === 'teacher' && filters.course_id) {
+      const teaches = await this.teacherTeachesCourse(user.id, filters.course_id);
+      if (!teaches) throw new ForbiddenException('You may only view enrollments for courses you teach');
+    }
+
+    return paginateQueryBuilder(qb, query);
+  }
+
   async enrollStudentsToCourse(
     user: User,
     courseId: string,
@@ -460,5 +507,100 @@ export class StudentCourseEnrollmentService {
     }
 
     return out;
+  }
+
+  /** One page of enrollable courses. Fee and teacher filters stay in SQL so the count matches the rows. */
+  async listEnrollableCoursesPage(
+    user: User,
+    schoolId: string | undefined,
+    studentId: string | undefined,
+    query: PageQuery,
+  ): Promise<
+    PageResult<{
+      course: Course;
+      profile_id: string;
+      base_total: number;
+      currency: string;
+      already_enrolled: boolean;
+    }>
+  > {
+    let school = schoolId;
+    if (user.role === 'parent') {
+      if (!studentId) throw new BadRequestException('student_id is required');
+      await this.assertParentLinkedToStudent(user, studentId);
+      const student = await this.studentRepo.findOne({ where: { id: studentId } });
+      if (!student?.school_id) throw new NotFoundException('Student not found');
+      school = student.school_id;
+    } else {
+      if (!school) throw new BadRequestException('school_id is required');
+      this.assertSchool(user, school);
+    }
+    if (!school) throw new BadRequestException('school_id is required');
+
+    const qb = this.courseRepo
+      .createQueryBuilder('c')
+      .where('c.school_id = :school', { school })
+      .andWhere('c.is_active = true')
+      .andWhere(
+        `EXISTS (
+          SELECT 1 FROM course_payment_profiles p
+          WHERE p.course_id = c.id AND p.school_id = :school
+          AND COALESCE((
+            SELECT SUM(cl.amount) FROM course_payment_charge_lines cl
+            WHERE cl.profile_id = p.id
+          ), 0) > 0
+        )`,
+      )
+      .orderBy('c.name', 'ASC')
+      .addOrderBy('c.id', 'ASC');
+
+    if (user.role === 'teacher') {
+      qb.andWhere(
+        `EXISTS (
+          SELECT 1 FROM schedules sch
+          WHERE sch.course_id = c.id AND sch.teacher_id = :tid
+        )`,
+        { tid: user.id },
+      );
+    }
+
+    const page = await paginateQueryBuilder(qb, query);
+    if (!page.items.length) return buildPage([], page.total, page.page, page.limit);
+
+    const profiles = await this.courseProfileRepo.find({
+      where: { school_id: school, course_id: In(page.items.map((c) => c.id)) },
+      relations: ['chargeLines'],
+    });
+    const profileByCourse = new Map(profiles.map((p) => [p.course_id, p]));
+
+    let enrolledCourseIds = new Set<string>();
+    if (studentId) {
+      const active = await this.enrollmentRepo.find({
+        where: {
+          student_id: studentId,
+          status: 'active',
+          course_id: In(page.items.map((c) => c.id)),
+        },
+        select: ['course_id'],
+      });
+      enrolledCourseIds = new Set(active.map((e) => e.course_id));
+    }
+
+    const items = page.items.flatMap((course) => {
+      const profile = profileByCourse.get(course.id);
+      if (!profile) return [];
+      const base = computeCourseBaseTotal(profile);
+      if (base <= 0) return [];
+      return [
+        {
+          course,
+          profile_id: profile.id,
+          base_total: base,
+          currency: profile.currency ?? 'OMR',
+          already_enrolled: enrolledCourseIds.has(course.id),
+        },
+      ];
+    });
+    return buildPage(items, page.total, page.page, page.limit);
   }
 }

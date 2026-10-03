@@ -27,6 +27,7 @@ import {
   RequestedSchoolIdPipe,
   coerceRequestedSchoolId,
 } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 
 @Controller('grades')
 export class GradeController {
@@ -64,8 +65,16 @@ export class GradeController {
   async findAll(
     @Request() req: { user: User },
     @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (wantsPage(page)) {
+      const data = await this.gradeService.findPage(schoolId, { page, limit, q, status });
+      return { success: true, data };
+    }
     const grades = await this.gradeService.findAll(schoolId);
     return {
       success: true,

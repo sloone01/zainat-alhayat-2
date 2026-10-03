@@ -10,7 +10,7 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('systemSettings.gradesListHeading') }}</h2>
-            <p class="fk-card__meta">{{ $t('systemSettings.gradesCount', { count: filteredGrades.length }) }}</p>
+            <p class="fk-card__meta">{{ $t('systemSettings.gradesCount', { count: totalGrades }) }}</p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <FikrToolbarSearch
@@ -37,11 +37,11 @@
         </header>
 
         <div class="p-6">
-          <div v-if="grades.length && !filteredGrades.length" class="fk-empty text-sm text-fikr-ink-soft">
+          <div v-if="loaded && hasActiveFilters && totalGrades === 0" class="fk-empty text-sm text-fikr-ink-soft">
             {{ $t('systemSettings.noGradeFilterResults') }}
           </div>
 
-          <template v-else-if="filteredGrades.length">
+          <template v-else-if="paginatedGrades.length">
             <div v-if="isCards" class="fk-grid">
               <KanbanCard
                 v-for="grade in paginatedGrades"
@@ -140,12 +140,12 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredGrades.length > 0"
+              :show="totalGrades > 0"
               @update:page="goToPage"
             />
           </template>
 
-          <div v-else class="fk-empty">
+          <div v-else-if="loaded" class="fk-empty">
             <div class="fk-empty__icon">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
@@ -224,7 +224,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -240,15 +240,14 @@ import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { useFeedback } from '@/composables/useFeedback'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
-import { gradeService, type CreateGradeData, type Grade } from '@/services/grade.service'
+import { useServerPagination } from '@/composables/useServerPagination'
+import { gradeService, type CreateGradeData, type Grade, type GradeListParams } from '@/services/grade.service'
 
 const { locale, t } = useI18n()
 const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
-const grades = ref<Grade[]>([])
 const showGradeModal = ref(false)
 const editingGrade = ref<Grade | null>(null)
 const activeMenuId = ref<string | null>(null)
@@ -260,27 +259,25 @@ const hasActiveFilters = computed(() =>
   searchQuery.value.trim().length > 0 || statusFilter.value !== 'all',
 )
 
-const filteredGrades = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return grades.value.filter((grade) => {
-    if (statusFilter.value === 'active' && !grade.isActive) return false
-    if (statusFilter.value === 'inactive' && grade.isActive) return false
-    if (!q) return true
-    return [grade.nameAr, grade.nameEn, grade.code, grade.description]
-      .some((value) => (value || '').toLowerCase().includes(q))
-  })
-})
-
 const {
+  items: paginatedGrades,
+  total: totalGrades,
+  loaded,
   currentPage,
-  paginatedItems: paginatedGrades,
   totalPages,
   goToPage,
-} = useClientPagination(filteredGrades)
-
-watch([searchQuery, statusFilter], () => {
-  currentPage.value = 1
-})
+  reload: loadGrades,
+} = useServerPagination<Grade, GradeListParams>(
+  (params) => gradeService.listPage(params),
+  {
+    filters: () => ({
+      q: searchQuery.value,
+      status: statusFilter.value,
+    }),
+    debounceKeys: ['q'],
+    onError: (err) => console.error('Error loading grades:', err),
+  },
+)
 
 function clearFilters() {
   searchQuery.value = ''
@@ -311,14 +308,6 @@ function closeGradeModal() {
   editingGrade.value = null
 }
 
-async function loadGrades() {
-  try {
-    grades.value = await gradeService.getAll()
-  } catch (error) {
-    console.error('Error loading grades:', error)
-  }
-}
-
 async function saveGrade(data: CreateGradeData) {
   const wasEditing = !!editingGrade.value
   try {
@@ -330,13 +319,7 @@ async function saveGrade(data: CreateGradeData) {
         description: data.description,
       })
     } else {
-      const maxOrder = grades.value.length > 0
-        ? Math.max(...grades.value.map((g) => g.displayOrder))
-        : 0
-      await gradeService.create({
-        ...data,
-        displayOrder: maxOrder + 1,
-      })
+      await gradeService.create(data)
     }
     closeGradeModal()
     feedback.saved(t(wasEditing ? 'common.updatedSuccessfully' : 'common.createdSuccessfully'))

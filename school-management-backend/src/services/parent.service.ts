@@ -26,6 +26,13 @@ import {
   normalizeEmail,
   normalizePhone,
 } from '../common/identity/bilingual-name';
+import {
+  buildPage,
+  paginateQueryBuilder,
+  parsePageQuery,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 
 export type ParentRelationship = 'father' | 'mother' | 'guardian';
 
@@ -719,6 +726,184 @@ export class ParentService {
     };
   }
 
+  /**
+   * Paged weekly plans (and the activities tab, which is the same rows filtered
+   * by completion). `child_id` / `week_start` / `status` are applied in SQL.
+   * Absent `page` keeps {@link getParentWeeklyPlans}.
+   */
+  async getParentWeeklyPlansPage(
+    userId: string,
+    query: PageQuery & { childId?: string; weekStart?: string; status?: string },
+  ): Promise<
+    PageResult<WeeklySessionPlan> & {
+      children: Array<Student & { groupNames: string }>;
+      childId: string | null;
+    }
+  > {
+    const students = await this.getChildrenForParentUser(userId);
+    const children = this.mapParentChildren(students);
+    const { limit } = parsePageQuery(query);
+    const empty = (childId: string | null) => ({
+      ...buildPage<WeeklySessionPlan>([], 0, 1, limit),
+      children,
+      childId,
+    });
+
+    const child = this.pickLinkedChild(students, query.childId);
+    if (!child) return empty(null);
+
+    const activityTab = query.status === 'completed' || query.status === 'upcoming';
+    const groupIds = this.groupIdsForChild(students, child, activityTab);
+    if (!groupIds.length) return empty(child.id);
+
+    const qb = this.weeklySessionPlanRepository
+      .createQueryBuilder('wsp')
+      .leftJoinAndSelect('wsp.schedule', 'schedule')
+      .leftJoinAndSelect('schedule.group', 'group')
+      .leftJoinAndSelect('schedule.course', 'course')
+      .leftJoinAndSelect('schedule.teacher', 'teacher')
+      .where('schedule.group_id IN (:...ids)', { ids: groupIds })
+      .andWhere("(schedule.status IS NULL OR schedule.status = 'active')")
+      .orderBy('wsp.week_start_date', 'DESC')
+      .addOrderBy('wsp.id', 'ASC');
+
+    const weekStart = (query.weekStart || '').trim();
+    const weekEnd = this.addDaysYmd(weekStart, 6);
+    if (weekEnd) {
+      qb.andWhere('wsp.week_start_date <= :weekEnd', { weekEnd });
+      qb.andWhere('COALESCE(wsp.week_end_date, wsp.week_start_date) >= :weekStart', { weekStart });
+    }
+    if (query.status === 'completed') qb.andWhere('wsp.is_completed = true');
+    else if (query.status === 'upcoming') qb.andWhere('wsp.is_completed = false');
+
+    const page = await paginateQueryBuilder(qb, query);
+    return { ...page, children, childId: child.id };
+  }
+
+  /**
+   * Paged milestone rows for one linked child. Counts cover every status so the
+   * tiles stay stable while `status` filters the page.
+   */
+  async getParentProgressPage(
+    userId: string,
+    query: PageQuery & { childId?: string; status?: string },
+  ): Promise<
+    PageResult<{
+      id: string;
+      status: string;
+      teacher_notes: string | null;
+      milestoneName: string | null;
+    }> & {
+      children: Array<Student & { groupNames: string }>;
+      childId: string | null;
+      counts: { completed: number; inProgress: number; notStarted: number };
+    }
+  > {
+    const students = await this.getChildrenForParentUser(userId);
+    const children = this.mapParentChildren(students);
+    const { limit } = parsePageQuery(query);
+    const zero = { completed: 0, inProgress: 0, notStarted: 0 };
+    const child = this.pickLinkedChild(students, query.childId);
+    if (!child) {
+      return {
+        ...buildPage([], 0, 1, limit),
+        children,
+        childId: null,
+        counts: zero,
+      };
+    }
+
+    const counts = await this.progressStatusCounts(child.id);
+    const qb = this.studentProgressRepository
+      .createQueryBuilder('sp')
+      .leftJoinAndSelect('sp.milestone', 'milestone')
+      .addSelect('milestone.title')
+      .where('sp.student_id = :sid', { sid: child.id })
+      .orderBy('sp.created_at', 'DESC')
+      .addOrderBy('sp.id', 'ASC');
+
+    const status = (query.status || '').trim();
+    if (status === 'not_started') {
+      qb.andWhere(`(sp.status = 'not_started' OR sp.status IS NULL OR sp.status = '')`);
+    } else if (status === 'completed' || status === 'in_progress') {
+      qb.andWhere('sp.status = :status', { status });
+    }
+
+    const page = await paginateQueryBuilder(qb, query);
+    return {
+      ...page,
+      items: page.items.map((row) => ({
+        id: row.id,
+        status: row.status || 'not_started',
+        teacher_notes: row.teacher_notes ?? null,
+        milestoneName: row.milestone?.title || row.milestone?.name || null,
+      })),
+      children,
+      childId: child.id,
+      counts,
+    };
+  }
+
+  private async progressStatusCounts(studentId: string): Promise<{
+    completed: number;
+    inProgress: number;
+    notStarted: number;
+  }> {
+    const rows = await this.studentProgressRepository
+      .createQueryBuilder('sp')
+      .select('sp.status', 'status')
+      .addSelect('COUNT(*)', 'cnt')
+      .where('sp.student_id = :sid', { sid: studentId })
+      .groupBy('sp.status')
+      .getRawMany<{ status: string | null; cnt: string }>();
+
+    let completed = 0;
+    let inProgress = 0;
+    let notStarted = 0;
+    for (const row of rows) {
+      const n = Number(row.cnt) || 0;
+      const status = row.status || 'not_started';
+      if (status === 'completed') completed += n;
+      else if (status === 'in_progress') inProgress += n;
+      else if (status === 'not_started') notStarted += n;
+    }
+    return { completed, inProgress, notStarted };
+  }
+
+  /** Linked child when `childId` is set; otherwise the first linked child. Unknown ids match nothing. */
+  private pickLinkedChild(students: Student[], childId?: string | null): Student | null {
+    if (!students.length) return null;
+    const requested = (childId || '').trim();
+    if (!requested) return students[0];
+    return students.find((s) => String(s.id) === requested) ?? null;
+  }
+
+  /**
+   * Group ids used to scope a child's plans.
+   * When the child has no groups, week-plan mode keeps sibling groups (same as the old client filter).
+   * The activities tab (`strict`) returns nothing in that case.
+   */
+  private groupIdsForChild(students: Student[], child: Student, strict: boolean): string[] {
+    const own = [...new Set((child.groups || []).map((g) => String(g.id)).filter(Boolean))];
+    if (own.length || strict) return own;
+    return [
+      ...new Set(students.flatMap((s) => (s.groups || []).map((g) => String(g.id)).filter(Boolean))),
+    ];
+  }
+
+  private addDaysYmd(ymd: string, days: number): string | null {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null;
+    const [y, m, d] = ymd.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    if (Number.isNaN(dt.getTime())) return null;
+    dt.setUTCDate(dt.getUTCDate() + days);
+    return dt.toISOString().slice(0, 10);
+  }
+
+  private localYmd(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
   private async getChildrenForParentUser(userId: string): Promise<Student[]> {
     let parentRecord = await this.parentRepository.findOne({
       where: { user: { id: userId } },
@@ -962,6 +1147,197 @@ export class ParentService {
   }
 
   /**
+   * One history page for the selected child, plus the current month (calendar)
+   * and today's snapshot. Status is applied only to the history query.
+   * Absent `page` keeps {@link getParentAttendanceView} (offset/limit, all children).
+   */
+  async getParentAttendancePage(
+    userId: string,
+    query: PageQuery & { childId?: string; status?: string },
+  ) {
+    const students = await this.getChildrenForParentUser(userId);
+    const todayStart = this.startOfLocalDay();
+    const dateStr = this.localYmd(todayStart);
+    const { limit } = parsePageQuery(query);
+    const today = await this.buildParentToday(students, todayStart);
+
+    if (!students.length) {
+      return {
+        today,
+        childId: null as string | null,
+        monthItems: [],
+        history: buildPage([], 0, 1, limit),
+      };
+    }
+
+    const child = this.pickLinkedChild(students, query.childId);
+    if (!child) {
+      return {
+        today,
+        childId: null as string | null,
+        monthItems: [],
+        history: buildPage([], 0, 1, limit),
+      };
+    }
+
+    const monthStart = this.localYmd(new Date(todayStart.getFullYear(), todayStart.getMonth(), 1));
+    const monthEnd = this.localYmd(new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0));
+
+    const monthRows = await this.attendanceRepository
+      .createQueryBuilder('a')
+      .leftJoinAndSelect('a.student', 'student')
+      .leftJoinAndSelect('a.group', 'group')
+      .where('a.student_id = :sid', { sid: child.id })
+      .andWhere('a.attendance_date >= :monthStart', { monthStart })
+      .andWhere('a.attendance_date <= :monthEnd', { monthEnd })
+      .orderBy('a.attendance_date', 'DESC')
+      .addOrderBy('a.created_at', 'DESC')
+      .getMany();
+
+    const historyQb = this.attendanceRepository
+      .createQueryBuilder('a')
+      .leftJoinAndSelect('a.student', 'student')
+      .leftJoinAndSelect('a.group', 'group')
+      .where('a.student_id = :sid', { sid: child.id })
+      .andWhere('a.attendance_date < :today', { today: dateStr })
+      .orderBy('a.attendance_date', 'DESC')
+      .addOrderBy('a.created_at', 'DESC')
+      .addOrderBy('a.id', 'ASC');
+    this.applyParentAttendanceStatus(historyQb, query.status);
+
+    const history = await paginateQueryBuilder(historyQb, query);
+    return {
+      today,
+      childId: child.id,
+      monthItems: monthRows.map((row) => this.mapParentHistoryRow(row)),
+      history: {
+        ...history,
+        items: history.items.map((row) => this.mapParentHistoryRow(row)),
+      },
+    };
+  }
+
+  private applyParentAttendanceStatus(
+    qb: { andWhere: (sql: string, params?: object) => unknown },
+    status?: string,
+  ) {
+    const value = (status || '').trim();
+    if (!value || value === 'all') return;
+    if (value === 'excused') {
+      qb.andWhere('a.is_excused = :excused', { excused: true });
+      return;
+    }
+    if (value === 'present' || value === 'absent' || value === 'late') {
+      qb.andWhere('a.status = :status', { status: value });
+      qb.andWhere('a.is_excused = :excused', { excused: false });
+    }
+  }
+
+  private mapParentHistoryRow(r: Attendance) {
+    return {
+      id: r.id,
+      attendance_date:
+        r.attendance_date instanceof Date
+          ? this.localYmd(r.attendance_date)
+          : String(r.attendance_date).split('T')[0],
+      status: r.status,
+      check_in_time: r.check_in_time,
+      check_out_time: r.check_out_time,
+      notes: r.notes,
+      is_excused: r.is_excused,
+      reason: r.reason,
+      student: r.student
+        ? { id: r.student.id, firstName: r.student.firstName, lastName: r.student.lastName }
+        : { id: r.student_id, firstName: '', lastName: '' },
+      group: r.group ? { id: r.group.id, name: r.group.name } : null,
+    };
+  }
+
+  /** Today card for every linked child. Shared by the paged attendance response. */
+  private async buildParentToday(students: Student[], todayStart: Date) {
+    const dateStr = this.localYmd(todayStart);
+    const emptySummary = {
+      totalChildren: 0,
+      recorded: 0,
+      pending: 0,
+      present: 0,
+      absent: 0,
+      late: 0,
+      excused: 0,
+    };
+    if (!students.length) {
+      return { date: dateStr, children: [], summary: emptySummary };
+    }
+
+    const todayRows = await this.attendanceRepository.find({
+      where: {
+        student_id: In(students.map((s) => s.id)),
+        attendance_date: todayStart,
+      },
+      relations: ['group'],
+      order: { created_at: 'DESC' },
+    });
+    const todayByStudent = new Map<string, Attendance>();
+    for (const row of todayRows) {
+      if (!todayByStudent.has(row.student_id)) todayByStudent.set(row.student_id, row);
+    }
+
+    const children = students.map((student) => {
+      const rec = todayByStudent.get(student.id);
+      return {
+        studentId: student.id,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        groupNames: student.groups?.map((g) => g.name).join(', ') || '',
+        record: rec
+          ? {
+              id: rec.id,
+              status: rec.status,
+              check_in_time: rec.check_in_time,
+              check_out_time: rec.check_out_time,
+              notes: rec.notes,
+              is_excused: rec.is_excused,
+              reason: rec.reason,
+              groupName: rec.group?.name ?? null,
+            }
+          : null,
+      };
+    });
+
+    let recorded = 0;
+    let pending = 0;
+    let present = 0;
+    let absent = 0;
+    let late = 0;
+    let excused = 0;
+    for (const c of children) {
+      if (!c.record) {
+        pending++;
+        continue;
+      }
+      recorded++;
+      if (c.record.status === 'present') present++;
+      else if (c.record.status === 'absent') absent++;
+      else if (c.record.status === 'late') late++;
+      if (c.record.is_excused) excused++;
+    }
+
+    return {
+      date: dateStr,
+      children,
+      summary: {
+        totalChildren: children.length,
+        recorded,
+        pending,
+        present,
+        absent,
+        late,
+        excused,
+      },
+    };
+  }
+
+  /**
    * Activities (school calendar / group events) for groups the parent's children belong to.
    */
   async getParentAssignedActivities(userId: string): Promise<Activity[]> {
@@ -984,6 +1360,48 @@ export class ParentService {
       relations: ['group', 'createdByUser'],
       order: { activity_date: 'DESC', created_at: 'DESC' },
     });
+  }
+
+  /**
+   * Paged assigned activities for one linked child. Absent `page` keeps
+   * {@link getParentAssignedActivities} (full array for the dashboard).
+   */
+  async getParentAssignedActivitiesPage(
+    userId: string,
+    query: PageQuery & { childId?: string },
+  ): Promise<
+    PageResult<Activity> & {
+      children: Array<Student & { groupNames: string }>;
+      childId: string | null;
+    }
+  > {
+    const students = await this.getChildrenForParentUser(userId);
+    const children = this.mapParentChildren(students);
+    const { limit } = parsePageQuery(query);
+    const empty = (childId: string | null) => ({
+      ...buildPage<Activity>([], 0, 1, limit),
+      children,
+      childId,
+    });
+
+    const child = this.pickLinkedChild(students, query.childId);
+    if (!child) return empty(null);
+
+    const groupIds = [...new Set((child.groups || []).map((g) => String(g.id)).filter(Boolean))];
+    if (!groupIds.length) return empty(child.id);
+
+    const qb = this.activityRepository
+      .createQueryBuilder('activity')
+      .leftJoinAndSelect('activity.group', 'group')
+      .leftJoinAndSelect('activity.createdByUser', 'createdByUser')
+      .where('activity.group_id IN (:...ids)', { ids: groupIds })
+      .andWhere('activity.is_active = true')
+      .orderBy('activity.activity_date', 'DESC')
+      .addOrderBy('activity.created_at', 'DESC')
+      .addOrderBy('activity.id', 'ASC');
+
+    const page = await paginateQueryBuilder(qb, query);
+    return { ...page, children, childId: child.id };
   }
 
   /**

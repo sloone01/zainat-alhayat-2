@@ -1,15 +1,15 @@
 <template>
   <DashboardLayout>
     <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div v-if="loading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
+      <div v-if="loading && !loaded" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
         <FikrLoader />
         <span>{{ $t('parent.loading') }}</span>
       </div>
 
-      <div v-else-if="error" class="fk-elev">
+      <div v-else-if="error && !loaded" class="fk-elev">
         <div class="fk-empty-panel">
           <p>{{ error }}</p>
-          <button type="button" class="fk-btn fk-btn--navy mt-4" @click="loadProgressData">
+          <button type="button" class="fk-btn fk-btn--navy mt-4" @click="reload">
             {{ $t('common.retry') }}
           </button>
         </div>
@@ -18,7 +18,7 @@
       <template v-else>
         <FikrPageHeader :title="$t('parent.progress')" :subtitle="$t('parent.progressSubtitle')" />
 
-        <div v-if="!progressData.length" class="fk-elev">
+        <div v-if="!children.length" class="fk-elev">
           <div class="fk-empty-panel">
             <p>{{ $t('parent.noChildren') }}</p>
           </div>
@@ -44,20 +44,20 @@
             <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
               <div class="min-w-0">
                 <h2 class="fk-card__title truncate">{{ $t('parent.milestones') }}</h2>
-                <p class="fk-card__meta">{{ filteredRows.length }}</p>
+                <p class="fk-card__meta">{{ progressTotal }}</p>
               </div>
               <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
-                <template v-if="progressData.length > 1">
+                <template v-if="children.length > 1">
                   <button
-                    v-for="childProgress in progressData"
-                    :key="childProgress.student.id"
+                    v-for="child in children"
+                    :key="child.id"
                     type="button"
                     class="fk-fchip"
-                    :class="selectedProgressChildId === childProgress.student.id ? 'fk-fchip--active' : ''"
-                    :aria-pressed="selectedProgressChildId === childProgress.student.id"
-                    @click="selectChild(childProgress.student.id)"
+                    :class="selectedProgressChildId === child.id ? 'fk-fchip--active' : ''"
+                    :aria-pressed="selectedProgressChildId === child.id"
+                    @click="selectChild(child.id)"
                   >
-                    {{ childChipLabel(childProgress) }}
+                    {{ childChipLabel(child) }}
                   </button>
                 </template>
                 <FikrFilterButton :expanded="showFilters" :count="statusFilter !== 'all' ? 1 : 0" @click="showFilters = true" />
@@ -66,7 +66,7 @@
             </header>
 
             <div class="p-6">
-              <div v-if="!filteredRows.length" class="fk-empty">
+              <div v-if="!progressTotal" class="fk-empty">
                 <p class="fk-empty__title">{{ $t('parent.noProgress') }}</p>
               </div>
 
@@ -106,7 +106,7 @@
                 class="mt-4"
                 :page="currentPage"
                 :pages="totalPages"
-                :show="filteredRows.length > 0"
+                :show="progressTotal > 0"
                 @update:page="goToPage"
               />
             </div>
@@ -130,13 +130,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
-import { parentService } from '@/services/parent.service'
+import { useServerPagination } from '@/composables/useServerPagination'
+import { parentService, type ParentListChild } from '@/services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
+import { getErrorMessage } from '@/utils/error-reporting'
 import FikrLoader from '@/components/FikrLoader.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
@@ -149,67 +150,72 @@ import { useListViewMode } from '@/composables/useListViewMode'
 const { t, locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 
-const loading = ref(true)
 const error = ref('')
-const dashboardData = ref<any>({})
+const children = ref<ParentListChild[]>([])
 const selectedProgressChildId = ref<string | null>(null)
+const pinnedChildId = ref('')
 const showFilters = ref(false)
 const statusFilter = ref('all')
+const metricCounts = ref({ completed: 0, inProgress: 0, notStarted: 0 })
 const { viewMode, isCards } = useListViewMode()
 
-const progressData = computed(() => dashboardData.value.progress || [])
-
-const selectedChildProgress = computed(() => {
-  if (!selectedProgressChildId.value) return progressData.value[0]
-  return progressData.value.find((p: any) => p.student.id === selectedProgressChildId.value) || progressData.value[0]
-})
-
-function childChipLabel(childProgress: any) {
-  const student = childProgress?.student
-  if (!student) return t('parent.childName')
-  const name = (student.firstName || '').trim() || t('parent.childName')
-  const fromGroups = student.groups?.map((g: { name: string }) => g.name).join(', ')
-  const group = formatParentGroupNames(fromGroups || student.groupNames, '')
+function childChipLabel(child: ParentListChild) {
+  const name = (child.firstName || '').trim() || t('parent.childName')
+  const fromGroups = child.groups?.map((g) => g.name).filter(Boolean).join(', ')
+  const group = formatParentGroupNames(fromGroups || child.groupNames, '')
   return group ? `${name} · ${group}` : name
 }
 
-const selectedItems = computed(() => selectedChildProgress.value?.progress || [])
-
-const metricCounts = computed(() => {
-  const list = selectedItems.value
-  return {
-    completed: list.filter((p: any) => p.status === 'completed').length,
-    inProgress: list.filter((p: any) => p.status === 'in_progress').length,
-    notStarted: list.filter((p: any) => p.status === 'not_started' || !p.status).length,
-  }
-})
-
-const selectedRows = computed(() =>
-  selectedItems.value.map((progress: any) => ({
-    id: String(progress.id),
-    label: progress.milestone?.title || progress.milestone?.name || t('parent.milestones'),
-    status: progress.status || 'not_started',
-    detail: String(progress.teacher_notes || '').trim() || undefined,
-  })),
-)
-
-const filteredRows = computed(() =>
-  statusFilter.value === 'all'
-    ? selectedRows.value
-    : selectedRows.value.filter((row: { status: string }) => row.status === statusFilter.value),
-)
-
-const {
-  currentPage,
-  paginatedItems,
-  totalPages,
-  goToPage,
-} = useClientPagination(filteredRows)
-
 function selectChild(id: string) {
   selectedProgressChildId.value = id
-  currentPage.value = 1
+  pinnedChildId.value = id
 }
+
+const {
+  items: paginatedItems,
+  total: progressTotal,
+  loading,
+  loaded,
+  currentPage,
+  totalPages,
+  goToPage,
+  load,
+  reload,
+} = useServerPagination<
+  { id: string; label: string; status: string; detail?: string },
+  { childId: string; status: string }
+>(
+  async (params) => {
+    error.value = ''
+    const data = await parentService.getMyProgressPage({
+      page: params.page,
+      limit: params.limit,
+      childId: params.childId || undefined,
+      status: params.status,
+    })
+    children.value = data.children || []
+    metricCounts.value = data.counts || { completed: 0, inProgress: 0, notStarted: 0 }
+    if (!params.childId && data.childId) selectedProgressChildId.value = data.childId
+    return {
+      ...data,
+      items: (data.items || []).map((row) => ({
+        id: String(row.id),
+        label: row.milestoneName || t('parent.milestones'),
+        status: row.status || 'not_started',
+        detail: String(row.teacher_notes || '').trim() || undefined,
+      })),
+    }
+  },
+  {
+    filters: () => ({
+      childId: pinnedChildId.value,
+      status: statusFilter.value,
+    }),
+    onError: (err) => {
+      error.value = getErrorMessage(err, t('parent.error'))
+    },
+  },
+)
 
 function statusDot(status: string) {
   if (status === 'completed') return 'emerald'
@@ -230,23 +236,5 @@ function getStatusText(status: string) {
   }
 }
 
-const loadProgressData = async () => {
-  try {
-    loading.value = true
-    error.value = ''
-    const data = await parentService.getMyDashboardData()
-    dashboardData.value = data
-    if (data.progress?.length) {
-      selectedProgressChildId.value = data.progress[0].student.id
-    }
-  } catch (err: any) {
-    error.value = err.message || t('parent.error')
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(() => {
-  loadProgressData()
-})
+void load()
 </script>

@@ -15,7 +15,7 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('messageLetters.approvalInboxListHeading') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('messageLetters.approvalInboxCount', { count: rows.length }) }}
+              {{ $t('messageLetters.approvalInboxCount', { count: total }) }}
               <template v-if="pendingCount > 0">
                 · {{ $t('messageLetters.approvalInboxPendingCount', { count: pendingCount }) }}
               </template>
@@ -32,7 +32,7 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="rows.length">
+          <template v-else-if="total > 0">
             <div v-if="isCards" class="fk-grid">
               <KanbanCard
                 v-for="row in paginatedRows"
@@ -137,7 +137,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="rows.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -181,11 +181,12 @@ import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { useFeedback } from '@/composables/useFeedback'
 import { authService } from '@/services'
 import {
   chatApiService,
+  type DirectApprovalInboxRow,
   type MessageLetterApprovalStatus as ChatApprovalStatus,
 } from '@/services/chat.service'
 import {
@@ -221,21 +222,37 @@ const { viewMode, isCards } = useListViewMode()
 
 const currentUserId = computed(() => authService.getStoredUser()?.id ?? '')
 const isAdmin = computed(() => authService.getStoredUser()?.role === 'admin')
-const schoolId = computed(() => {
-  const u = authService.getStoredUser()
-  return u?.school_id != null ? String(u.school_id) : ''
-})
 
-const rows = ref<InboxRow[]>([])
+const flashError = ref('')
+const pendingCount = ref(0)
 const {
+  items: paginatedRows,
+  total,
+  loading,
   currentPage,
-  paginatedItems: paginatedRows,
   totalPages,
   goToPage,
-} = useClientPagination(rows)
-
-const loading = ref(true)
-const flashError = ref('')
+  reload: load,
+} = useServerPagination(
+  async (params) => {
+    flashError.value = ''
+    const loc = locale.value === 'ar' ? 'ar' : 'en'
+    if (isAdmin.value) {
+      const page = await messageLetterService.listApprovalRecipientsPage({ ...params, locale: loc })
+      pendingCount.value = page.pending_total ?? 0
+      return { ...page, items: page.items.map(mapAdminRow) }
+    }
+    const page = await chatApiService.listApprovalInboxPage({ ...params, locale: loc })
+    pendingCount.value = page.pending_total ?? 0
+    return { ...page, items: mapParentRows(page.items) }
+  },
+  {
+    onError: () => {
+      flashError.value = t('messageLetters.approvalInboxLoadError')
+      pendingCount.value = 0
+    },
+  },
+)
 const busyId = ref<string | null>(null)
 const activeMenuId = ref<string | null>(null)
 const previewOpen = ref(false)
@@ -246,8 +263,6 @@ const previewRow = ref<InboxRow | null>(null)
 const previewCanApprove = computed(() => (previewRow.value ? rowCanApprove(previewRow.value) : false))
 const previewBusy = computed(() => Boolean(previewRow.value && busyId.value === previewRow.value.message_id))
 const previewStatus = computed(() => previewRow.value?.approval_status ?? null)
-
-const pendingCount = computed(() => rows.value.filter((r) => r.can_approve).length)
 
 function rowCanApprove(row: InboxRow): boolean {
   if (isAdmin.value) return false
@@ -335,9 +350,7 @@ function mapAdminRow(r: MessageLetterApprovalRecipientRow): InboxRow {
   }
 }
 
-function mapParentRows(
-  list: Awaited<ReturnType<typeof chatApiService.listApprovalInbox>>,
-): InboxRow[] {
+function mapParentRows(list: DirectApprovalInboxRow[]): InboxRow[] {
   const uid = currentUserId.value
   return list.map((r) => ({
     message_id: r.message_id,
@@ -361,37 +374,6 @@ function mapParentRows(
   }))
 }
 
-async function load() {
-  loading.value = true
-  flashError.value = ''
-  closeMenu()
-  try {
-    const loc = locale.value === 'ar' ? 'ar' : 'en'
-    if (isAdmin.value) {
-      const list = await messageLetterService.listApprovalRecipients(schoolId.value, { locale: loc })
-      rows.value = list
-        .map(mapAdminRow)
-        .sort((a, b) => {
-          const rank = (s: InboxRow['approval_status']) => {
-            if (s === 'pending') return 0
-            if (s === 'not_sent') return 1
-            return 2
-          }
-          const d = rank(a.approval_status) - rank(b.approval_status)
-          if (d !== 0) return d
-          return (b.sent_at ?? '').localeCompare(a.sent_at ?? '')
-        })
-    } else {
-      rows.value = mapParentRows(await chatApiService.listApprovalInbox(loc))
-    }
-  } catch {
-    flashError.value = t('messageLetters.approvalInboxLoadError')
-    rows.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
 async function resolve(row: InboxRow, decision: 'approve' | 'reject'): Promise<boolean> {
   if (!rowCanApprove(row)) return false
   const ok = await feedback.confirm({
@@ -411,7 +393,7 @@ async function resolve(row: InboxRow, decision: 'approve' | 'reject'): Promise<b
   try {
     await chatApiService.resolveMessageLetterApproval(row.message_id, decision)
     await load()
-  } catch (e: unknown) {
+  } catch {
     flashError.value = t('messageLetters.approvalResolveError')
     return false
   } finally {
@@ -428,7 +410,6 @@ function handleClickOutside(event: Event) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  void load()
 })
 
 onUnmounted(() => {

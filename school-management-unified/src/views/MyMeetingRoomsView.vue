@@ -13,7 +13,7 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('meetingRooms.myMeetingsTitle') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('meetingRooms.roomsCount', { count: filteredRooms.length }) }}
+              {{ $t('meetingRooms.roomsCount', { count: total }) }}
             </p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -32,13 +32,13 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <div v-else-if="!rooms.length" class="fk-empty">
+          <div v-else-if="total === 0 && !hasActiveFilters" class="fk-empty">
             <p class="fk-empty__desc">{{ $t('meetingRooms.noInvites') }}</p>
           </div>
 
           <template v-else>
             <p
-              v-if="filteredRooms.length === 0"
+              v-if="total === 0"
               class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
               {{ $t('meetingRooms.noFilterResults') }}
@@ -121,7 +121,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredRooms.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -190,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -202,7 +202,7 @@ import FikrPagination from '@/components/FikrPagination.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { authService } from '@/services'
 import { meetingRoomService, type MeetingRoomMineRow } from '@/services/meeting-room.service'
 import { formatExactLocalDateTime } from '@/utils/meeting-datetime'
@@ -228,9 +228,7 @@ const showFilters = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref<'all' | 'live' | 'waiting' | 'expired'>('all')
 
-const loading = ref(true)
 const error = ref('')
-const rooms = ref<MeetingRoomMineRow[]>([])
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 const formatDate = (iso?: string) => formatExactLocalDateTime(iso, locale.value)
@@ -285,61 +283,43 @@ const hasActiveFilters = computed(
   () => searchQuery.value.trim().length > 0 || statusFilter.value !== 'all',
 )
 
-const filteredRooms = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return rooms.value.filter((r) => {
-    if (q && !r.title.toLowerCase().includes(q)) return false
-    const presence = presenceOf(r)
-    if (statusFilter.value === 'live' && presence !== 'live') return false
-    if (statusFilter.value === 'waiting' && presence !== 'waiting') return false
-    if (statusFilter.value === 'expired' && presence !== 'expired') return false
-    return true
-  })
-})
-
 const {
+  items: paginatedRooms,
+  total,
+  loading,
   currentPage,
   totalPages,
-  paginatedItems: paginatedRooms,
   goToPage,
-} = useClientPagination(filteredRooms)
-
-watch([searchQuery, statusFilter], () => {
-  goToPage(1)
-})
+  reload: loadRooms,
+} = useServerPagination(
+  (params) => meetingRoomService.minePage(params),
+  {
+    filters: () => ({
+      q: searchQuery.value,
+      status: statusFilter.value,
+      ...(schoolId.value ? { school_id: schoolId.value } : {}),
+    }),
+    debounceKeys: ['q'],
+    onError: (e) => {
+      error.value = axios.isAxiosError(e)
+        ? (typeof (e.response?.data as { message?: string })?.message === 'string'
+          ? (e.response?.data as { message: string }).message
+          : e.message || t('meetingRooms.loadFailed'))
+        : e instanceof Error
+          ? e.message
+          : t('meetingRooms.loadFailed')
+    },
+  },
+)
 
 function clearFilters() {
   searchQuery.value = ''
   statusFilter.value = 'all'
 }
 
-async function loadRooms() {
-  rooms.value = await meetingRoomService.mine(schoolId.value)
-}
-
-onMounted(async () => {
-  loading.value = true
-  error.value = ''
-  try {
-    await loadRooms()
-  } catch (e: unknown) {
-    if (axios.isAxiosError(e)) {
-      const data = e.response?.data as { message?: string | string[] }
-      const m = data?.message
-      error.value =
-        typeof m === 'string'
-          ? m
-          : Array.isArray(m)
-            ? m.join('; ')
-            : e.message || t('meetingRooms.loadFailed')
-    } else {
-      error.value = e instanceof Error ? e.message : t('meetingRooms.loadFailed')
-    }
-  } finally {
-    loading.value = false
-  }
+onMounted(() => {
   pollTimer = setInterval(() => {
-    void loadRooms().catch(() => undefined)
+    void loadRooms({ silent: true }).catch(() => undefined)
   }, 8000)
 })
 

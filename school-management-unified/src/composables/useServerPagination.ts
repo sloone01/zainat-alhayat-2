@@ -56,10 +56,10 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
   let requestSeq = 0
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-  async function load(): Promise<void> {
+  async function load(opts?: { silent?: boolean }): Promise<void> {
     if (!isEnabled()) return
     const seq = ++requestSeq
-    loading.value = true
+    if (!opts?.silent) loading.value = true
     error.value = ''
     try {
       const result = await fetcher({ page: currentPage.value, limit: pageSize.value, ...readFilters() })
@@ -80,8 +80,8 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
   }
 
   /** Refetch the current page (after create/update/delete). */
-  function reload() {
-    return load()
+  function reload(opts?: { silent?: boolean }) {
+    return load(opts)
   }
 
   /** Jump to page 1 and refetch (after filters change). */
@@ -151,6 +151,8 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
       if (on) void load()
     })
   }
+
+  if (isEnabled()) void load()
 
   return {
     items,

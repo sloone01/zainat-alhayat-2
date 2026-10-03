@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 import type { Course } from './course.service'
 
 export type AggregationMethod = 'sum' | 'average'
@@ -58,6 +59,27 @@ class GradedAssessmentService extends BaseApiService {
     return this.get<GradedCourseWithScheme[]>(
       `/graded-assessment/courses?school_id=${schoolId}`,
     )
+  }
+
+  async listPage(params: {
+    schoolId: string
+    page?: number
+    limit?: number
+    q?: string
+    status?: string
+    level_id?: string
+    aggregation?: string
+  }): Promise<PageResult<GradedCourseWithScheme>> {
+    const query: Record<string, string | number> = {
+      school_id: params.schoolId,
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status) query.status = params.status
+    if (params.level_id) query.level_id = params.level_id
+    if (params.aggregation) query.aggregation = params.aggregation
+    return this.get('/graded-assessment/courses', query)
   }
 
   async create(payload: CreateGradedCoursePayload): Promise<GradedCourseWithScheme> {

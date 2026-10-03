@@ -33,14 +33,14 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !loaded" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="rows.length">
+          <template v-else-if="totalRows > 0 || hasActiveFilters">
             <p
-              v-if="filteredRows.length === 0"
+              v-if="paginatedRows.length === 0"
               class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
               {{ $t('paymentSettings.noFilterResults') }}
@@ -140,7 +140,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredRows.length > 0"
+              :show="totalRows > 0"
               @update:page="goToPage"
             />
           </template>
@@ -239,7 +239,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFeedback } from '@/composables/useFeedback'
 import { useRouter } from 'vue-router'
@@ -255,14 +255,15 @@ import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { authService } from '@/services'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { feesV2Service, type FeePackageUsageItem } from '@/services/fees-v2.service'
 import {
-  feesV2Service,
-  type FeePackageStructure,
-  type FeePackageUsageItem,
-} from '@/services/fees-v2.service'
+  feePackageService,
+  type FeePackageListParams,
+  type FeePackagePageRow,
+} from '@/services/fee-package.service'
 
 const { locale, t } = useI18n()
 const feedback = useFeedback()
@@ -283,33 +284,33 @@ const schoolId = computed(() => {
   return id != null && String(id).trim() !== '' ? String(id) : ''
 })
 
-const loading = ref(true)
 const flashError = ref('')
 const deletingId = ref<string | null>(null)
-const rows = ref<FeePackageStructure[]>([])
 const blockedPackage = ref<{ id: string; name: string } | null>(null)
 const blockedUsages = ref<FeePackageUsageItem[]>([])
 
-const filteredRows = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return rows.value.filter((row) => {
-    if (statusFilter.value === 'active' && !row.is_active) return false
-    if (statusFilter.value === 'inactive' && row.is_active) return false
-    if (q && !row.name.toLowerCase().includes(q)) return false
-    return true
-  })
-})
-
 const {
+  items: paginatedRows,
+  total: totalRows,
+  loading,
+  loaded,
   currentPage,
-  paginatedItems: paginatedRows,
   totalPages,
   goToPage,
-} = useClientPagination(filteredRows)
-
-watch([searchQuery, statusFilter], () => {
-  currentPage.value = 1
-})
+  reload,
+} = useServerPagination<FeePackagePageRow, FeePackageListParams>(
+  (params) => feePackageService.listPage({ ...params, schoolId: schoolId.value }),
+  {
+    filters: () => ({
+      q: searchQuery.value,
+      status: statusFilter.value,
+    }),
+    debounceKeys: ['q'],
+    onError: (err) => {
+      flashError.value = (err as Error)?.message || t('paymentSettings.loadError')
+    },
+  },
+)
 
 function clearFilters() {
   searchQuery.value = ''
@@ -330,7 +331,7 @@ function handleClickOutside(event: Event) {
   }
 }
 
-function openEdit(row: FeePackageStructure) {
+function openEdit(row: FeePackagePageRow) {
   closeMenu()
   void router.push(`/settings/payments/packages/${row.id}`)
 }
@@ -361,27 +362,19 @@ function extractUsagesFromError(e: unknown): FeePackageUsageItem[] | null {
   return null
 }
 
-async function load() {
-  loading.value = true
+function load() {
   flashError.value = ''
   if (!schoolId.value) {
     flashError.value = t('paymentSettings.loadError')
-    loading.value = false
     return
   }
-  try {
-    rows.value = await feesV2Service.listPackages(schoolId.value)
-  } catch (e: unknown) {
-    flashError.value = (e as Error)?.message || t('paymentSettings.loadError')
-  } finally {
-    loading.value = false
-  }
+  return reload()
 }
 
-async function onSetActive(row: FeePackageStructure, is_active: boolean) {
+async function onSetActive(row: FeePackagePageRow, is_active: boolean) {
   closeMenu()
   try {
-    const updated = await feesV2Service.savePackage(
+    await feesV2Service.savePackage(
       {
         school_id: row.school_id,
         name: row.name,
@@ -398,14 +391,13 @@ async function onSetActive(row: FeePackageStructure, is_active: boolean) {
       },
       row.id,
     )
-    const i = rows.value.findIndex((x) => x.id === row.id)
-    if (i !== -1) rows.value[i] = updated
+    await reload()
   } catch {
     await load()
   }
 }
 
-async function onDelete(row: FeePackageStructure) {
+async function onDelete(row: FeePackagePageRow) {
   closeMenu()
   await tryDelete(row)
 }

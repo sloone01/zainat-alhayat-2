@@ -109,7 +109,7 @@
         </div>
 
         <div v-if="report" class="px-4 pb-6 pt-4 sm:px-6">
-          <div v-if="!report.items.length" class="px-6 py-16 text-center text-sm text-fikr-ink-muted">
+          <div v-if="total === 0" class="px-6 py-16 text-center text-sm text-fikr-ink-muted">
             {{ $t('reports.dueFeesEmpty') }}
           </div>
           <div v-else class="overflow-x-auto">
@@ -155,7 +155,7 @@
           <FikrPagination
             :page="currentPage"
             :pages="totalPages"
-            :show="reportItems.length > 0"
+            :show="total > 0"
             @update:page="goToPage"
           />
         </div>
@@ -217,14 +217,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import IconDownload from '@/components/icons/IconDownload.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { fetchAllPages, useServerPagination } from '@/composables/useServerPagination'
 import { useFeedback } from '@/composables/useFeedback'
 import { feesV2Service, type DueInstallmentRow, type DueInstallmentsReport } from '@/services/fees-v2.service'
 import {
@@ -243,7 +243,6 @@ const exportMenuOpen = ref(false)
 const todayKey = () => new Date().toISOString().slice(0, 10)
 const asOf = ref(todayKey())
 const bucket = ref<'all' | 'due' | 'late' | 'upcoming'>('all')
-const loading = ref(false)
 const error = ref('')
 const report = ref<DueInstallmentsReport | null>(null)
 const showFilters = ref(false)
@@ -256,13 +255,29 @@ const totalCount = computed(() => {
   return Number(s.total || 0)
 })
 
-const reportItems = computed(() => report.value?.items ?? [])
 const {
+  items: paginatedItems,
+  total,
+  loading,
   currentPage,
-  paginatedItems,
   totalPages,
   goToPage,
-} = useClientPagination(reportItems)
+  reload: loadReport,
+} = useServerPagination(
+  async (params) => {
+    error.value = ''
+    const page = await feesV2Service.dueInstallmentsReportPage(params)
+    report.value = { summary: page.summary, items: page.items }
+    return page
+  },
+  {
+    filters: () => ({ as_of: asOf.value, bucket: bucket.value }),
+    onError: (e) => {
+      report.value = null
+      error.value = getErrorMessage(e, t('reports.dueFeesLoadError'))
+    },
+  },
+)
 
 function clearFilters() {
   asOf.value = todayKey()
@@ -272,7 +287,6 @@ function clearFilters() {
 function setBucket(next: 'all' | 'due' | 'late' | 'upcoming') {
   if (bucket.value === next) return
   bucket.value = next
-  void loadReport()
 }
 
 function studentLabel(row: DueInstallmentRow) {
@@ -356,15 +370,19 @@ function columnHeader(key: DueExportKey) {
 
 async function exportReport(format: DueExportFormat) {
   exportMenuOpen.value = false
-  if (!reportItems.value.length) {
-    feedback.error(t('reports.exportEmpty'))
-    return
-  }
   exporting.value = format
   try {
+    const rows = await fetchAllPages(
+      (params) => feesV2Service.dueInstallmentsReportPage(params),
+      { as_of: asOf.value, bucket: bucket.value },
+    )
+    if (!rows.length) {
+      feedback.error(t('reports.exportEmpty'))
+      return
+    }
     const result = await exportDueInstallmentsPrint({
       format,
-      rows: reportItems.value,
+      rows,
       locale: locale.value === 'ar' ? 'ar' : 'en',
       rtl: isRTL.value,
       title: t('reports.dueFeesTitle'),
@@ -381,23 +399,4 @@ async function exportReport(format: DueExportFormat) {
   }
 }
 
-async function loadReport() {
-  loading.value = true
-  error.value = ''
-  try {
-    report.value = await feesV2Service.dueInstallmentsReport({
-      as_of: asOf.value,
-      bucket: bucket.value,
-    })
-  } catch (e: unknown) {
-    report.value = null
-    error.value = getErrorMessage(e, t('reports.dueFeesLoadError'))
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(() => {
-  void loadReport()
-})
 </script>

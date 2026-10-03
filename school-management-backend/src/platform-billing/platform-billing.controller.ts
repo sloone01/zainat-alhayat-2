@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -26,6 +27,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ClaimGuard } from '../rbac/claim.guard';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
+import { wantsPage } from '../common/pagination';
 import { PlatformBillingService } from './platform-billing.service';
 import {
   IssueInvoiceDto,
@@ -70,7 +72,16 @@ export class PlatformBillingController {
 
   @Get('custom-plan-requests')
   @RequireClaim('platform_schools', 'view')
-  async listCustomPlanRequests(@Req() req: { user: User }) {
+  async listCustomPlanRequests(
+    @Req() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    if (wantsPage(page)) {
+      const data = await this.billing.listCustomPlanRequestsPage(req.user, { page, limit, status });
+      return { success: true, data };
+    }
     const data = await this.billing.listCustomPlanRequests(req.user);
     return { success: true, data, count: data.length };
   }
@@ -98,7 +109,17 @@ export class PlatformBillingController {
 
   @Get('plans')
   @RequireClaim('platform_schools', 'view')
-  async listPlans(@Req() req: { user: User }) {
+  async listPlans(
+    @Req() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+  ) {
+    if (wantsPage(page)) {
+      const data = await this.billing.listPlansPage(req.user, { page, limit, q, status });
+      return { success: true, data };
+    }
     const data = await this.billing.listPlansForAdmin(req.user);
     return { success: true, data };
   }

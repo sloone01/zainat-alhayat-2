@@ -24,9 +24,9 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="items.length">
+          <template v-else-if="total > 0 || hasActiveFilters">
             <p
-              v-if="filteredItems.length === 0"
+              v-if="total === 0"
               class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
               {{ $t('reports.exportsNoFilter') }}
@@ -84,7 +84,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredItems.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -155,7 +155,7 @@ import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import KanbanCard from '@/components/ui/kanban-card.vue'
 import { useFeedback } from '@/composables/useFeedback'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { useListViewMode } from '@/composables/useListViewMode'
 import reportExportService, { type ReportExportListItem } from '@/services/report-export.service'
 
@@ -165,28 +165,33 @@ const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
-const loading = ref(true)
-const items = ref<ReportExportListItem[]>([])
 const activeMenuId = ref<string | null>(null)
 const showFilters = ref(false)
 const searchQuery = ref('')
 
 const hasActiveFilters = computed(() => Boolean(searchQuery.value.trim()))
 
-const filteredItems = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return items.value
-  return items.value.filter((row) =>
-    `${row.name_en} ${row.name_ar} ${row.source_path}`.toLowerCase().includes(q),
-  )
-})
-
 const {
+  items: paginatedItems,
+  total,
+  loading,
   currentPage,
-  paginatedItems,
   totalPages,
   goToPage,
-} = useClientPagination(filteredItems)
+} = useServerPagination(
+  (params) => reportExportService.listExportsPage(params),
+  {
+    filters: () => ({ q: searchQuery.value }),
+    debounceKeys: ['q'],
+    onError: (err) => {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message?: string }).message || '')
+          : ''
+      feedback.error(message || t('reports.exportsLoadFailed'), t('common.error'))
+    },
+  },
+)
 
 function reportName(row: ReportExportListItem) {
   return isRTL.value ? row.name_ar || row.name_en : row.name_en
@@ -210,24 +215,8 @@ function onDocClick(ev: Event) {
   if (activeMenuId.value && !target.closest('.relative')) activeMenuId.value = null
 }
 
-async function load() {
-  loading.value = true
-  try {
-    items.value = await reportExportService.listExports()
-  } catch (err: unknown) {
-    const message =
-      err && typeof err === 'object' && 'message' in err
-        ? String((err as { message?: string }).message || '')
-        : ''
-    feedback.error(message || t('reports.exportsLoadFailed'), t('common.error'))
-  } finally {
-    loading.value = false
-  }
-}
-
 onMounted(() => {
   document.addEventListener('click', onDocClick)
-  void load()
 })
 onUnmounted(() => document.removeEventListener('click', onDocClick))
 </script>

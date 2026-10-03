@@ -248,7 +248,7 @@
         <!-- Progress Stats -->
         <div class="grid grid-cols-3 gap-2 sm:gap-4">
           <div class="rounded-lg bg-gray-50 p-3 text-center sm:p-4">
-            <div class="text-lg font-bold text-gray-800 sm:text-2xl">{{ groupStudents.length }}</div>
+            <div class="text-lg font-bold text-gray-800 sm:text-2xl">{{ progressStudentTotal }}</div>
             <div class="text-xs text-gray-600 sm:text-sm">{{ $t('progressTracking.totalStudents') }}</div>
           </div>
           <div class="rounded-lg bg-green-50 p-3 text-center sm:p-4">
@@ -424,7 +424,7 @@
         <FikrPagination
           :page="progressPage"
           :pages="progressTotalPages"
-          :show="groupStudents.length > 0"
+          :show="progressStudentTotal > 0"
           @update:page="goToProgressPage"
         />
       </section>
@@ -434,7 +434,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -446,12 +446,13 @@ import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { scheduleService } from '@/services/schedule.service'
 import { authService } from '@/services'
 import { groupService } from '@/services/group.service'
 import { settingsService } from '@/services/settings.service'
 import { studentService } from '@/services/student.service'
+import { formatStudentDisplayName } from '@/utils/student-display-name'
 import { courseService } from '@/services/course.service'
 import { progressService } from '@/services/progress.service'
 import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
@@ -486,14 +487,30 @@ const progressSettings = ref({
 // Data from APIs
 const teacherGroups = ref([])
 const groupLessons = ref([])
-const groupStudents = ref([])
-// Paginate the displayed student rows (same control as /students); stats use the full list.
 const {
+  items: paginatedGroupStudents,
+  total: progressStudentTotal,
   currentPage: progressPage,
-  paginatedItems: paginatedGroupStudents,
   totalPages: progressTotalPages,
   goToPage: goToProgressPage,
-} = useClientPagination(groupStudents)
+} = useServerPagination(async (params) => {
+  const page = await studentService.listPage({
+    group_id: params.group_id,
+    page: params.page,
+    limit: params.limit,
+  })
+  return {
+    ...page,
+    items: (page.items || []).map((student) => ({
+      id: student.id,
+      name: formatStudentDisplayName(student, locale.value).trim() || '—',
+      lastUpdate: parseValidDate(student.updatedAt ?? student.updated_at),
+    })),
+  }
+}, {
+  filters: () => ({ group_id: selectedGroup.value?.id ? String(selectedGroup.value.id) : '' }),
+  enabled: () => Boolean(selectedGroup.value?.id && selectedLesson.value),
+})
 
 // Get current user info
 const getCurrentUser = async () => {
@@ -559,16 +576,16 @@ const loadGroups = async () => {
 // Computed properties
 const completedStudents = computed(() => {
   const milestones = selectedLesson.value?.milestones || []
-  if (!milestones.length || !groupStudents.value.length) return 0
-  return groupStudents.value.filter((student) =>
+  if (!milestones.length || !paginatedGroupStudents.value.length) return 0
+  return paginatedGroupStudents.value.filter((student) =>
     milestones.every((milestone) => getMilestoneStatus(student.id, milestone.id) === 'completed'),
   ).length
 })
 
 const postponedStudents = computed(() => {
   const milestones = selectedLesson.value?.milestones || []
-  if (!milestones.length || !groupStudents.value.length) return 0
-  return groupStudents.value.filter((student) =>
+  if (!milestones.length || !paginatedGroupStudents.value.length) return 0
+  return paginatedGroupStudents.value.filter((student) =>
     milestones.some((milestone) => getMilestoneStatus(student.id, milestone.id) === 'postponed'),
   ).length
 })
@@ -614,9 +631,9 @@ const selectGroup = async (group) => {
   await loadGroupLessons(group.id)
 }
 
-const selectLesson = async (lesson) => {
+const selectLesson = (lesson) => {
+  studentProgress.value = {}
   selectedLesson.value = lesson
-  await loadGroupStudents(selectedGroup.value.id)
 }
 
 const goBack = () => {
@@ -697,50 +714,6 @@ const loadGroupLessons = async (groupId) => {
   }
 }
 
-const loadGroupStudents = async (groupId) => {
-  try {
-    loading.value = true
-
-    // Load real students from database
-    const students = await studentService.getByGroup(groupId)
-
-    groupStudents.value = students.map(student => ({
-      id: student.id,
-      name: `${student.firstName} ${student.lastName}`,
-      firstName: student.firstName,
-      lastName: student.lastName,
-      fullName: `${student.firstName} ${student.lastName}`,
-      studentId: student.studentId || student.id,
-      dateOfBirth: student.dateOfBirth,
-      gender: student.gender,
-      email: student.email,
-      phone: student.phone,
-      address: student.address,
-      emergencyContact: student.emergencyContact,
-      medicalInfo: student.medicalInfo,
-      notes: student.notes,
-      photo: student.photo,
-      lastUpdate: parseValidDate(student.updatedAt ?? student.updated_at),
-      createdAt: student.createdAt,
-      user: student.user,
-      parents: student.parents,
-      groups: student.groups,
-      progress: student.progress || []
-    }))
-
-    console.log(`Students loaded for group ${groupId}:`, groupStudents.value.length)
-
-    // Load existing progress for all students
-    await loadExistingProgress()
-
-  } catch (error) {
-    console.error('Error loading group students:', error)
-    groupStudents.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
 const progressCell = (studentId, milestoneId) => {
   const byStudent = studentProgress.value[studentId] || studentProgress.value[String(studentId)]
   if (!byStudent) return undefined
@@ -748,18 +721,21 @@ const progressCell = (studentId, milestoneId) => {
 }
 
 const loadExistingProgress = async () => {
-  studentProgress.value = {}
   const courseId = selectedLesson.value?.courseId
-  if (!courseId || !groupStudents.value.length) return
+  const pageStudents = paginatedGroupStudents.value
+  if (!courseId || !pageStudents.length) return
+  const ids = pageStudents.map((student) => String(student.id))
   try {
-    const records = await progressService.getProgressByCourse(String(courseId))
-    const allowed = new Set(groupStudents.value.map((student) => String(student.id)))
+    const records = await progressService.getProgressByCourse(String(courseId), ids)
+    const allowed = new Set(ids)
     const latestByStudent = {}
+    const next = { ...studentProgress.value }
+    for (const id of ids) next[id] = {}
     for (const record of records || []) {
       const sid = String(record.student_id)
       if (!allowed.has(sid)) continue
-      if (!studentProgress.value[sid]) studentProgress.value[sid] = {}
-      studentProgress.value[sid][String(record.milestone_id)] = {
+      if (!next[sid]) next[sid] = {}
+      next[sid][String(record.milestone_id)] = {
         status: record.status,
         startDate: record.started_date,
         endDate: record.completed_date,
@@ -772,7 +748,8 @@ const loadExistingProgress = async () => {
         latestByStudent[sid] = recordAt
       }
     }
-    for (const student of groupStudents.value) {
+    studentProgress.value = next
+    for (const student of pageStudents) {
       const at = latestByStudent[String(student.id)]
       if (at) student.lastUpdate = at
     }
@@ -783,6 +760,11 @@ const loadExistingProgress = async () => {
     )
   }
 }
+
+watch(
+  () => `${selectedLesson.value?.courseId || ''}|${paginatedGroupStudents.value.map((student) => student.id).join(',')}`,
+  () => { void loadExistingProgress() },
+)
 
 const getMilestoneStatus = (studentId, milestoneId) => {
   const status = progressCell(studentId, milestoneId)?.status || 'notStarted'
@@ -855,7 +837,7 @@ const updateMilestoneStatus = async (data) => {
     }
 
     // Update student's last update time
-    const student = groupStudents.value.find(s => s.id === data.studentId)
+    const student = paginatedGroupStudents.value.find(s => s.id === data.studentId)
     if (student) {
       student.lastUpdate = new Date()
     }

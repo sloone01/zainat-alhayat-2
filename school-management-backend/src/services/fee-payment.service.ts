@@ -7,6 +7,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, IsNull, Repository } from 'typeorm';
+import {
+  buildPage,
+  clampPage,
+  likeTerm,
+  parsePageQuery,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { Student } from '../entities/student.entity';
 import { Parent } from '../entities/parent.entity';
@@ -147,6 +155,64 @@ export class FeePaymentService {
     });
   }
 
+  async listPendingPage(
+    user: User,
+    query: PageQuery & { q?: string },
+  ): Promise<PageResult<StudentFeePayment> & { amount_total: string }> {
+    if (!isPlatformOperator(user) && user.role !== 'admin') {
+      throw new ForbiddenException('Not allowed');
+    }
+    const { page, limit } = parsePageQuery(query);
+    if (!isPlatformOperator(user) && user.school_id == null) {
+      return { ...buildPage([], 0, 1, limit), amount_total: '0' };
+    }
+    const qb = this.paymentRepo.createQueryBuilder('p');
+    if (isPlatformOperator(user)) {
+      qb.where(`p.status = 'pending_approval'`);
+    } else {
+      qb.where('p.school_id = :schoolId', { schoolId: String(user.school_id) })
+        .andWhere('p.status IN (:...statuses)', { statuses: [...SCHOOL_INBOX_STATUSES] })
+        .andWhere(`p.method IN ('offline', 'admin')`);
+    }
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `(
+          LOWER(COALESCE(p.remarks, '')) LIKE :term
+          OR CAST(p.amount AS text) LIKE :term
+          OR EXISTS (
+            SELECT 1 FROM students st
+            WHERE st.id = p.student_id
+              AND LOWER(CONCAT_WS(' ', st."firstName", st."secondName", st."secondNameEn", st."lastName", st.first_name_ar, st.first_name_en, st.last_name_ar, st.last_name_en)) LIKE :term
+          )
+        )`,
+        { term },
+      );
+    }
+    const total = await qb.clone().getCount();
+    const sumRow = await qb.clone().select('COALESCE(SUM(p.amount), 0)', 'amount_total').getRawOne<{ amount_total: string }>();
+    const safePage = clampPage(page, total, limit);
+    const idRows = await qb
+      .clone()
+      .select('p.id', 'id')
+      .orderBy('p.created_at', 'ASC')
+      .addOrderBy('p.id', 'ASC')
+      .offset((safePage - 1) * limit)
+      .limit(limit)
+      .getRawMany<{ id: string }>();
+    const ids = idRows.map((r) => r.id);
+    if (!ids.length) {
+      return { ...buildPage([], total, safePage, limit), amount_total: String(sumRow?.amount_total ?? '0') };
+    }
+    const loaded = await this.paymentRepo.find({
+      where: { id: In(ids) },
+      relations: ['student', 'submittedByUser', 'school', 'payment'],
+    });
+    const byId = new Map(loaded.map((row) => [row.id, row]));
+    const items = ids.map((id) => byId.get(id)).filter((row): row is StudentFeePayment => !!row);
+    return { ...buildPage(items, total, safePage, limit), amount_total: String(sumRow?.amount_total ?? '0') };
+  }
+
   async listReadyToTransfer(user: User): Promise<StudentFeePayment[]> {
     if (!isPlatformOperator(user)) {
       throw new ForbiddenException('Only system administrators can build transfers');
@@ -173,6 +239,99 @@ export class FeePaymentService {
       relations: ['school', 'createdByUser', 'reviewedByUser', 'lines', 'lines.payment', 'lines.payment.student'],
       order: { created_at: 'DESC' },
     });
+  }
+
+  /**
+   * Paged transfers. Lines are one-to-many, so the page is distinct transfer ids,
+   * then those rows are loaded with lines. School staff are forced to their JWT school.
+   */
+  async listTransfersPage(
+    user: User,
+    query: PageQuery & { q?: string; status?: string; school_id?: string },
+  ): Promise<PageResult<FeeTransfer> & { schools: Array<{ id: string; name: string }>; amount_total: string }> {
+    if (!isPlatformOperator(user) && user.role !== 'admin') {
+      throw new ForbiddenException('Not allowed');
+    }
+    const { page, limit } = parsePageQuery(query);
+    const emptySchools: Array<{ id: string; name: string }> = [];
+    if (!isPlatformOperator(user) && user.school_id == null) {
+      return { ...buildPage([], 0, 1, limit), schools: emptySchools, amount_total: '0' };
+    }
+
+    const qb = this.transferRepo.createQueryBuilder('t');
+    if (isPlatformOperator(user)) {
+      const requested = (query.school_id || '').trim();
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requested)) {
+        qb.where('t.school_id = :schoolId', { schoolId: requested });
+      }
+    } else {
+      qb.where('t.school_id = :schoolId', { schoolId: String(user.school_id) });
+    }
+    if (query.status && query.status !== 'all') {
+      qb.andWhere('t.status = :status', { status: query.status });
+    }
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `(
+          LOWER(COALESCE(t.reference, '')) LIKE :term
+          OR CAST(t.total_amount AS text) LIKE :term
+          OR EXISTS (
+            SELECT 1 FROM schools sch
+            WHERE sch.id = t.school_id AND LOWER(COALESCE(sch.name, '')) LIKE :term
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM fee_transfer_lines l
+            INNER JOIN student_fee_payments pay ON pay.id = l.payment_id
+            INNER JOIN students st ON st.id = pay.student_id
+            WHERE l.transfer_id = t.id
+              AND LOWER(CONCAT_WS(' ', st."firstName", st."secondName", st."lastName")) LIKE :term
+          )
+        )`,
+        { term },
+      );
+    }
+
+    const total = await qb.clone().getCount();
+    const sumRow = await qb
+      .clone()
+      .select('COALESCE(SUM(t.total_amount), 0)', 'amount_total')
+      .getRawOne<{ amount_total: string }>();
+    const safePage = clampPage(page, total, limit);
+    const idRows = await qb
+      .clone()
+      .select('t.id', 'id')
+      .orderBy('t.created_at', 'DESC')
+      .addOrderBy('t.id', 'ASC')
+      .offset((safePage - 1) * limit)
+      .limit(limit)
+      .getRawMany<{ id: string }>();
+    const ids = idRows.map((r) => r.id);
+    let items: FeeTransfer[] = [];
+    if (ids.length) {
+      const loaded = await this.transferRepo.find({
+        where: { id: In(ids) },
+        relations: ['school', 'createdByUser', 'reviewedByUser', 'lines', 'lines.payment', 'lines.payment.student'],
+      });
+      const byId = new Map(loaded.map((row) => [row.id, row]));
+      items = ids.map((id) => byId.get(id)).filter((row): row is FeeTransfer => !!row);
+    }
+
+    let schools = emptySchools;
+    if (isPlatformOperator(user)) {
+      schools = await this.transferRepo.manager.query(
+        `SELECT DISTINCT s.id, s.name
+         FROM fee_transfers t
+         INNER JOIN schools s ON s.id = t.school_id
+         ORDER BY s.name ASC`,
+      );
+    }
+    return {
+      ...buildPage(items, total, safePage, limit),
+      schools,
+      amount_total: String(sumRow?.amount_total ?? '0'),
+    };
   }
 
   async submitOffline(

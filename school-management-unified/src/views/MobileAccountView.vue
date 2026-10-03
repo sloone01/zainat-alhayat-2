@@ -24,24 +24,59 @@
         <button type="button" class="fk-btn fk-btn--pearl w-full text-red-700 ring-red-200" @click="logout">
           {{ $t('dashboard.signOut') }}
         </button>
+        <button
+          type="button"
+          class="fk-btn fk-btn--pearl mt-3 w-full text-red-700 ring-red-200"
+          @click="showDelete = !showDelete"
+        >
+          {{ $t('mobileNav.deleteAccount') }}
+        </button>
+        <form v-if="showDelete" class="mt-4 space-y-3" @submit.prevent="deleteAccount">
+          <div>
+            <label for="delete-account-password" class="mb-1.5 block text-xs font-medium text-gray-600">
+              {{ $t('mobileNav.deleteAccountPassword') }}
+            </label>
+            <input
+              id="delete-account-password"
+              v-model="deletePassword"
+              type="password"
+              autocomplete="current-password"
+              class="fk-field w-full"
+              required
+            />
+          </div>
+          <button type="submit" class="fk-btn fk-btn--primary w-full" :disabled="deleting">
+            {{ deleting ? $t('mobileNav.deleteAccountWorking') : $t('mobileNav.deleteAccountConfirm') }}
+          </button>
+        </form>
+        <p class="mt-4 text-center text-xs text-gray-500">
+          <router-link to="/privacy" class="underline">{{ $t('login.privacy') }}</router-link>
+          <span aria-hidden="true"> · </span>
+          <router-link to="/terms" class="underline">{{ $t('login.terms') }}</router-link>
+        </p>
       </div>
     </div>
   </DashboardLayout>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
-import { authService } from '@/services'
+import { useFeedback } from '@/composables/useFeedback'
+import { authService, type AuthError } from '@/services'
 import { resolveMobileAppFlavor, resolveMobilePersona } from '@/navigation/mobile-bottom-nav'
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
+const showDelete = ref(false)
+const deletePassword = ref('')
+const deleting = ref(false)
 
 const user = computed(() => authService.getStoredUser())
 const persona = computed(() => resolveMobilePersona(user.value))
@@ -68,5 +103,31 @@ const roleLabel = computed(() => {
 async function logout() {
   await authService.logout()
   router.push('/login')
+}
+
+async function deleteAccount() {
+  const password = deletePassword.value
+  if (!password) return
+  const ok = await feedback.confirm({
+    title: t('mobileNav.deleteAccount'),
+    message: t('mobileNav.deleteAccountWarning'),
+    confirmLabel: t('mobileNav.deleteAccountConfirm'),
+    cancelLabel: t('common.cancel'),
+    danger: true,
+  })
+  if (!ok) return
+  deleting.value = true
+  try {
+    await authService.deleteAccount(password)
+    await authService.logout()
+    router.push('/login')
+  } catch (err) {
+    const message = String((err as AuthError)?.message || '')
+    if (/password/i.test(message)) feedback.error(t('mobileNav.deleteAccountWrongPassword'))
+    else if (/cannot be deleted/i.test(message)) feedback.error(t('mobileNav.deleteAccountBlocked'))
+    else feedback.error(t('mobileNav.deleteAccountFailed'))
+  } finally {
+    deleting.value = false
+  }
 }
 </script>

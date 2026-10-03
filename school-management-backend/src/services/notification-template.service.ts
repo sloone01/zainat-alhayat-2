@@ -181,7 +181,7 @@ export class NotificationTemplateService {
     return {
       schoolName,
       schoolLogo: schoolLogoUrl,
-      schoolLogoHtml: buildSchoolLogoHtml(schoolLogo, schoolName),
+      schoolLogoHtml: buildSchoolLogoHtml(schoolLogo, schoolName, { header: true }),
       footerText:
         school?.address?.trim() ||
         'Thank you for your trust. For questions, reply to this email or contact the school office.',

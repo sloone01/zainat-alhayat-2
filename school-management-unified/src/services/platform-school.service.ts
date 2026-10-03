@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface RegisteredSchoolOwner {
   id: string
@@ -52,6 +53,13 @@ export interface RegisteredSchool {
 class PlatformSchoolService extends BaseApiService {
   async listRegistered(): Promise<RegisteredSchool[]> {
     return this.get('/platform/schools')
+  }
+
+  async listRegisteredPage(params: { page: number; limit: number; q?: string; status?: string }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status && params.status !== 'all') query.status = params.status
+    return this.get<PageResult<RegisteredSchool>>('/platform/schools', query)
   }
 
   async getOne(id: string): Promise<RegisteredSchool> {

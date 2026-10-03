@@ -1,3 +1,5 @@
+import type { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
+
 /**
  * Shared server-side paging contract. Every list endpoint answers paged when the
  * request carries `page`, otherwise it keeps its legacy array response, so old
@@ -50,4 +52,26 @@ export function clampPage(page: number, total: number, limit: number): number {
 export function likeTerm(q: string | undefined | null): string | null {
   const trimmed = (q || '').trim().toLowerCase();
   return trimmed ? `%${trimmed}%` : null;
+}
+
+/**
+ * Count, clamp the page, then skip/take.
+ * The builder must not already have skip/take. Clone is used so getCount()
+ * cannot strip the caller's order. One-to-many joins make getCount() too high —
+ * page distinct ids first in that case, then load the page.
+ */
+export async function paginateQueryBuilder<T extends ObjectLiteral>(
+  qb: SelectQueryBuilder<T>,
+  query: PageQuery,
+  defaultLimit = DEFAULT_PAGE_LIMIT,
+): Promise<PageResult<T>> {
+  const { page, limit } = parsePageQuery(query, defaultLimit);
+  const total = await qb.clone().getCount();
+  const safePage = clampPage(page, total, limit);
+  const items = await qb
+    .clone()
+    .skip((safePage - 1) * limit)
+    .take(limit)
+    .getMany();
+  return buildPage(items, total, safePage, limit);
 }

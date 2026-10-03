@@ -20,7 +20,7 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('platformCustomRequests.listHeading') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('platformCustomRequests.count', { count: filtered.length }) }}
+              {{ $t('platformCustomRequests.count', { count: total }) }}
             </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
@@ -40,7 +40,7 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <div v-else-if="!filtered.length" class="fk-empty">
+          <div v-else-if="total === 0" class="fk-empty">
             <h3 class="text-sm font-medium text-fikr-ink">{{ $t('platformCustomRequests.empty') }}</h3>
             <p class="mt-1 text-sm text-fikr-ink-soft">{{ $t('platformCustomRequests.emptyHint') }}</p>
           </div>
@@ -157,7 +157,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filtered.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -168,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -183,7 +183,7 @@ import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import {
   schoolSubscriptionService,
   type CustomPlanRequest,
@@ -195,27 +195,26 @@ const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
 const isRTL = computed(() => locale.value === 'ar')
 
-const loading = ref(true)
 const error = ref('')
-const rows = ref<CustomPlanRequest[]>([])
 const statusFilter = ref<'all' | CustomPlanRequestStatus>('all')
 const activeMenuId = ref<string | null>(null)
 
-const filtered = computed(() => {
-  if (statusFilter.value === 'all') return rows.value
-  return rows.value.filter((r) => r.status === statusFilter.value)
-})
-
 const {
+  items: paginated,
+  total,
+  loading,
   currentPage,
-  paginatedItems: paginated,
   totalPages,
   goToPage,
-} = useClientPagination(filtered)
-
-watch(statusFilter, () => {
-  currentPage.value = 1
-})
+} = useServerPagination(
+  (params) => schoolSubscriptionService.listCustomPlanRequestsPage(params),
+  {
+    filters: () => ({ status: statusFilter.value }),
+    onError: (e) => {
+      error.value = (e as { message?: string })?.message || t('platformCustomRequests.loadError')
+    },
+  },
+)
 
 function schoolInitial(row: CustomPlanRequest) {
   const name = (row.school_name_ar || row.school_name || '').trim()
@@ -258,22 +257,8 @@ function openRequest(id: string) {
   void router.push({ name: 'platform-custom-plan-request', params: { id } })
 }
 
-async function load() {
-  loading.value = true
-  error.value = ''
-  try {
-    rows.value = await schoolSubscriptionService.listCustomPlanRequests()
-  } catch (e: unknown) {
-    error.value = (e as { message?: string })?.message || t('platformCustomRequests.loadError')
-    rows.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  void load()
 })
 
 onUnmounted(() => {

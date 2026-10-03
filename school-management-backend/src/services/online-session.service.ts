@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { buildPage, clampPage, parsePageQuery, wantsPage } from '../common/pagination';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { OnlineVideoSession } from '../entities/online-video-session.entity';
@@ -430,10 +431,28 @@ export class OnlineSessionService {
       qb.andWhere('session.session_date <= :toDate', { toDate: query.to_date });
     }
 
-    qb.orderBy('session.session_date', 'DESC').addOrderBy('schedule.start_time', 'DESC');
+    qb.orderBy('session.session_date', 'DESC')
+      .addOrderBy('schedule.start_time', 'DESC')
+      .addOrderBy('session.id', 'ASC');
 
-    const sessions = await qb.getMany();
-    if (!sessions.length) return [];
+    let sessions: OnlineVideoSession[];
+    let pageMeta: { total: number; page: number; limit: number } | null = null;
+    if (wantsPage(query.page)) {
+      const parsed = parsePageQuery(query);
+      const total = await qb.clone().getCount();
+      const safePage = clampPage(parsed.page, total, parsed.limit);
+      sessions = await qb
+        .clone()
+        .skip((safePage - 1) * parsed.limit)
+        .take(parsed.limit)
+        .getMany();
+      pageMeta = { total, page: safePage, limit: parsed.limit };
+    } else {
+      sessions = await qb.getMany();
+    }
+    if (!sessions.length) {
+      return pageMeta ? buildPage([], pageMeta.total, pageMeta.page, pageMeta.limit) : [];
+    }
 
     const sessionIds = sessions.map((s) => s.id);
     const presenceCounts = await this.presenceRepo
@@ -458,7 +477,7 @@ export class OnlineSessionService {
       bySession.set(row.online_session_id, list);
     }
 
-    return sessions.map((session) => {
+    const items = sessions.map((session) => {
       const sch = session.schedule;
       const finalized = Boolean(session.attendance_finalized_at);
       const rows = bySession.get(session.id) ?? [];
@@ -497,6 +516,7 @@ export class OnlineSessionService {
         pending_count: pending,
       };
     });
+    return pageMeta ? buildPage(items, pageMeta.total, pageMeta.page, pageMeta.limit) : items;
   }
 
   /** Queue the template send. SMTP runs after the HTTP response. */

@@ -13,7 +13,7 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('activities.listHeading') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('activities.activitiesCount', { count: filteredActivities.length }) }}
+              {{ $t('activities.activitiesCount', { count: activityTotal }) }}
             </p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -40,7 +40,7 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="filteredActivities.length">
+          <template v-else-if="activityTotal > 0">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <template v-for="activity in paginatedActivities" :key="activity.id">
                 <article
@@ -293,13 +293,13 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredActivities.length > 0"
+              :show="activityTotal > 0"
               @update:page="goToPage"
             />
           </template>
 
           <div
-            v-else-if="activities.length === 0"
+            v-else-if="!hasActiveFilters"
             class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
           >
             <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-fikr-mist text-navy-800">
@@ -590,7 +590,7 @@ import ActivityParentApprovalLetterPanel from '@/components/ActivityParentApprov
 import MessageLetterApprovalTrackingSheet from '@/components/MessageLetterApprovalTrackingSheet.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import activityService, {
   type Activity,
   type CreateActivityRequest,
@@ -609,14 +609,12 @@ const { locale, t } = useI18n()
 const feedback = useFeedback()
 const { viewMode, isCards } = useListViewMode()
 
-const loading = ref(false)
 const submitting = ref(false)
 const showCreateModal = ref(false)
 const showViewModal = ref(false)
 const showFilters = ref(false)
 const selectedActivity = ref<Activity | null>(null)
 const error = ref('')
-const activities = ref<Activity[]>([])
 const imageUrls = ref<Record<string, string>>({})
 const imageFile = ref<File | null>(null)
 const formImagePreview = ref('')
@@ -772,29 +770,35 @@ const activityMonthShort = (activity: Activity) => {
   }
 }
 
-const filteredActivities = computed(() =>
-  activities.value.filter(activity => {
-    const matchesStatus =
-      filters.value.status === 'all' || getActivityStatus(activity) === filters.value.status
-    const matchesType =
-      !filters.value.activityType || activity.activity_type === filters.value.activityType
-    const matchesGroup =
-      !filters.value.groupId || String(activity.group_id ?? '') === String(filters.value.groupId)
-    return matchesStatus && matchesType && matchesGroup
-  }),
-)
-
 const {
+  items: paginatedActivities,
+  total: activityTotal,
+  loading,
   currentPage,
-  paginatedItems: paginatedActivities,
   totalPages,
   goToPage,
-} = useClientPagination(filteredActivities)
-
-watch(
-  () => [filters.value.status, filters.value.activityType, filters.value.groupId],
-  () => {
-    currentPage.value = 1
+  reload: reloadActivities,
+} = useServerPagination<Activity, { status: string; activity_type: string; group_id: string; school_id?: string }>(
+  async (params) => {
+    return activityService.listPage({
+      school_id: params.school_id,
+      status: params.status,
+      activity_type: params.activity_type || undefined,
+      group_id: params.group_id || undefined,
+      page: params.page,
+      limit: params.limit,
+    })
+  },
+  {
+    filters: () => ({
+      status: filters.value.status,
+      activity_type: filters.value.activityType,
+      group_id: filters.value.groupId,
+      school_id: schoolId.value,
+    }),
+    onError: (err) => {
+      error.value = err instanceof Error ? err.message : 'Failed to load activities'
+    },
   },
 )
 
@@ -941,6 +945,10 @@ function clearPickedImage() {
   if (input) input.value = ''
 }
 
+watch(paginatedActivities, (list) => {
+  void loadActivityImages(list)
+})
+
 async function loadActivityImages(list: Activity[]) {
   const next: Record<string, string> = {}
   await Promise.all(
@@ -1004,21 +1012,8 @@ const viewActivity = (activity: Activity) => {
 }
 
 const loadActivities = async () => {
-  loading.value = true
   error.value = ''
-  try {
-    let list = await activityService.getAll({ school_id: schoolId.value })
-    if (currentUser.value?.role === 'teacher') {
-      const allowed = new Set(groups.value.map((g) => String(g.id)))
-      list = list.filter((a) => a.group_id != null && allowed.has(String(a.group_id)))
-    }
-    activities.value = list
-    void loadActivityImages(list)
-  } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to load activities'
-  } finally {
-    loading.value = false
-  }
+  await reloadActivities()
 }
 
 const loadGroups = async () => {
@@ -1170,7 +1165,6 @@ onMounted(async () => {
   } catch {
     templateSampleVars.value = {}
   }
-  await loadActivities()
 })
 
 onUnmounted(() => {

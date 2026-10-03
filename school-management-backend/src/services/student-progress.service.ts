@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { StudentProgress } from '../entities/student-progress.entity';
 import { Staff } from '../entities/staff.entity';
 import { User } from '../entities/user.entity';
@@ -129,9 +129,13 @@ export class StudentProgressService {
     });
   }
 
-  async findByCourse(courseId: string): Promise<StudentProgress[]> {
+  async findByCourse(courseId: string, studentIds?: string[]): Promise<StudentProgress[]> {
+    if (studentIds && !studentIds.length) return [];
     return await this.progressRepository.find({
-      where: { course_id: courseId },
+      where: {
+        course_id: courseId,
+        ...(studentIds ? { student_id: In(studentIds) } : {}),
+      },
       relations: ['student', 'milestone', 'milestone.phase', 'updater'],
       order: { student: { firstName: 'ASC' }, milestone: { order: 'ASC' } },
     });

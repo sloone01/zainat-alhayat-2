@@ -61,33 +61,19 @@ permanent — future `railway up` for zinat-frontend should just work. (The earl
 `railway config`/IaC CLI-version-check bug and a classifier block on a different
 mutation are no longer relevant — this was simply the wrong field name.)
 
-## Server-side pagination migration — IN PROGRESS (2026-09-23)
+## Server-side pagination migration — DONE (2026-10-03)
 Rule (user): every list paginates on the server; `useClientPagination` (fetch-all then
-slice in the browser) is being retired. Contract: when the request has `page`, the
-endpoint answers `{ items, total, page, limit, pages }` (helper
-`backend/src/common/pagination.ts`), otherwise the legacy array — so nothing else breaks.
-Frontend: `composables/useServerPagination.ts` (+ `fetchAllPages` for exports).
+slice in the browser) is retired from product screens. Contract: when the request has
+`page`, the endpoint answers `{ items, total, page, limit, pages }` (helper
+`backend/src/common/pagination.ts`), otherwise the legacy array — so dropdowns and
+other callers stay compatible. Frontend: `composables/useServerPagination.ts`
+(+ `fetchAllPages` for exports).
 
-DONE: `/students` (+ `q`, `group_id`, `bus_id`, `age_group`), `/users` (+ `q`, `role`,
-`status`, `created_within`, `audience`), `/enrollments` (+ `q`, `status`, `grade`) and
-the three views StudentManagementView, UserManagementView, EnrollmentManagementView.
+List screens (students, users, enrollments, catalogs, courses, attendance, fees
+queues, platform lists, parent plans/activities/progress/fees/attendance, meetings,
+letters, approvals, reports) send `page`. `useClientPagination` remains in the repo
+but no view imports it.
 
-Known gap: the students "status" filter is not sent to the API — `students` has no
-status column yet (draft/active/inactive feature pending); client-side it was a no-op too.
-
-REMAINING (41 views, still on `useClientPagination`; each needs a paged branch in its
-controller + the view swap): AttendanceManagementView, SessionAttendanceManagementView,
-ParentAttendanceView (API already offset/limit — view re-paginates), CourseEnrollmentView,
-TeacherProgressView, TeacherGradedMarksGridView, FeePendingReceiptsView,
-PlatformFeePaymentsView, FeePendingTransfersView, PlatformFeeTransfersView,
-DueInstallmentsReportView, ParentFeesView (x2), ParentProgressView,
-ParentCourseEnrollmentView, ParentWeeklyActivitiesView, ParentAssignedActivitiesView,
-ParentWeeklyPlansView, ActivityManagementView, AdminMessageLettersView, ApprovalInboxView,
-CourseMaterialsView, CourseManagementView, GradedCoursesListView, GroupManagementView,
-PaymentCourseFeesView, PaymentLevelFeesView, PaymentFeePackagesView, InstallmentPlansView,
-PaymentChargeCatalogView, PaymentDiscountCatalogView, PaymentExtraCatalogView,
-PaymentInclusionCatalogView, TransportationManagementView, GradeLevelsView,
-RoleManagementView, AdminMeetingRoomsView, MyMeetingRoomsView, PlatformSchoolsView,
-PlatformPlansView, PlatformCustomPlanRequestsView.
-Suggested order: attendance (2) → course enrollment → fees lists (5) → parent dashboard
-views (fed by one `/parents/dashboard/my-data` blob) → the small catalogs.
+Still a full download, on purpose: dropdowns and forms that call `getAll` / list
+without `page` (class pickers, user pickers, schedules). `/students/payments` still
+loads every student via `getAll()` and has no pager.

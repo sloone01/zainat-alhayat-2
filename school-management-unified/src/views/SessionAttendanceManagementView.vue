@@ -13,8 +13,8 @@
           <div class="min-w-0">
             <h2 class="fk-display truncate text-lg font-bold leading-7 text-navy-800">{{ $t('sessionAttendance.title') }}</h2>
             <p class="mt-0.5 text-xs text-fikr-ink-muted">
-              <template v-if="records.length">
-                {{ $t('common.paginationShowing', { from: paginationFrom, to: paginationTo, total: records.length }) }}
+              <template v-if="recordTotal">
+                {{ $t('common.paginationShowing', { from: paginationFrom, to: paginationTo, total: recordTotal }) }}
               </template>
               <template v-else>{{ $t('sessionAttendance.emptyMeta') }}</template>
             </p>
@@ -34,7 +34,7 @@
         </div>
 
         <div
-          v-else-if="!records.length"
+          v-else-if="!recordTotal"
           class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center"
         >
           <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-fikr-mist text-navy-800">
@@ -158,7 +158,7 @@
           <FikrPagination
             :page="currentPage"
             :pages="totalPages"
-            :show="records.length > 0"
+            :show="recordTotal > 0"
             @update:page="goToPage"
           />
         </template>
@@ -196,7 +196,6 @@
               id="sa-group"
               v-model="selectedGroupId"
               class="fk-field"
-              @change="onFiltersChange"
             >
               <option value="">{{ $t('sessionAttendance.allGroups') }}</option>
               <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
@@ -209,7 +208,6 @@
               v-model="fromDate"
               type="date"
               class="fk-field"
-              @change="onFiltersChange"
             />
           </div>
           <div class="fk-form__row">
@@ -219,7 +217,6 @@
               v-model="toDate"
               type="date"
               class="fk-field"
-              @change="onFiltersChange"
             />
           </div>
         </div>
@@ -247,7 +244,7 @@ import SessionAttendanceSummaryBadges from '@/components/SessionAttendanceSummar
 import groupService, { type Group } from '@/services/group.service'
 import scheduleService from '@/services/schedule.service'
 import { onlineSessionService, type SessionAttendanceRecordRow } from '@/services/online-session.service'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import FikrLoader from '@/components/FikrLoader.vue'
 import { routePageLoading } from '@/router/route-loading'
 
@@ -269,8 +266,6 @@ const groups = ref<Group[]>([])
 const selectedGroupId = ref('')
 const fromDate = ref('')
 const toDate = ref('')
-const records = ref<SessionAttendanceRecordRow[]>([])
-const loading = ref(false)
 const error = ref('')
 const showFilters = ref(false)
 
@@ -292,13 +287,40 @@ const detailPresence = ref<
 >([])
 
 const {
+  items: paginatedRecords,
+  total: recordTotal,
+  loading,
   currentPage,
-  paginatedItems: paginatedRecords,
   totalPages,
   paginationFrom,
   paginationTo,
   goToPage,
-} = useClientPagination(records)
+  reload: reloadRecords,
+} = useServerPagination<
+  SessionAttendanceRecordRow,
+  { school_id?: string; group_id: string; from_date: string; to_date: string }
+>(
+  (params) =>
+    onlineSessionService.listAttendanceRecordsPage({
+      school_id: params.school_id,
+      group_id: params.group_id || undefined,
+      from_date: params.from_date || undefined,
+      to_date: params.to_date || undefined,
+      page: params.page,
+      limit: params.limit,
+    }),
+  {
+    filters: () => ({
+      school_id: schoolId.value,
+      group_id: selectedGroupId.value,
+      from_date: fromDate.value,
+      to_date: toDate.value,
+    }),
+    onError: (err) => {
+      error.value = err instanceof Error ? err.message : t('sessionAttendance.loadError')
+    },
+  },
+)
 
 function toggleMenu(id: string) {
   activeMenuId.value = activeMenuId.value === id ? null : id
@@ -308,10 +330,10 @@ function closeMenu() {
   activeMenuId.value = null
 }
 
-function onFiltersChange() {
-  currentPage.value = 1
-  void loadRecords()
-}
+watch([selectedGroupId, fromDate, toDate], () => {
+  expandedId.value = null
+  closeMenu()
+})
 
 const hasActiveFilters = computed(() =>
   Boolean(selectedGroupId.value) || fromDate.value !== defaultFromDate() || toDate.value !== todayKey(),
@@ -321,7 +343,6 @@ function clearFilters() {
   selectedGroupId.value = ''
   fromDate.value = defaultFromDate()
   toDate.value = todayKey()
-  onFiltersChange()
 }
 
 function defaultFromDate() {
@@ -382,23 +403,10 @@ async function loadGroups() {
 }
 
 async function loadRecords() {
-  loading.value = true
   error.value = ''
   expandedId.value = null
   closeMenu()
-  try {
-    records.value = await onlineSessionService.listAttendanceRecords({
-      school_id: schoolId.value,
-      group_id: selectedGroupId.value || undefined,
-      from_date: fromDate.value || undefined,
-      to_date: toDate.value || undefined,
-    })
-  } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : t('sessionAttendance.loadError')
-    records.value = []
-  } finally {
-    loading.value = false
-  }
+  await reloadRecords()
 }
 
 async function onToggleDetails(row: SessionAttendanceRecordRow) {
@@ -440,7 +448,6 @@ onMounted(async () => {
   fromDate.value = defaultFromDate()
   toDate.value = todayKey()
   await loadGroups()
-  await loadRecords()
 })
 
 onUnmounted(() => {

@@ -6,6 +6,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import {
+  buildPage,
+  clampPage,
+  parsePageQuery,
+  wantsPage,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { DirectChatThread } from '../entities/direct-chat-thread.entity';
 import { DirectChatMessage } from '../entities/direct-chat-message.entity';
@@ -852,7 +860,11 @@ export class DirectChatService {
   }
 
   /** Approval requests received by this user (not sent by them). */
-  async listApprovalInbox(user: User, locale: LetterLocale = 'ar'): Promise<DirectApprovalInboxRow[]> {
+  async listApprovalInbox(
+    user: User,
+    locale: LetterLocale = 'ar',
+    paging?: PageQuery,
+  ): Promise<DirectApprovalInboxRow[] | (PageResult<DirectApprovalInboxRow> & { pending_total: number })> {
     type RawRow = {
       message_id: string;
       thread_id: string;
@@ -869,8 +881,7 @@ export class DirectChatService {
       sender_email: string | null;
     };
 
-    const rows: RawRow[] = await this.messageRepo.manager.query(
-      `
+    const unionSql = `
       SELECT
         m.id AS message_id,
         m.thread_id AS thread_id,
@@ -930,10 +941,39 @@ export class DirectChatService {
           OR (m.metadata->'requiresApproval')::text = 'true'
           OR m.metadata->'approval' IS NOT NULL
         )
-      ORDER BY sent_at DESC
-      `,
-      [user.id],
-    );
+    `;
+
+    const loadRows = async (sql: string, args: unknown[]) =>
+      this.messageRepo.manager.query(sql, args) as Promise<RawRow[]>;
+
+    let rows: RawRow[];
+    let pageMeta: { total: number; safePage: number; limit: number; pending_total: number } | null = null;
+    if (paging && wantsPage(paging.page)) {
+      const { page, limit } = parsePageQuery(paging);
+      const counts: Array<{ total: string; pending_total: string }> =
+        await this.messageRepo.manager.query(
+          `SELECT COUNT(*)::int AS total,
+             COUNT(*) FILTER (
+               WHERE COALESCE(metadata->'approval'->>'status', 'pending') NOT IN ('approved', 'rejected')
+             )::int AS pending_total
+           FROM (${unionSql}) inbox`,
+          [user.id],
+        );
+      const total = Number(counts[0]?.total) || 0;
+      const pending_total = Number(counts[0]?.pending_total) || 0;
+      const safePage = clampPage(page, total, limit);
+      rows = await loadRows(
+        `SELECT * FROM (${unionSql}) inbox
+         ORDER BY
+           CASE WHEN COALESCE(inbox.metadata->'approval'->>'status', '') IN ('approved', 'rejected') THEN 1 ELSE 0 END,
+           inbox.sent_at DESC
+         LIMIT $2 OFFSET $3`,
+        [user.id, limit, (safePage - 1) * limit],
+      );
+      pageMeta = { total, safePage, limit, pending_total };
+    } else {
+      rows = await loadRows(`${unionSql} ORDER BY sent_at DESC`, [user.id]);
+    }
 
     const mapped = rows.map((r) => {
       const meta =
@@ -999,6 +1039,12 @@ export class DirectChatService {
       return b.sent_at.localeCompare(a.sent_at);
     });
 
+    if (pageMeta) {
+      return {
+        ...buildPage(enriched, pageMeta.total, pageMeta.safePage, pageMeta.limit),
+        pending_total: pageMeta.pending_total,
+      };
+    }
     return enriched;
   }
 
@@ -1100,14 +1146,22 @@ export class DirectChatService {
     const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
     if (!school?.email && !school?.phone) return;
     const title = String(meta['title'] || meta['activityTitle'] || 'Letter');
+    const locale = actor.preferred_language === 'en' ? 'en' : 'ar';
     await this.notifications.notifySafe({
       schoolId,
       templateKey: NOTIFICATION_TEMPLATE_KEYS.LETTER_APPROVAL_RESOLVED,
-      locale: 'ar',
+      locale,
       variables: {
         recipientName: `${actor.firstName} ${actor.lastName}`.trim() || actor.email,
         title,
-        decision: decision === 'approve' ? 'وافق على' : 'رفض',
+        decision:
+          decision === 'approve'
+            ? locale === 'ar'
+              ? 'وافق على'
+              : 'approved'
+            : locale === 'ar'
+              ? 'رفض'
+              : 'rejected',
       },
       recipients: [{ email: school.email, phone: school.phone, name: school.name }],
     });

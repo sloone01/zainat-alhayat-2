@@ -97,6 +97,24 @@ export class AuthController {
     };
   }
 
+  @Post('delete-account')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async deleteAccount(
+    @Request() req: { user: User },
+    @Body() body: { password?: string },
+  ) {
+    const password = String(body?.password || '');
+    if (!password) {
+      throw new BadRequestException('Password is required');
+    }
+    return {
+      success: true,
+      data: await this.authService.deleteOwnAccount(req.user.id, password),
+      message: 'Account deleted',
+    };
+  }
+
   @Post('deactivate')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)

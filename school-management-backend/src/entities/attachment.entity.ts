@@ -27,6 +27,7 @@ export const ATTACHMENT_ENTITY_TYPES = [
   'payment',
   'bus',
   'weekly_session_plan',
+  'report_template',
 ] as const;
 export type AttachmentEntityType = (typeof ATTACHMENT_ENTITY_TYPES)[number];
 

@@ -111,7 +111,7 @@
               </div>
             </section>
 
-            <section v-if="sheet.installments?.length" :aria-label="$t('feesV2.schedule')">
+            <section v-if="mobileTotal > 0" :aria-label="$t('feesV2.schedule')">
               <h2 class="fk-display mb-1 text-xl font-bold leading-7 text-navy-800">{{ $t('feesV2.schedule') }}</h2>
               <div class="flex flex-col">
                 <div
@@ -163,7 +163,7 @@
               <FikrPagination
                 :page="mobileInstallmentPage"
                 :pages="mobileInstallmentPages"
-                :show="(sheet.installments?.length || 0) > 0"
+                :show="mobileTotal > 0"
                 @update:page="goToMobileInstallmentPage"
               />
             </section>
@@ -272,7 +272,7 @@
             </div>
 
             <div class="px-4 pb-4 sm:px-6 xl:px-8">
-              <div v-if="!filteredDesktopRows.length" class="py-16 text-center text-sm text-fikr-ink-muted">
+              <div v-if="desktopTotal === 0" class="py-16 text-center text-sm text-fikr-ink-muted">
                 {{ $t('parentFees.desktopEmptyBucket') }}
               </div>
               <div v-else class="-mx-4 overflow-x-auto sm:mx-0">
@@ -337,7 +337,7 @@
               <FikrPagination
                 :page="desktopPage"
                 :pages="desktopPages"
-                :show="filteredDesktopRows.length > 0"
+                :show="desktopTotal > 0"
                 @update:page="goToDesktopPage"
               />
             </div>
@@ -505,7 +505,14 @@ import FikrDialog from '@/components/FikrDialog.vue'
 import ThawaniCheckoutSheet from '@/components/ThawaniCheckoutSheet.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { parentService } from '@/services/parent.service'
-import { feesV2Service, type ChargeSheetInstallment, type FeePayment, type StudentChargeSheet } from '@/services/fees-v2.service'
+import {
+  feesV2Service,
+  type ChargeSheetInstallment,
+  type FeePayment,
+  type ParentDesktopInstallmentRow,
+  type ParentInstallmentSummary,
+  type StudentChargeSheet,
+} from '@/services/fees-v2.service'
 import {
   checkoutReturnUrls,
   isNativeCheckout,
@@ -516,7 +523,7 @@ import {
 } from '@/utils/thawaniCheckout'
 import FikrLoader from '@/components/FikrLoader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 
 const { locale, t } = useI18n()
 const route = useRoute()
@@ -572,24 +579,6 @@ interface PricedRow {
   amount: number | null
 }
 
-interface ChildFeeBundle {
-  studentId: string
-  sheet: StudentChargeSheet | null
-  payments: FeePayment[]
-}
-
-interface DesktopFeeRow {
-  key: string
-  studentId: string
-  studentName: string
-  metaLine: string
-  installment: ChargeSheetInstallment
-  remaining: number
-  bucket: Exclude<DesktopBucket, 'all'>
-}
-
-const familyBundles = ref<ChildFeeBundle[]>([])
-const desktopLoading = ref(false)
 const desktopError = ref('')
 const desktopBucket = ref<DesktopBucket>('all')
 const desktopChildFilter = ref<string>('all')
@@ -626,17 +615,28 @@ const yearTotalLabel = computed(() => {
   return t('parentFees.yearTotal', { year }).replace(/\s+$/, '')
 })
 
-/** First installment the parent can settle right now — drives the balance-card CTA. */
-const nextPayable = computed(() => {
-  const rows = sheet.value?.installments || []
-  return rows.find((inst) => canSelectInstallment(inst)) || null
-})
+function emptyInstallmentSummary(): ParentInstallmentSummary {
+  return {
+    due_total: '0',
+    paid_total: '0',
+    late_amount: '0',
+    due_today_amount: '0',
+    pending_receipts: 0,
+    counts: { all: 0, late: 0, due: 0, partial: 0, upcoming: 0, wait: 0 },
+    child_dues: [],
+    next_payable: null,
+    late_promo: null,
+  }
+}
 
-/** Oldest overdue, still-payable installment — drives the dark late-notice card. */
-const overdueInstallment = computed(() => {
-  const rows = sheet.value?.installments || []
-  return rows.find((inst) => canSelectInstallment(inst) && isOverdue(inst)) || null
-})
+const mobileSummary = ref<ParentInstallmentSummary>(emptyInstallmentSummary())
+const desktopSummary = ref<ParentInstallmentSummary>(emptyInstallmentSummary())
+
+/** First installment the parent can settle right now — drives the balance-card CTA. */
+const nextPayable = computed(() => mobileSummary.value.next_payable?.installment ?? null)
+
+/** Oldest overdue installment — drives the dark late-notice card. */
+const overdueInstallment = computed(() => mobileSummary.value.late_promo?.installment ?? null)
 
 function buildPricedRows(s: StudentChargeSheet | null): PricedRow[] {
   if (!s) return []
@@ -703,95 +703,74 @@ function buildPricedRows(s: StudentChargeSheet | null): PricedRow[] {
 
 const pricedRows = computed(() => buildPricedRows(sheet.value))
 
-const scopedBundles = computed(() => {
-  if (desktopChildFilter.value === 'all') return familyBundles.value
-  return familyBundles.value.filter((b) => b.studentId === desktopChildFilter.value)
-})
-
-const familyDueTotal = computed(() =>
-  scopedBundles.value.reduce((sum, b) => sum + Number(b.sheet?.due_total || 0), 0),
-)
-
-const familyPaidTotal = computed(() =>
-  scopedBundles.value.reduce((sum, b) => sum + Number(b.sheet?.paid_total || 0), 0),
-)
-
-const desktopRows = computed<DesktopFeeRow[]>(() => {
-  const rows: DesktopFeeRow[] = []
-  for (const bundle of scopedBundles.value) {
-    const child = children.value.find((c) => c.id === bundle.studentId)
-    if (!child || !bundle.sheet) continue
-    const studentName = `${child.firstName} ${child.lastName}`.trim()
-    const group = child.groupNames || bundle.sheet.student?.paymentLevel?.name || ''
-    const plan = bundle.sheet.installmentPlan?.name || ''
-    const metaLine = [group, plan].filter(Boolean).join(' · ')
-    for (const inst of bundle.sheet.installments || []) {
-      const remaining = installmentRemaining(inst)
-      if (remaining <= 0) continue
-      rows.push({
-        key: `${bundle.studentId}-${inst.id}`,
-        studentId: bundle.studentId,
-        studentName,
-        metaLine,
-        installment: inst,
-        remaining,
-        bucket: desktopBucketFor(inst, bundle.payments),
-      })
-    }
-  }
-  rows.sort((a, b) => {
-    const rank = (bucket: DesktopFeeRow['bucket']) =>
-      bucket === 'late' ? 0 : bucket === 'due' ? 1 : bucket === 'partial' ? 2 : bucket === 'wait' ? 3 : 4
-    const diff = rank(a.bucket) - rank(b.bucket)
-    if (diff !== 0) return diff
-    return String(a.installment.due_date || '').localeCompare(String(b.installment.due_date || ''))
-  })
-  return rows
-})
-
-const filteredDesktopRows = computed(() => {
-  if (desktopBucket.value === 'all') return desktopRows.value
-  return desktopRows.value.filter((row) => row.bucket === desktopBucket.value)
-})
-
-const mobileInstallments = computed(() => sheet.value?.installments || [])
-
 const {
+  items: paginatedDesktopRows,
+  total: desktopTotal,
+  loading: desktopLoading,
   currentPage: desktopPage,
-  paginatedItems: paginatedDesktopRows,
   totalPages: desktopPages,
   goToPage: goToDesktopPage,
-} = useClientPagination(filteredDesktopRows)
+  reload: reloadDesktop,
+} = useServerPagination(
+  async (params) => {
+    desktopError.value = ''
+    const page = await feesV2Service.listMyInstallmentsPage({
+      ...params,
+      surface: 'desktop',
+      student_id: desktopChildFilter.value,
+      bucket: desktopBucket.value,
+    })
+    desktopSummary.value = page.summary
+    return {
+      ...page,
+      items: (page.items as ParentDesktopInstallmentRow[]).map((row) => ({
+        ...row,
+        metaLine: [row.levelName, row.planName].filter(Boolean).join(' · '),
+      })),
+    }
+  },
+  {
+    filters: () => ({
+      student_id: desktopChildFilter.value,
+      bucket: desktopBucket.value,
+    }),
+    enabled: () => children.value.length > 0,
+    onError: (e) => {
+      desktopError.value = localizedLoadError(e, 'parentFees.loadFailed')
+    },
+  },
+)
 
 const {
+  items: paginatedMobileInstallments,
+  total: mobileTotal,
   currentPage: mobileInstallmentPage,
-  paginatedItems: paginatedMobileInstallments,
   totalPages: mobileInstallmentPages,
   goToPage: goToMobileInstallmentPage,
-} = useClientPagination(mobileInstallments)
-
-const familyLateTotal = computed(() =>
-  desktopRows.value.filter((r) => r.bucket === 'late').reduce((sum, r) => sum + r.remaining, 0),
+  reload: reloadMobile,
+} = useServerPagination(
+  async (params) => {
+    const page = await feesV2Service.listMyInstallmentsPage({
+      ...params,
+      surface: 'mobile',
+      student_id: selectedId.value || undefined,
+    })
+    mobileSummary.value = page.summary
+    return { ...page, items: page.items as ChargeSheetInstallment[] }
+  },
+  {
+    filters: () => ({ student_id: selectedId.value || '' }),
+    enabled: () => Boolean(selectedId.value),
+  },
 )
 
-const familyDueTodayTotal = computed(() =>
-  desktopRows.value.filter((r) => r.bucket === 'due').reduce((sum, r) => sum + r.remaining, 0),
-)
+const familyDueTotal = computed(() => Number(desktopSummary.value.due_total || 0))
+const familyPaidTotal = computed(() => Number(desktopSummary.value.paid_total || 0))
+const familyLateTotal = computed(() => Number(desktopSummary.value.late_amount || 0))
+const familyDueTodayTotal = computed(() => Number(desktopSummary.value.due_today_amount || 0))
 
 const bucketChips = computed(() => {
-  const counts = {
-    all: desktopRows.value.length,
-    late: 0,
-    due: 0,
-    partial: 0,
-    upcoming: 0,
-  }
-  for (const row of desktopRows.value) {
-    if (row.bucket === 'late') counts.late += 1
-    else if (row.bucket === 'due') counts.due += 1
-    else if (row.bucket === 'partial') counts.partial += 1
-    else if (row.bucket === 'upcoming') counts.upcoming += 1
-  }
+  const counts = desktopSummary.value.counts
   return [
     { id: 'all' as const, label: t('reports.bucket_all'), count: counts.all },
     { id: 'late' as const, label: t('reports.bucket_late'), count: counts.late },
@@ -801,23 +780,9 @@ const bucketChips = computed(() => {
   ]
 })
 
-const desktopNextPayable = computed(() => {
-  const row =
-    desktopRows.value.find((r) => r.bucket === 'late' || r.bucket === 'due' || r.bucket === 'partial') ||
-    desktopRows.value.find((r) => r.bucket === 'upcoming') ||
-    null
-  if (!row) return null
-  return { studentId: row.studentId, installment: row.installment, remaining: row.remaining }
-})
-
-const desktopLatePromo = computed(() => desktopRows.value.find((r) => r.bucket === 'late') || null)
-
-const pendingReceiptCount = computed(() =>
-  scopedBundles.value.reduce(
-    (sum, b) => sum + b.payments.filter((p) => isSettlementPending(p.status)).length,
-    0,
-  ),
-)
+const desktopNextPayable = computed(() => desktopSummary.value.next_payable)
+const desktopLatePromo = computed(() => desktopSummary.value.late_promo)
+const pendingReceiptCount = computed(() => desktopSummary.value.pending_receipts)
 
 const desktopBreakdownChild = computed(() => {
   if (desktopChildFilter.value !== 'all') {
@@ -826,10 +791,27 @@ const desktopBreakdownChild = computed(() => {
   return children.value[0] || null
 })
 
+const breakdownSheet = ref<StudentChargeSheet | null>(null)
+watch(
+  () => desktopBreakdownChild.value?.id,
+  (id) => {
+    if (!id || id === selectedId.value) {
+      breakdownSheet.value = null
+      return
+    }
+    void feesV2Service.getStudentChargeSheet(id).then((s) => {
+      if (desktopBreakdownChild.value?.id === id) breakdownSheet.value = s
+    }).catch(() => {
+      if (desktopBreakdownChild.value?.id === id) breakdownSheet.value = null
+    })
+  },
+)
+
 const desktopBreakdownSheet = computed(() => {
   const id = desktopBreakdownChild.value?.id
   if (!id) return null
-  return familyBundles.value.find((b) => b.studentId === id)?.sheet || null
+  if (selectedId.value === id && sheet.value) return sheet.value
+  return breakdownSheet.value
 })
 
 const desktopPricedRows = computed(() => buildPricedRows(desktopBreakdownSheet.value))
@@ -837,11 +819,11 @@ const desktopBreakdownListTotal = computed(() => Number(desktopBreakdownSheet.va
 
 const familyChildSummaries = computed(() =>
   children.value.map((c) => {
-    const bundle = familyBundles.value.find((b) => b.studentId === c.id)
+    const due = desktopSummary.value.child_dues.find((row) => row.student_id === c.id)
     return {
       studentId: c.id,
       name: `${c.firstName} ${c.lastName}`.trim(),
-      due: Number(bundle?.sheet?.due_total || 0),
+      due: Number(due?.due_total || 0),
     }
   }),
 )
@@ -864,10 +846,6 @@ function installmentRemaining(inst: { amount_due: string; amount_paid: string })
   return Math.max(0, Number(inst.amount_due) - Number(inst.amount_paid))
 }
 
-function canSelectInstallment(inst: ChargeSheetInstallment) {
-  return installmentRemaining(inst) > 0 && !hasOpenInstallment(inst.id)
-}
-
 function parseDueDate(raw: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00`) : new Date(raw)
 }
@@ -882,12 +860,6 @@ function isOverdue(inst: ChargeSheetInstallment) {
   if (!inst.due_date || inst.status === 'paid') return false
   if (installmentRemaining(inst) <= 0) return false
   return parseDueDate(String(inst.due_date)).getTime() < startOfToday().getTime()
-}
-
-function isDueToday(inst: ChargeSheetInstallment) {
-  if (!inst.due_date || inst.status === 'paid') return false
-  if (installmentRemaining(inst) <= 0) return false
-  return parseDueDate(String(inst.due_date)).getTime() === startOfToday().getTime()
 }
 
 function overdueDays(inst: ChargeSheetInstallment) {
@@ -916,15 +888,6 @@ function settlementChipFromPayments(installmentId: string, list: FeePayment[]) {
   return 'open'
 }
 
-function desktopBucketFor(inst: ChargeSheetInstallment, list: FeePayment[]): Exclude<DesktopBucket, 'all'> {
-  const chip = settlementChipFromPayments(inst.id, list)
-  if (chip === 'waiting' || chip === 'checkout') return 'wait'
-  if (isOverdue(inst)) return 'late'
-  if (isDueToday(inst)) return 'due'
-  if (Number(inst.amount_paid) > 0) return 'partial'
-  return 'upcoming'
-}
-
 type RowState = 'paid' | 'late' | 'wait' | 'payable' | 'future'
 
 function rowState(inst: ChargeSheetInstallment): RowState {
@@ -932,7 +895,7 @@ function rowState(inst: ChargeSheetInstallment): RowState {
   const chip = settlementChipFor(inst.id)
   if (chip === 'waiting' || chip === 'checkout') return 'wait'
   if (isOverdue(inst)) return 'late'
-  if (inst === nextPayable.value) return 'payable'
+  if (nextPayable.value && inst.id === nextPayable.value.id) return 'payable'
   return 'future'
 }
 
@@ -958,10 +921,6 @@ function isSettlementPending(status: string) {
 
 function isOpenPaymentStatus(status: string) {
   return status === 'pending' || isSettlementPending(status)
-}
-
-function hasOpenInstallment(id: string) {
-  return payments.value.some((p) => p.installment_id === id && isOpenPaymentStatus(p.status))
 }
 
 function settlementChipFor(installmentId: string) {
@@ -1056,7 +1015,6 @@ async function loadChildren() {
     const dash = await parentService.getMyDashboardData()
     children.value = (dash?.children ?? []).map((c: DashboardChild) => ({ ...c, id: String(c.id) }))
     if (!selectedId.value && children.value.length) selectedId.value = children.value[0].id
-    await loadAllChildFees()
   } catch (e) {
     childrenError.value = localizedLoadError(e, 'parent.error')
   } finally {
@@ -1064,50 +1022,16 @@ async function loadChildren() {
   }
 }
 
-async function loadOneChildBundle(studentId: string): Promise<ChildFeeBundle> {
-  try {
-    const s = await feesV2Service.getStudentChargeSheet(studentId)
-    const list = await feesV2Service.listStudentPayments(studentId).catch(() => [] as FeePayment[])
-    return { studentId, sheet: s, payments: list }
-  } catch {
-    return { studentId, sheet: null, payments: [] }
-  }
-}
-
 async function loadAllChildFees() {
-  if (!children.value.length) {
-    familyBundles.value = []
-    return
-  }
-  desktopLoading.value = true
   desktopError.value = ''
-  try {
-    const bundles = await Promise.all(children.value.map((c) => loadOneChildBundle(c.id)))
-    for (const bundle of bundles) {
-      await syncPendingThawaniForBundle(bundle)
-    }
-    familyBundles.value = bundles
-  } catch (e) {
-    desktopError.value = localizedLoadError(e, 'parentFees.loadFailed')
-  } finally {
-    desktopLoading.value = false
-  }
+  await reloadDesktop()
 }
 
 async function refreshChildBundle(studentId: string) {
-  const next = await loadOneChildBundle(studentId)
-  await syncPendingThawaniForBundle(next)
-  const idx = familyBundles.value.findIndex((b) => b.studentId === studentId)
-  if (idx >= 0) {
-    const copy = familyBundles.value.slice()
-    copy[idx] = next
-    familyBundles.value = copy
-  } else {
-    familyBundles.value = [...familyBundles.value, next]
-  }
-  if (selectedId.value === studentId) {
-    sheet.value = next.sheet
-    payments.value = next.payments
+  await Promise.all([reloadDesktop(), reloadMobile()])
+  if (selectedId.value === studentId) await loadDetailFor(studentId)
+  else if (desktopBreakdownChild.value?.id === studentId) {
+    breakdownSheet.value = await feesV2Service.getStudentChargeSheet(studentId).catch(() => null)
   }
 }
 
@@ -1122,42 +1046,11 @@ async function loadDetailFor(studentId: string) {
     sheet.value = s
     payments.value = await feesV2Service.listStudentPayments(studentId).catch(() => [])
     await syncPendingThawaniPayments()
-    const next: ChildFeeBundle = {
-      studentId,
-      sheet: sheet.value,
-      payments: payments.value,
-    }
-    const idx = familyBundles.value.findIndex((b) => b.studentId === studentId)
-    if (idx >= 0) {
-      const copy = familyBundles.value.slice()
-      copy[idx] = next
-      familyBundles.value = copy
-    } else if (children.value.some((c) => c.id === studentId)) {
-      familyBundles.value = [...familyBundles.value, next]
-    }
+    await Promise.all([reloadDesktop({ silent: true }), reloadMobile({ silent: true })])
   } catch (e) {
     detailError.value = localizedLoadError(e, 'parentFees.loadFailed')
   } finally {
     detailLoading.value = false
-  }
-}
-
-/** If Thawani already collected money but confirm never ran, finish it on load/refresh. */
-async function syncPendingThawaniForBundle(bundle: ChildFeeBundle) {
-  const pending = bundle.payments.filter((p) => p.method === 'thawani' && p.status === 'pending')
-  if (!pending.length) return
-  let changed = false
-  for (const p of pending) {
-    try {
-      const confirmed = await feesV2Service.confirmThawaniPayment(p.id)
-      if (confirmed.sheet) bundle.sheet = confirmed.sheet
-      if (confirmed.paid) changed = true
-    } catch {
-      /* still unpaid / cancelled on Thawani */
-    }
-  }
-  if (changed) {
-    bundle.payments = await feesV2Service.listStudentPayments(bundle.studentId).catch(() => bundle.payments)
   }
 }
 
@@ -1181,8 +1074,6 @@ async function syncPendingThawaniPayments() {
 
 function selectChild(id: string) {
   selectedId.value = id
-  desktopPage.value = 1
-  mobileInstallmentPage.value = 1
 }
 
 function reloadDetail() {

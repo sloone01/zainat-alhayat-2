@@ -10,6 +10,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import {
+  likeTerm,
+  paginateQueryBuilder,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import { existsSync } from 'fs';
 import { User } from '../entities/user.entity';
 import { School } from '../entities/school.entity';
@@ -114,6 +120,20 @@ export class PlatformBillingService {
       order: { created_at: 'DESC' },
     });
     return rows.map((r) => this.serializeCustomRequest(r));
+  }
+
+  async listCustomPlanRequestsPage(
+    actor: User,
+    query: PageQuery & { status?: string },
+  ) {
+    this.assertPlatformAccess(actor);
+    const qb = this.customRequestRepo.createQueryBuilder('r');
+    if (query.status && query.status !== 'all') {
+      qb.andWhere('r.status = :status', { status: query.status });
+    }
+    qb.orderBy('r.created_at', 'DESC').addOrderBy('r.id', 'ASC');
+    const page = await paginateQueryBuilder(qb, query);
+    return { ...page, items: page.items.map((r) => this.serializeCustomRequest(r)) };
   }
 
   async getCustomPlanRequest(actor: User, id: string) {
@@ -338,6 +358,64 @@ export class PlatformBillingService {
   async listPlansForAdmin(actor: User) {
     this.assertPlatformAccess(actor);
     return this.listPublicPlans();
+  }
+
+  async listPlansPage(
+    actor: User,
+    query: PageQuery & { q?: string; status?: string },
+  ): Promise<
+    PageResult<ReturnType<PlatformBillingService['serializePlan']> & { module_codes: string[] }> & {
+      stats: { total: number; active: number; seats: number };
+    }
+  > {
+    this.assertPlatformAccess(actor);
+    const qb = this.planRepo.createQueryBuilder('p');
+    if (query.status === 'active') qb.andWhere('p.is_active = true');
+    else if (query.status === 'inactive') qb.andWhere('p.is_active = false');
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `LOWER(CONCAT_WS(' ', p.code, p.name_en, p.name_ar, COALESCE(p.description_en, ''), COALESCE(p.description_ar, ''))) LIKE :term`,
+        { term },
+      );
+    }
+    qb.orderBy('p.sort_order', 'ASC').addOrderBy('p.code', 'ASC');
+    const statsRow = await this.planRepo
+      .createQueryBuilder('ps')
+      .select('COUNT(*)', 'total')
+      .addSelect('COUNT(*) FILTER (WHERE ps.is_active = true)', 'active')
+      .addSelect('COALESCE(MAX(ps.included_student_seats), 0)', 'seats')
+      .getRawOne<{ total: string; active: string; seats: string }>();
+    const stats = {
+      total: Number(statsRow?.total ?? 0),
+      active: Number(statsRow?.active ?? 0),
+      seats: Number(statsRow?.seats ?? 0),
+    };
+    const page = await paginateQueryBuilder(qb, query);
+    const ids = page.items.map((p) => p.id);
+    if (!ids.length) return { ...page, items: [], stats };
+    const [loaded, links, modules] = await Promise.all([
+      this.planRepo.find({ where: { id: In(ids) }, relations: ['prices', 'features'] }),
+      this.planModuleRepo.find({ where: { plan_id: In(ids) } }),
+      this.moduleRepo.find({ where: { is_active: true } }),
+    ]);
+    const modulesById = new Map(modules.map((m) => [m.id, m]));
+    const codesByPlan = new Map<string, string[]>();
+    for (const link of links) {
+      const module = modulesById.get(link.module_id);
+      if (!module) continue;
+      if (!codesByPlan.has(link.plan_id)) codesByPlan.set(link.plan_id, []);
+      codesByPlan.get(link.plan_id)!.push(module.code);
+    }
+    const byId = new Map(loaded.map((p) => [p.id, p]));
+    const items = ids
+      .map((id) => byId.get(id))
+      .filter((p): p is PlatformPlan => !!p)
+      .map((p) => ({
+        ...this.serializePlan(p),
+        module_codes: codesByPlan.get(p.id) ?? [],
+      }));
+    return { ...page, items, stats };
   }
 
   serializeModule(m: PlatformModule) {

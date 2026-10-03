@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface RbacAction {
   code: string
@@ -32,6 +33,14 @@ export interface RbacGroup {
   isActive: boolean
   permissions?: Record<string, string[]>
   memberCount?: number
+}
+
+export interface RbacGroupListParams {
+  page?: number
+  limit?: number
+  q?: string
+  type?: 'all' | 'staff' | 'parent' | 'student' | 'system' | ''
+  schoolId?: string | null
 }
 
 export interface RbacUserOverride {
@@ -69,6 +78,18 @@ class RbacService extends BaseApiService {
     if (schoolId === null) params.schoolId = '0'
     else if (schoolId !== undefined) params.schoolId = String(schoolId)
     return this.get('/rbac/groups', params)
+  }
+
+  async listPage(params: RbacGroupListParams): Promise<PageResult<RbacGroup>> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 10,
+    }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.type && params.type !== 'all') query.type = params.type
+    if (params.schoolId === null) query.schoolId = '0'
+    else if (params.schoolId !== undefined) query.schoolId = String(params.schoolId)
+    return this.get('/rbac/groups', query)
   }
 
   async getGroup(id: string): Promise<RbacGroup> {

@@ -1,18 +1,5 @@
-import { authService } from '@/services'
 import reportExportService from '@/services/report-export.service'
 import type { DueInstallmentRow } from '@/services/fees-v2.service'
-import { applyExportLayout } from '@/utils/student-export-columns'
-import {
-  alignReportTableColumns,
-  applyWordPageOrientation,
-  fillReportDate,
-  isReportPageHtml,
-  reportLayoutUsesRowSlot,
-  reportPageFragment,
-  reportPageOrientation,
-  reportPagePixelSize,
-} from '@/utils/report-export-layout'
-import { paintReportPdfPages } from '@/utils/report-pdf-pages'
 
 export const DUE_EXPORT_KEYS = [
   'student',
@@ -31,143 +18,15 @@ const DEFAULT_KEYS: DueExportKey[] = ['student', 'installment', 'dueDate', 'bala
 
 export type DueExportFormat = 'word' | 'pdf' | 'excel'
 
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
 function knownColumns(raw: string[] | undefined): DueExportKey[] {
   const allowed = new Set<string>(DUE_EXPORT_KEYS)
   const list = (raw || []).filter((key): key is DueExportKey => allowed.has(key))
   return list.length ? list : [...DEFAULT_KEYS]
 }
 
-async function loadPrintLayout(locale: 'en' | 'ar'): Promise<{ columns: DueExportKey[]; html: string | null }> {
+async function loadExcelColumns(locale: 'en' | 'ar'): Promise<DueExportKey[]> {
   const config = await reportExportService.getExport('due-installments', locale).catch(() => null)
-  const columns = knownColumns(config?.columns)
-  let html = config?.template_html?.trim() ? fillReportDate(config.template_html, locale) : null
-  if (!html) {
-    const templates = await reportExportService.listTemplates().catch(() => [])
-    const chosen = templates.find((item) => item.is_default) || templates[0]
-    if (chosen) {
-      const row = await reportExportService.getTemplate(chosen.id).catch(() => null)
-      const raw = row ? (locale === 'ar' ? row.html_ar || row.html_en : row.html_en) : ''
-      if (raw.trim()) html = fillReportDate(raw, locale)
-    }
-  }
-  return { columns, html }
-}
-
-function tableBody(
-  rows: DueInstallmentRow[],
-  columns: DueExportKey[],
-  title: string,
-  subtitle: string,
-  header: (key: DueExportKey) => string,
-  cell: (row: DueInstallmentRow, key: DueExportKey) => string,
-) {
-  const head = columns.map((key) => `<th>${escapeHtml(header(key))}</th>`).join('')
-  const body = rows
-    .map(
-      (row) =>
-        `<tr>${columns.map((key) => `<td>${escapeHtml(cell(row, key))}</td>`).join('')}</tr>`,
-    )
-    .join('')
-  return `<h1>${escapeHtml(title)}</h1><div class="meta">${escapeHtml(subtitle)}</div><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`
-}
-
-function rowHtml(
-  rows: DueInstallmentRow[],
-  columns: DueExportKey[],
-  cell: (row: DueInstallmentRow, key: DueExportKey) => string,
-) {
-  return rows
-    .map(
-      (row) =>
-        `<tr>${columns.map((key) => `<td>${escapeHtml(cell(row, key))}</td>`).join('')}</tr>`,
-    )
-    .join('')
-}
-
-async function filledDocument(options: {
-  rows: DueInstallmentRow[]
-  columns: DueExportKey[]
-  layoutHtml: string | null
-  locale: 'en' | 'ar'
-  title: string
-  subtitle: string
-  header: (key: DueExportKey) => string
-  cell: (row: DueInstallmentRow, key: DueExportKey) => string
-}) {
-  const rowKeys = options.columns
-  let layoutHtml = options.layoutHtml
-  if (layoutHtml && reportLayoutUsesRowSlot(layoutHtml)) {
-    layoutHtml = alignReportTableColumns(
-      layoutHtml,
-      rowKeys.map((key) => ({ key, label: options.header(key) })),
-    )
-  }
-  const rowsMarkup = reportLayoutUsesRowSlot(layoutHtml)
-    ? rowHtml(options.rows, rowKeys, options.cell)
-    : tableBody(options.rows, rowKeys, options.title, options.subtitle, options.header, options.cell)
-  let inner = applyExportLayout(layoutHtml, rowsMarkup)
-  if (
-    layoutHtml &&
-    /\{\{\s*schoolName\s*\}\}/i.test(layoutHtml) &&
-    reportLayoutUsesRowSlot(layoutHtml)
-  ) {
-    const schoolId = authService.getStoredUser()?.school_id
-    try {
-      const branded = await reportExportService.previewTemplate({
-        locale: options.locale,
-        html: layoutHtml,
-        sample_content: rowHtml(options.rows, rowKeys, options.cell),
-        ...(schoolId ? { school_id: String(schoolId) } : {}),
-      })
-      if (branded.html?.trim()) inner = branded.html
-    } catch {
-      /* letterhead may be blank; the table is still in the page */
-    }
-  }
-  return inner
-}
-
-async function downloadPdf(inner: string, layoutHtml: string | null, rtl: boolean, filename: string) {
-  const orient = reportPageOrientation(layoutHtml || inner)
-  const pagePx = reportPagePixelSize(orient)
-  const reportPage = isReportPageHtml(layoutHtml) || isReportPageHtml(inner)
-  const host = document.createElement('div')
-  host.setAttribute('dir', rtl ? 'rtl' : 'ltr')
-  host.style.cssText = reportPage
-    ? `position:fixed;left:-12000px;top:0;width:${pagePx.width}px;padding:0;background:#ffffff;z-index:-1;`
-    : 'position:fixed;left:-12000px;top:0;width:794px;padding:20px;background:#ffffff;z-index:-1;'
-  host.innerHTML = reportPage
-    ? `<style>.rpt-sheet{zoom:1!important;margin:0!important;box-shadow:none!important;width:${pagePx.width}px!important;min-height:${pagePx.height}px!important;}</style>${reportPageFragment(inner)}`
-    : inner
-  document.body.appendChild(host)
-  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-  try {
-    const { default: html2canvas } = await import('html2canvas')
-    const { jsPDF } = await import('jspdf')
-    const canvas = await html2canvas(host, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-    })
-    const pdf = new jsPDF({
-      orientation: reportPage ? orient : 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    })
-    paintReportPdfPages(pdf, canvas, host)
-    pdf.save(`${filename}.pdf`)
-  } finally {
-    host.remove()
-  }
+  return knownColumns(config?.columns)
 }
 
 function downloadExcel(
@@ -198,7 +57,7 @@ function downloadExcel(
   })
 }
 
-/** Print the due/late rows in the school's report template (same path as the student list). */
+/** Excel uses the chosen columns. Word and PDF fill the super-admin Word template. */
 export async function exportDueInstallmentsPrint(options: {
   format: DueExportFormat
   rows: DueInstallmentRow[]
@@ -211,7 +70,7 @@ export async function exportDueInstallmentsPrint(options: {
   cell: (row: DueInstallmentRow, key: DueExportKey) => string
 }): Promise<'empty' | 'ok'> {
   if (!options.rows.length) return 'empty'
-  const { columns, html } = await loadPrintLayout(options.locale)
+  const columns = await loadExcelColumns(options.locale)
   if (options.format === 'excel') {
     await downloadExcel(
       options.rows,
@@ -225,32 +84,28 @@ export async function exportDueInstallmentsPrint(options: {
     )
     return 'ok'
   }
-  const inner = await filledDocument({
-    rows: options.rows,
-    columns,
-    layoutHtml: html,
+  const labels = Object.fromEntries(DUE_EXPORT_KEYS.map((key) => [key, options.header(key)]))
+  const payloadRows = options.rows.map((row) =>
+    Object.fromEntries(DUE_EXPORT_KEYS.map((key) => [key, options.cell(row, key)])),
+  )
+  const buffer = await reportExportService.downloadDueDocument({
+    format: options.format === 'pdf' ? 'pdf' : 'docx',
     locale: options.locale,
     title: options.title,
     subtitle: options.subtitle,
-    header: options.header,
-    cell: options.cell,
+    labels,
+    rows: payloadRows,
   })
-  if (options.format === 'word') {
-    const doc = applyWordPageOrientation(
-      /<html[\s>]/i.test(inner)
-        ? inner
-        : `<!DOCTYPE html><html lang="${options.locale}"><head><meta charset="utf-8"><title>${escapeHtml(options.title)}</title></head><body>${inner}</body></html>`,
-      reportPageOrientation(html || inner),
-    )
-    const blob = new Blob(['\ufeff', doc], { type: 'application/msword;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${options.filename}.doc`
-    link.click()
-    URL.revokeObjectURL(url)
-    return 'ok'
-  }
-  await downloadPdf(inner, html, options.rtl, options.filename)
+  const blob = new Blob([buffer], {
+    type: options.format === 'pdf'
+      ? 'application/pdf'
+      : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${options.filename}.${options.format === 'pdf' ? 'pdf' : 'docx'}`
+  link.click()
+  URL.revokeObjectURL(url)
   return 'ok'
 }

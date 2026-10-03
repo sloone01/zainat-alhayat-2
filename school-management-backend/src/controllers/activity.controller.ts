@@ -26,6 +26,7 @@ import { ActivityQueryDto, CreateActivityDto, UpdateActivityDto } from '../dto/a
 import { RequireAnyClaim, RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
 import { assertSameSchool, resolveActorSchoolId } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 
 @Controller('activities')
 @RequireClaim('activities', 'view')
@@ -58,6 +59,10 @@ export class ActivityController {
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async findAll(@Request() req: { user: User }, @Query() query: ActivityQueryDto) {
     const schoolId = this.schoolOf(req, query.school_id);
+    if (wantsPage(query.page)) {
+      const data = await this.activityService.findPage({ ...query, school_id: schoolId }, req.user);
+      return { success: true, data };
+    }
     const activities = await this.activityService.findAll({ ...query, school_id: schoolId });
     return {
       success: true,

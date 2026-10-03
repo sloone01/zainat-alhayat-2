@@ -1907,7 +1907,9 @@
     "continue": "Continue",
     "switchLanguage": "العربية",
     "footerBrand": "FIKR · Smart School Platform",
-    "title": "Sign in"
+    "title": "Sign in",
+    "privacy": "Privacy policy",
+    "terms": "Terms of use"
   },
   "changePassword": {
     "title": "Change password",
@@ -2315,6 +2317,12 @@
       "inactive": "Inactive",
       "phases": "Phases"
     },
+    "exportMenu": "Download",
+    "exportAsWord": "Word",
+    "exportAsPdf": "PDF",
+    "exportAsExcel": "Excel",
+    "exportEmpty": "No courses match the current filters.",
+    "exportFailed": "Could not create the file. Please try again.",
     "addCourse": "Add skill course",
     "editCourse": "Edit skill course",
     "searchPlaceholder": "Search courses...",
@@ -3441,7 +3449,13 @@
     "nowEnabled": "Online payments are now enabled.",
     "nowDisabled": "Online payments are now disabled.",
     "loadFailed": "Could not load the settings.",
-    "saveFailed": "Could not save the setting."
+    "saveFailed": "Could not save the setting.",
+    "reportHeading": "Report templates",
+    "dueTemplate": "Due and late payments",
+    "wordTemplate": "Word template",
+    "downloadTemplate": "Download",
+    "uploadTemplate": "Upload",
+    "templateInvalid": "The Word file must include {'{{schoolName}}'} and {'{{schoolLogo}}'}."
   },
   "validation": {
     "emailRequired": "Email is required",
@@ -4287,7 +4301,11 @@
       "balance": "Balance",
       "amountDue": "Amount due",
       "amountPaid": "Amount paid",
-      "daysOverdue": "Days late"
+      "daysOverdue": "Days late",
+      "title": "Course",
+      "category": "Category",
+      "phases": "Stages",
+      "milestones": "Skills"
     },
     "dueFeesEmpty": "No matching unpaid installments.",
     "dueFeesLoadError": "Could not load the due payments report.",
@@ -5791,7 +5809,15 @@
     "linkTransfers": "Transfers",
     "linkPlans": "Plans",
     "linkRoles": "User groups",
-    "linkNotifications": "Notification templates"
+    "linkNotifications": "Notification templates",
+    "deleteAccount": "Delete account",
+    "deleteAccountPassword": "Password",
+    "deleteAccountConfirm": "Delete account",
+    "deleteAccountWorking": "Deleting…",
+    "deleteAccountWarning": "This turns off your login and removes your name, email, and mobile from it. Your school keeps student attendance, grades, and fee records. This cannot be undone.",
+    "deleteAccountWrongPassword": "Current password is incorrect",
+    "deleteAccountBlocked": "This account cannot be deleted in the app. Email admin@fikr.om.",
+    "deleteAccountFailed": "Could not delete the account. Please try again."
   },
   "platformCustomRequests": {
     "nav": "Custom plan requests",
@@ -5824,5 +5850,38 @@
     "colEmail": "Email",
     "colNotes": "Notes",
     "colScope": "Size"
+  },
+  "legal": {
+    "updated": "Last updated 3 October 2026",
+    "privacyTitle": "Privacy policy",
+    "termsTitle": "Terms of use",
+    "privacy1Title": "Who we are",
+    "privacy1Body": "FIKR (fikr.om) provides this app to schools. Contact admin@fikr.om, +968 99788677, or +968 98234590.",
+    "privacy2Title": "Who the app is for",
+    "privacy2Body": "Your school creates your login. The app is for school staff, parents, and drivers. It is not a children's app. A school may also give a student a login.",
+    "privacy3Title": "Information the app handles",
+    "privacy3Body": "Your name, email, mobile number, and password.\nSchool records the school enters, including a child's name, attendance, grades, fees, photos, and documents.\nLocation, only when you set a bus pickup stop or share a live bus position.\nCamera and microphone, only during a live meeting.\nA push-notification token for this device.\nPayment references when a parent pays school fees. Card payment is handled by Thawani.",
+    "privacy4Title": "Children",
+    "privacy4Body": "Student records belong to the school. Deleting your login does not erase a child's attendance, grades, or invoices. Those stay with the school.",
+    "privacy5Title": "Who else receives data",
+    "privacy5Body": "Your school.\nThawani, when a fee is paid online.\nGoogle Firebase, to deliver push notifications.\nDaily, to host live meetings.\nThe server that hosts FIKR.",
+    "privacy6Title": "How long we keep it",
+    "privacy6Body": "We keep a login while it is active. When you delete the account, we turn it off and remove the name, email, mobile, and parent contact details on that login. School operational records stay with the school.",
+    "privacy7Title": "Delete your account",
+    "privacy7Body": "Open Account in the app, choose Delete account, and confirm with your password. You can also email admin@fikr.om.",
+    "privacy8Title": "Security",
+    "privacy8Body": "The app talks to the server over HTTPS. Do not share your password.",
+    "terms1Title": "The service",
+    "terms1Body": "FIKR is a school system. Use of the app requires a school that subscribes to FIKR and a login that school issued.",
+    "terms2Title": "Your login",
+    "terms2Body": "Keep your password private. You are responsible for activity under your login.",
+    "terms3Title": "School data",
+    "terms3Body": "Attendance, grades, messages, and fees entered in the app belong to the school. Follow your school's instructions when you add or share them.",
+    "terms4Title": "Payments",
+    "terms4Body": "Fee payments in the app are school fees. Online card payment is processed by Thawani under the school's payment setup.",
+    "terms5Title": "Stopping use",
+    "terms5Body": "You may delete your login from Account. The school or FIKR may suspend a login that misuses the service.",
+    "terms6Title": "Contact",
+    "terms6Body": "Questions about these terms: admin@fikr.om, +968 99788677, or +968 98234590."
   }
 }

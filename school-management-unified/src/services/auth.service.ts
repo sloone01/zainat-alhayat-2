@@ -192,6 +192,14 @@ class AuthService extends BaseApiService {
     }
   }
 
+  async deleteAccount(password: string): Promise<void> {
+    try {
+      await this.post('/auth/delete-account', { password })
+    } catch (error: unknown) {
+      throw this.processAuthError(error)
+    }
+  }
+
   async resetPassword(login: string): Promise<void> {
     await this.post('/auth/reset-password', { login, email: login })
   }

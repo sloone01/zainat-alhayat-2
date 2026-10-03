@@ -245,7 +245,8 @@ export class AttentionService {
   }
 
   private async approvals(user: User, locale: string): Promise<Bucket> {
-    const rows = await this.directChat.listApprovalInbox(user, locale === 'en' ? 'en' : 'ar');
+    const listed = await this.directChat.listApprovalInbox(user, locale === 'en' ? 'en' : 'ar');
+    const rows = Array.isArray(listed) ? listed : [];
     const pending = rows.filter((row) => row.can_approve && row.approval_status === 'pending');
     return {
       total: pending.length,

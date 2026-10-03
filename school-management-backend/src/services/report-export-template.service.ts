@@ -6,6 +6,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
+  likeTerm,
+  paginateQueryBuilder,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
+import {
   SchoolReportExportConfig,
   SchoolReportExportTemplate,
 } from '../entities/school-report-export.entity';
@@ -174,6 +180,24 @@ export class ReportExportTemplateService {
       order: { is_default: 'DESC', name: 'ASC' },
     });
     return Promise.all(rows.map((row) => this.present(row)));
+  }
+
+  async listPage(
+    user: User,
+    requestedSchoolId: string | null | undefined,
+    query: PageQuery & { q?: string },
+  ): Promise<PageResult<Awaited<ReturnType<ReportExportTemplateService['present']>>>> {
+    const schoolId = this.schoolOf(user, requestedSchoolId);
+    await this.ensureDefault(schoolId);
+    const qb = this.repo.createQueryBuilder('t').where('t.school_id = :schoolId', { schoolId });
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(`LOWER(CONCAT_WS(' ', t.name, COALESCE(t.name_ar, ''))) LIKE :term`, { term });
+    }
+    qb.orderBy('t.is_default', 'DESC').addOrderBy('t.name', 'ASC').addOrderBy('t.id', 'ASC');
+    const page = await paginateQueryBuilder(qb, query);
+    const items = await Promise.all(page.items.map((row) => this.present(row)));
+    return { ...page, items };
   }
 
   async listOptions(schoolId: string) {

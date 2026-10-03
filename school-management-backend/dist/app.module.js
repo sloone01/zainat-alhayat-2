@@ -233,6 +233,7 @@ const student_payment_ledger_service_1 = require("./services/student-payment-led
 const school_system_setting_service_1 = require("./services/school-system-setting.service");
 const report_export_config_service_1 = require("./services/report-export-config.service");
 const report_export_template_service_1 = require("./services/report-export-template.service");
+const report_docx_service_1 = require("./services/report-docx.service");
 const school_report_export_entity_1 = require("./entities/school-report-export.entity");
 const notifications_module_1 = require("./notifications/notifications.module");
 const message_letter_service_1 = require("./services/message-letter.service");
@@ -510,6 +511,7 @@ exports.AppModule = AppModule = __decorate([
             school_system_setting_service_1.SchoolSystemSettingService,
             report_export_config_service_1.ReportExportConfigService,
             report_export_template_service_1.ReportExportTemplateService,
+            report_docx_service_1.ReportDocxService,
             message_letter_service_1.MessageLetterService,
             message_letter_render_service_1.MessageLetterRenderService,
             student_course_enrollment_service_1.StudentCourseEnrollmentService,

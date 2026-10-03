@@ -41,14 +41,8 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="courses.length">
-            <p
-              v-if="filteredCourses.length === 0"
-              class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
-            >
-              {{ $t('gradedCourses.noFilterResults') }}
-            </p>
-            <div v-else-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <template v-else-if="courseTotal > 0">
+            <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <KanbanCard
                 v-for="course in paginatedCourses"
                 :key="course.id"
@@ -172,7 +166,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredCourses.length > 0"
+              :show="courseTotal > 0"
               @update:page="goToPage"
             />
           </template>
@@ -183,7 +177,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m-6 4h6m-6 4h4M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
               </svg>
             </div>
-            <p class="text-sm font-medium text-gray-600">{{ $t('gradedCourses.noCourses') }}</p>
+            <p class="text-sm font-medium text-gray-600">{{ hasActiveFilters ? $t('gradedCourses.noFilterResults') : $t('gradedCourses.noCourses') }}</p>
           </div>
         </div>
       </section>
@@ -268,7 +262,7 @@ import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { useClaims } from '@/composables/useClaims'
 import { useFeedback } from '@/composables/useFeedback'
 import gradedAssessmentService, {
@@ -298,8 +292,6 @@ const currentUser = computed(() => {
 
 const schoolId = computed(() => String(currentUser.value?.school_id || ''))
 
-const loading = ref(true)
-const courses = ref<GradedCourseWithScheme[]>([])
 const levels = ref<SchoolPaymentLevel[]>([])
 const searchQuery = ref('')
 const selectedStatus = ref('')
@@ -313,6 +305,9 @@ const drawerFilterCount = computed(() =>
   + Number(selectedLevelId.value !== '')
   + Number(selectedAggregation.value !== ''),
 )
+const hasActiveFilters = computed(
+  () => Boolean(searchQuery.value.trim()) || drawerFilterCount.value > 0,
+)
 
 function clearFilters() {
   searchQuery.value = ''
@@ -321,44 +316,40 @@ function clearFilters() {
   selectedAggregation.value = ''
 }
 
-const filteredCourses = computed(() => {
-  let list = courses.value
-  const q = searchQuery.value.trim().toLowerCase()
-  if (q) {
-    list = list.filter((c) => {
-      const name = (c.name || c.title || '').toLowerCase()
-      const desc = (c.description || '').toLowerCase()
-      return name.includes(q) || desc.includes(q)
-    })
-  }
-  if (selectedStatus.value === 'draft') {
-    list = list.filter((c) => c.status === 'draft')
-  } else if (selectedStatus.value === 'active') {
-    list = list.filter((c) => c.is_active && c.status !== 'draft')
-  } else if (selectedStatus.value === 'inactive') {
-    list = list.filter((c) => !c.is_active && c.status !== 'draft')
-  }
-  if (selectedLevelId.value) {
-    list = list.filter((c) => String(c.level_id || '') === selectedLevelId.value)
-  }
-  if (selectedAggregation.value) {
-    list = list.filter(
-      (c) => (c.graded_scheme?.aggregation_method || '') === selectedAggregation.value,
-    )
-  }
-  return list
-})
-
 const {
+  items: paginatedCourses,
+  total: courseTotal,
+  loading,
   currentPage,
-  paginatedItems: paginatedCourses,
   totalPages,
   goToPage,
-} = useClientPagination(filteredCourses)
-
-watch([searchQuery, selectedStatus, selectedLevelId, selectedAggregation], () => {
-  currentPage.value = 1
-})
+  reload: reloadCourses,
+} = useServerPagination<
+  GradedCourseWithScheme,
+  { q: string; status: string; level_id: string; aggregation: string; schoolId: string }
+>(
+  (params) =>
+    gradedAssessmentService.listPage({
+      schoolId: params.schoolId,
+      page: params.page,
+      limit: params.limit,
+      q: params.q,
+      status: params.status,
+      level_id: params.level_id,
+      aggregation: params.aggregation,
+    }),
+  {
+    filters: () => ({
+      q: searchQuery.value,
+      status: selectedStatus.value,
+      level_id: selectedLevelId.value,
+      aggregation: selectedAggregation.value,
+      schoolId: schoolId.value,
+    }),
+    debounceKeys: ['q'],
+    enabled: () => Boolean(schoolId.value),
+  },
+)
 
 function courseStatusLabel(course: GradedCourseWithScheme): string {
   if (course.status === 'draft') return t('gradedCourses.draft')
@@ -422,7 +413,7 @@ async function duplicateCourse(course: GradedCourseWithScheme) {
       schoolId.value,
       newName,
     )
-    courses.value = [created, ...courses.value.filter((c) => c.id !== created.id)]
+    await reloadCourses()
     feedback.success(t('gradedCourses.duplicateOk'), t('common.success'))
     router.push(`/graded-courses/${created.id}/edit`)
   } catch (err: unknown) {
@@ -448,7 +439,7 @@ async function deleteDraftCourse(course: GradedCourseWithScheme) {
   if (!ok) return
   try {
     await gradedAssessmentService.deleteDraft(String(course.id), schoolId.value)
-    courses.value = courses.value.filter((c) => c.id !== course.id)
+    await reloadCourses()
     feedback.success(t('gradedCourses.deleteOk'), t('common.success'))
   } catch (err: unknown) {
     const msg =
@@ -468,21 +459,14 @@ function handleClickOutside(event: Event) {
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
   await loadClaims()
-  loading.value = true
+  if (schoolId.value) await reloadCourses()
   try {
-    const [list, schoolLevels] = await Promise.all([
-      gradedAssessmentService.list(schoolId.value),
-      schoolId.value
-        ? paymentConfigService.listLevels(schoolId.value).catch(() => [] as SchoolPaymentLevel[])
-        : Promise.resolve([] as SchoolPaymentLevel[]),
-    ])
-    courses.value = list
+    const schoolLevels = schoolId.value
+      ? await paymentConfigService.listLevels(schoolId.value).catch(() => [] as SchoolPaymentLevel[])
+      : []
     levels.value = schoolLevels.filter((lv) => lv.is_active !== false)
   } catch (e) {
     console.error(e)
-    courses.value = []
-  } finally {
-    loading.value = false
   }
 })
 

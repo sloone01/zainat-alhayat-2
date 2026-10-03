@@ -24,7 +24,7 @@ const CARD_STYLE = `max-width:560px;margin:0 auto;background:${FIKR_BRAND.card};
 /** Light mint header — logo navy/teal reads clearly (not solid navy). */
 const HEADER_STYLE = `padding:18px 20px 16px;background:linear-gradient(180deg,#ffffff 0%,${FIKR_BRAND.tealSoft} 100%);border-bottom:3px solid ${FIKR_BRAND.teal};color:${FIKR_BRAND.navy};`;
 
-const BODY_STYLE = `padding:20px 20px 8px;color:${FIKR_BRAND.ink};font-size:15px;line-height:1.55;`;
+const BODY_STYLE = `padding:22px 22px 10px;color:${FIKR_BRAND.ink};font-size:16px;line-height:1.65;`;
 
 const FOOTER_STYLE = `padding:14px 20px 18px;border-top:1px solid ${FIKR_BRAND.hairline};font-size:12px;color:${FIKR_BRAND.muted};background:#fafcfc;`;
 
@@ -56,14 +56,47 @@ export function absolutizePublicUrl(url: string, publicBase: string): string {
 export function buildSchoolLogoHtml(
   logoUrl: string,
   schoolName: string,
-  opts?: { compact?: boolean },
+  opts?: { compact?: boolean; header?: boolean },
 ): string {
   const src = logoUrl.trim();
   if (!src) return '';
   const alt = escapeHtmlAttr(schoolName || 'Logo');
-  const width = opts?.compact ? 64 : 160;
-  const height = opts?.compact ? 36 : 48;
-  return `<img src="${escapeHtmlAttr(src)}" alt="${alt}" width="${width}" height="${height}" style="display:block;width:${width}px;height:${height}px;margin:0;border:0;outline:none;text-decoration:none;background:transparent;" />`;
+  const width = opts?.compact ? 64 : opts?.header ? 120 : 160;
+  const height = opts?.compact ? 36 : opts?.header ? 0 : 48;
+  const heightAttr = height > 0 ? ` height="${height}"` : '';
+  const heightCss = height > 0 ? `height:${height}px;` : 'height:auto;';
+  return `<img src="${escapeHtmlAttr(src)}" alt="${alt}" width="${width}"${heightAttr} style="display:block;width:${width}px;max-width:${width}px;${heightCss}margin:0;border:0;outline:none;text-decoration:none;background:transparent;" />`;
+}
+
+/**
+ * Name at the reading start, logo at the far end.
+ * English: name left, logo right. Arabic: name right, logo left.
+ * The table stays `dir=ltr` so a right-to-left document does not pull both onto one side.
+ */
+export function oppositeEndsBrandHeader(locale: 'en' | 'ar', titleHtml: string, logoHtml: string): string {
+  const isAr = locale === 'ar';
+  const titleAlign = isAr ? 'right' : 'left';
+  const logoAlign = isAr ? 'left' : 'right';
+  const titlePad = isAr ? '0 0 0 12px' : '0 12px 0 0';
+  const titleCell = `<td valign="middle" align="${titleAlign}" style="padding:${titlePad};">${titleHtml}</td>`;
+  const logoCell = `<td valign="middle" align="${logoAlign}" width="128" style="width:128px;padding:0;">${logoHtml}</td>`;
+  const cells = isAr ? `${logoCell}${titleCell}` : `${titleCell}${logoCell}`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" dir="ltr" style="width:100%;border-collapse:collapse;"><tr>${cells}</tr></table>`;
+}
+
+function schoolTitleBlock(titleHtml: string, subtitle: string): string {
+  const sub = subtitle.trim()
+    ? `<div style="margin-top:4px;font-size:13px;line-height:1.4;font-weight:600;color:${FIKR_BRAND.tealDark};">${escapeHtmlText(subtitle.trim())}</div>`
+    : '';
+  return `<div style="font-size:18px;line-height:1.25;font-weight:800;color:${FIKR_BRAND.navy};">${titleHtml}</div>${sub}`;
+}
+
+export function schoolEmailHeader(locale: 'en' | 'ar', subtitle: string): string {
+  return oppositeEndsBrandHeader(
+    locale,
+    schoolTitleBlock('{{schoolName}}', subtitle),
+    '{{schoolLogoHtml}}',
+  );
 }
 
 export function brandingVariables(branding: SchoolNotificationBranding): Record<string, string> {
@@ -107,12 +140,34 @@ export const FIKR_LOGO_CID_SRC = `cid:${FIKR_LOGO_CID}`;
 export const SCHOOL_LOGO_CID = 'school-logo@fikr';
 export const SCHOOL_LOGO_CID_SRC = `cid:${SCHOOL_LOGO_CID}`;
 
-/** Inject `{{schoolLogoHtml}}` above the school-name header if the card is missing it. */
-export function injectSchoolLogoPlaceholder(html: string): string {
+/** Put the logo on the opposite end from the school name when a card is missing it. */
+export function injectSchoolLogoPlaceholder(html: string, locale: 'en' | 'ar' = 'en'): string {
   if (!html || html.includes('{{schoolLogoHtml}}')) return html;
   return html.replace(
-    /(<div[^>]*style="[^"]*font-size:18px;font-weight:700;[^"]*"[^>]*>\{\{\s*schoolName\s*\}\}<\/div>)/,
-    '{{schoolLogoHtml}}\n      $1',
+    /(<div[^>]*style="[^"]*font-size:18px;font-weight:700;[^"]*"[^>]*>\{\{\s*schoolName\s*\}\}<\/div>)(\s*<div\b[^>]*>[\s\S]*?<\/div>)?/i,
+    (_m, nameDiv: string, subtitle: string) =>
+      oppositeEndsBrandHeader(locale, `${nameDiv}${subtitle || ''}`, '{{schoolLogoHtml}}'),
+  );
+}
+
+function headerIsSplit(html: string): boolean {
+  return /role\s*=\s*["']presentation["']/i.test(html) && /\{\{\s*schoolLogoHtml\s*\}\}/i.test(html);
+}
+
+/** Stock school shells (logo stacked above the name) become the current default. Custom shells only get a split header. */
+export function refreshNotificationLayoutHtml(html: string, locale: 'en' | 'ar'): string {
+  const raw = (html ?? '').trim();
+  if (!raw || headerIsSplit(raw)) return raw;
+  const stock =
+    !raw.includes('fikr-nl-v1:') &&
+    /nt-email-card/i.test(raw) &&
+    /\{\{\s*content\s*\}\}/i.test(raw) &&
+    /\{\{\s*schoolName\s*\}\}/i.test(raw);
+  if (stock) return defaultNotificationLayoutHtml(locale);
+  return raw.replace(
+    /\{\{\s*schoolLogoHtml\s*\}\}\s*(<div\b[^>]*>\s*\{\{\s*schoolName\s*\}\}\s*<\/div>)(\s*<div\b[^>]*>[\s\S]*?<\/div>)?/i,
+    (_m, nameDiv: string, subtitle: string) =>
+      oppositeEndsBrandHeader(locale, `${nameDiv}${subtitle || ''}`, '{{schoolLogoHtml}}'),
   );
 }
 
@@ -228,7 +283,7 @@ export function wrapEmailWithSchoolChrome(
 ): string {
   const raw = (html ?? '').trim();
   if (!raw) return raw;
-  const withLogo = injectSchoolLogoPlaceholder(raw);
+  const withLogo = injectSchoolLogoPlaceholder(raw, locale);
   if (emailHasSchoolCard(withLogo)) return ensureDocumentLocale(withLogo, locale);
 
   const inner = extractBodyInner(withLogo);
@@ -237,9 +292,7 @@ export function wrapEmailWithSchoolChrome(
   const dirAttr = isAr ? 'rtl' : 'ltr';
   const card = `<div class="nt-email-card" style="${CARD_STYLE}" dir="${dirAttr}">
     <div style="${HEADER_STYLE}">
-      {{schoolLogoHtml}}
-      <div style="font-size:18px;font-weight:700;color:${FIKR_BRAND.navy};">${'{{schoolName}}'}</div>
-      <div style="font-size:13px;color:${FIKR_BRAND.teal};margin-top:4px;font-weight:600;">${escapeHtmlText(subtitle)}</div>
+      ${schoolEmailHeader(locale, subtitle)}
     </div>
     <div class="nt-email-body" style="${BODY_STYLE}text-align:${align};direction:${dirAttr};" dir="${dirAttr}">
       ${inner}
@@ -286,13 +339,16 @@ export function defaultNotificationLayoutHtml(locale: 'en' | 'ar'): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtmlText(subtitle)}</title>
+  <style>
+    .nt-email-body p { margin: 0 0 12px; font-size: 16px; line-height: 1.65; color: ${FIKR_BRAND.ink}; }
+    .nt-email-body strong { color: ${FIKR_BRAND.navy}; }
+    .nt-email-body a { color: ${FIKR_BRAND.tealDark}; font-weight: 700; }
+  </style>
 </head>
 <body style="${shell}text-align:${align};direction:${dir};">
   <div class="nt-email-card" dir="${dir}" style="${CARD_STYLE}">
     <div style="${HEADER_STYLE}">
-      {{schoolLogoHtml}}
-      <div style="font-size:18px;font-weight:700;color:${FIKR_BRAND.navy};">{{schoolName}}</div>
-      <div style="font-size:13px;color:${FIKR_BRAND.teal};margin-top:4px;font-weight:600;">${escapeHtmlText(subtitle)}</div>
+      ${schoolEmailHeader(locale, subtitle)}
     </div>
     <div class="nt-email-body" dir="${dir}" style="${BODY_STYLE}text-align:${align};direction:${dir};">
       {{content}}
@@ -320,21 +376,7 @@ export function defaultPlatformNotificationLayoutHtml(locale: 'en' | 'ar'): stri
   const shell = isAr ? PLATFORM_SHELL_AR : PLATFORM_SHELL_EN;
   const titleBlock = `<div style="font-size:18px;line-height:1.2;font-weight:800;letter-spacing:0.02em;color:${FIKR_BRAND.navy};">${escapeHtmlText(brand)}</div>
               <div style="margin-top:3px;font-size:12px;line-height:1.3;font-weight:600;color:${FIKR_BRAND.tealDark};">${escapeHtmlText(tagline)}</div>`;
-  // Title at the reading start, logo at the far end (not packed next to the words).
-  // English LTR: title left, logo right. Arabic: title right, logo left.
-  const headerInner = isAr
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" dir="ltr">
-          <tr>
-            <td valign="middle" align="left" width="70" style="width:70px;padding:0;">{{schoolLogoHtml}}</td>
-            <td valign="middle" align="right" style="padding:0 8px;">${titleBlock}</td>
-          </tr>
-        </table>`
-    : `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" dir="ltr">
-          <tr>
-            <td valign="middle" align="left" style="padding:0 8px 0 0;">${titleBlock}</td>
-            <td valign="middle" align="right" width="70" style="width:70px;padding:0;">{{schoolLogoHtml}}</td>
-          </tr>
-        </table>`;
+  const headerInner = oppositeEndsBrandHeader(locale, titleBlock, '{{schoolLogoHtml}}');
   return `<!DOCTYPE html>
 <html lang="${lang}" dir="${dir}">
 <head>
@@ -399,7 +441,7 @@ function extractNtEmailBodyInner(html: string): string {
 
 /** Shared inner HTML helpers for system template factory bodies. */
 export function brandedParagraph(text: string): string {
-  return `<p style="margin:0 0 14px;color:${FIKR_BRAND.ink};font-size:15px;line-height:1.55;">${text}</p>`;
+  return `<p style="margin:0 0 14px;color:${FIKR_BRAND.ink};font-size:16px;line-height:1.65;">${text}</p>`;
 }
 
 export function brandedOtpBlock(codePlaceholder: string): string {
@@ -409,11 +451,39 @@ export function brandedOtpBlock(codePlaceholder: string): string {
 }
 
 export function brandedCallout(htmlInner: string): string {
-  return `<p style="margin:0 0 14px;color:${FIKR_BRAND.ink};font-size:15px;line-height:1.55;">${htmlInner}</p>`;
+  return `<p style="margin:0 0 14px;color:${FIKR_BRAND.ink};font-size:16px;line-height:1.65;">${htmlInner}</p>`;
 }
 
 export function brandedHeading(text: string): string {
-  return `<p style="margin:0 0 16px;font-size:17px;line-height:1.35;font-weight:700;color:${FIKR_BRAND.ink};">${text}</p>`;
+  return `<p style="margin:0 0 16px;font-size:18px;line-height:1.35;font-weight:800;color:${FIKR_BRAND.navy};">${text}</p>`;
+}
+
+/** Solid action link. `href` is a template placeholder such as `{{joinUrl}}`. */
+export function brandedActionLink(href: string, label: string, tone: 'primary' | 'quiet' = 'primary'): string {
+  const style =
+    tone === 'primary'
+      ? `display:inline-block;background:${FIKR_BRAND.teal};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;line-height:1.2;padding:12px 18px;border-radius:8px;`
+      : `display:inline-block;background:#ffffff;color:${FIKR_BRAND.navy};text-decoration:none;font-weight:700;font-size:15px;line-height:1.2;padding:11px 18px;border-radius:8px;border:1px solid ${FIKR_BRAND.hairline};`;
+  return `<a href="${href}" style="${style}">${escapeHtmlText(label)}</a>`;
+}
+
+/** Greeting, what happened, labeled facts, then what to do. */
+export function clearNotice(input: {
+  heading?: string;
+  greeting?: string;
+  lead: string;
+  details?: Array<[string, string]>;
+  follow?: string;
+  actionHtml?: string;
+}): string {
+  return [
+    input.heading ? brandedHeading(input.heading) : '',
+    input.greeting ? brandedParagraph(input.greeting) : '',
+    brandedParagraph(input.lead),
+    input.details?.length ? brandedDetails(input.details) : '',
+    input.follow ? brandedParagraph(input.follow) : '',
+    input.actionHtml ? `<p style="margin:18px 0 4px;">${input.actionHtml}</p>` : '',
+  ].join('');
 }
 
 /** Label / value lines — no tinted boxes (body copy stays plain). */
@@ -421,7 +491,7 @@ export function brandedDetails(rows: Array<[label: string, value: string]>): str
   return rows
     .map(
       ([label, value]) =>
-        `<p style="margin:0 0 8px;color:${FIKR_BRAND.ink};font-size:15px;line-height:1.55;"><strong>${label}:</strong> ${value}</p>`,
+        `<p style="margin:0 0 8px;color:${FIKR_BRAND.ink};font-size:16px;line-height:1.65;"><strong style="color:${FIKR_BRAND.navy};">${label}:</strong> ${value}</p>`,
     )
     .join('');
 }

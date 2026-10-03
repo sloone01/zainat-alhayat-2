@@ -10,7 +10,7 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-display truncate text-lg font-bold leading-7 text-navy-800">{{ $t('transportation.buses') }}</h2>
-            <p v-if="!loading" class="text-sm text-fikr-ink-muted">{{ $t('transportation.busesCount', { count: buses.length }) }}</p>
+            <p v-if="!loading" class="text-sm text-fikr-ink-muted">{{ $t('transportation.busesCount', { count: totalBuses }) }}</p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <FikrFilterButton
@@ -30,12 +30,12 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
+          <div v-if="loading && !loaded && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="buses.length">
+          <template v-else-if="totalBuses > 0 || hasActiveFilters">
             <!-- Live fleet map (mock-8c): buses with a reported GPS position -->
             <div v-if="fleetMarkers.length" class="mb-4 h-72 overflow-hidden rounded-2xl shadow-fee">
               <MapView :markers="fleetMarkers" fit-markers class="h-full" />
@@ -44,7 +44,7 @@
               {{ $t('transportation.liveNone') }}
             </p>
             <p
-              v-if="filteredBuses.length === 0"
+              v-if="paginatedBuses.length === 0"
               class="rounded-lg bg-fikr-mist px-4 py-8 text-center text-sm font-medium text-navy-800"
             >
               {{ $t('transportation.noFilterResults') }}
@@ -140,12 +140,12 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredBuses.length > 0"
+              :show="totalBuses > 0"
               @update:page="goToPage"
             />
           </template>
 
-          <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
+          <div v-else-if="loaded" class="flex min-h-[16rem] flex-col items-center justify-center text-center">
             <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-fikr-mist text-navy-800">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h8a2 2 0 012 2v9H6V9a2 2 0 012-2zm0 0V6a2 2 0 012-2h4a2 2 0 012 2v1M7 16h.01M17 16h.01" />
@@ -238,7 +238,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useFeedback } from '@/composables/useFeedback'
@@ -251,11 +251,11 @@ import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
 import BusTrackStudentsPanel from '@/components/BusTrackStudentsPanel.vue'
 import { authService } from '@/services'
-import { busService, type Bus } from '@/services/bus.service'
+import { busService, type Bus, type BusListParams } from '@/services/bus.service'
 import { chatApiService } from '@/services/chat.service'
 import FikrLoader from '@/components/FikrLoader.vue'
 import { routePageLoading } from '@/router/route-loading'
@@ -272,36 +272,32 @@ const schoolId = computed(() => {
   return raw != null && String(raw).trim() !== '' ? String(raw) : undefined
 })
 
-const loading = ref(true)
-const buses = ref<Bus[]>([])
 const selectedBusId = ref<string | null>(null)
 const showFilters = ref(false)
 const searchQuery = ref('')
 const activeMenuId = ref<string | null>(null)
 
-const selectedBus = computed(() => buses.value.find((b) => b.id === selectedBusId.value) ?? null)
-
 const hasActiveFilters = computed(() => Boolean(searchQuery.value.trim()))
 
-const filteredBuses = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return buses.value
-  return buses.value.filter((bus) => {
-    const haystack = `${bus.title} ${bus.driverName} ${bus.driverContacts || ''}`.toLowerCase()
-    return haystack.includes(q)
-  })
-})
-
 const {
+  items: paginatedBuses,
+  total: totalBuses,
+  loading,
+  loaded,
   currentPage,
-  paginatedItems: paginatedBuses,
   totalPages,
   goToPage,
-} = useClientPagination(filteredBuses)
+  reload,
+} = useServerPagination<Bus, BusListParams>(
+  (params) => busService.listPage({ ...params, schoolId: schoolId.value }),
+  {
+    filters: () => ({ q: searchQuery.value }),
+    debounceKeys: ['q'],
+    onError: (err) => console.error('Failed to load buses:', err),
+  },
+)
 
-watch([searchQuery], () => {
-  currentPage.value = 1
-})
+const selectedBus = computed(() => paginatedBuses.value.find((b) => b.id === selectedBusId.value) ?? null)
 
 const onBusStudents = computed(() => selectedBus.value?.students ?? [])
 
@@ -340,13 +336,11 @@ function clearSelection() {
   selectedBusId.value = null
 }
 
-const loadBuses = async () => {
-  buses.value = await busService.getAll(schoolId.value)
-}
+const loadBuses = () => reload()
 
 /* ---- Live fleet map -------------------------------------------------- */
 const fleetMarkers = computed<MapViewMarker[]>(() =>
-  buses.value
+  paginatedBuses.value
     .filter(
       (b) =>
         b.is_active && b.last_lat != null && b.last_lng != null && Number.isFinite(Number(b.last_lat)),
@@ -366,14 +360,7 @@ const fleetMarkers = computed<MapViewMarker[]>(() =>
 
 let fleetPoll: ReturnType<typeof setInterval> | null = null
 
-const refresh = async () => {
-  loading.value = true
-  try {
-    await loadBuses()
-  } finally {
-    loading.value = false
-  }
-}
+const refresh = () => loadBuses()
 
 const selectBus = (id: string) => {
   activeMenuId.value = null

@@ -73,10 +73,17 @@ export class StudentProgressController {
   }
 
   @Get('course/:courseId')
-  async findByCourse(@Param('courseId') courseId: string) {
+  async findByCourse(
+    @Param('courseId') courseId: string,
+    @Query('student_ids') studentIds?: string,
+  ) {
+    const ids = (studentIds || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => /^[0-9a-f-]{36}$/i.test(id));
     return {
       success: true,
-      data: await this.progressService.findByCourse(courseId),
+      data: await this.progressService.findByCourse(courseId, studentIds ? ids : undefined),
       message: 'Course progress records retrieved successfully',
     };
   }

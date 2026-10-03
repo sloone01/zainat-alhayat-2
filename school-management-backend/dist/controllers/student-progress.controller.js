@@ -49,10 +49,14 @@ let StudentProgressController = class StudentProgressController {
             message: 'Student progress records retrieved successfully',
         };
     }
-    async findByCourse(courseId) {
+    async findByCourse(courseId, studentIds) {
+        const ids = (studentIds || '')
+            .split(',')
+            .map((id) => id.trim())
+            .filter((id) => /^[0-9a-f-]{36}$/i.test(id));
         return {
             success: true,
-            data: await this.progressService.findByCourse(courseId),
+            data: await this.progressService.findByCourse(courseId, studentIds ? ids : undefined),
             message: 'Course progress records retrieved successfully',
         };
     }
@@ -157,8 +161,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)('course/:courseId'),
     __param(0, (0, common_1.Param)('courseId')),
+    __param(1, (0, common_1.Query)('student_ids')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], StudentProgressController.prototype, "findByCourse", null);
 __decorate([

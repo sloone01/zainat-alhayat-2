@@ -82,7 +82,7 @@
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
-        <div v-else-if="filteredStudents.length === 0" class="flex flex-col items-center justify-center px-6 py-16 text-center">
+        <div v-else-if="studentTotal === 0" class="flex flex-col items-center justify-center px-6 py-16 text-center">
           <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.noStudentsInGroup') }}</h3>
         </div>
         <div v-else class="px-5 py-4">
@@ -139,7 +139,7 @@
           <FikrPagination
             :page="currentPage"
             :pages="totalPages"
-            :show="filteredStudents.length > 0"
+            :show="studentTotal > 0"
             @update:page="goToPage"
           />
         </div>
@@ -215,7 +215,7 @@
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
-        <div v-else-if="filteredStudents.length === 0" class="flex flex-col items-center justify-center px-6 py-16 text-center">
+        <div v-else-if="studentTotal === 0" class="flex flex-col items-center justify-center px-6 py-16 text-center">
           <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.noStudentsInGroup') }}</h3>
         </div>
         <div v-else class="grid items-start gap-8 px-8 py-6 lg:grid-cols-[minmax(0,1fr)_260px]">
@@ -232,10 +232,11 @@
                   <td>
                     <div class="text-sm font-medium text-navy-800">{{ student.name }}</div>
                     <input
-                      v-model="attendanceNotes[student.id]"
+                      :value="attendanceNotes[student.id] || ''"
                       type="text"
                       :aria-label="$t('attendanceManagement.notes')"
                       class="mt-0.5 w-full border-0 bg-transparent p-0 text-xs text-fikr-ink-muted focus:outline-none focus-visible:ring-0"
+                      @input="onNoteInput(student.id, ($event.target as HTMLInputElement).value)"
                     />
                   </td>
                   <td class="whitespace-nowrap">
@@ -258,7 +259,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredStudents.length > 0"
+              :show="studentTotal > 0"
               @update:page="goToPage"
             />
           </div>
@@ -360,14 +361,14 @@
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
-        <div v-else-if="filteredStudents.length === 0" class="mt-10 flex flex-col items-center justify-center py-16 text-center">
+        <div v-else-if="studentTotal === 0" class="mt-10 flex flex-col items-center justify-center py-16 text-center">
           <h3 class="text-base font-semibold text-navy-800">{{ $t('attendanceManagement.messages.noStudentsInGroup') }}</h3>
         </div>
         <div v-else class="mt-10">
           <h2 class="fk-display text-2xl font-bold leading-8 text-navy-800">{{ $t('attendanceManagement.classRoster') }}</h2>
           <div class="mt-4 grid grid-cols-5 gap-3">
             <button
-              v-for="student in filteredStudents"
+              v-for="student in paginatedStudents"
               :key="student.id"
               type="button"
               class="flex flex-col gap-3 rounded-2xl bg-fikr-mist p-4 text-start text-navy-800"
@@ -429,12 +430,13 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { fetchAllPages, useServerPagination } from '@/composables/useServerPagination'
 import type { ListViewMode } from '@/composables/useListViewMode'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import IconDownload from '@/components/icons/IconDownload.vue'
 import { attendanceService } from '@/services/attendance.service'
-import { studentService } from '@/services/student.service'
+import { studentService, type Student } from '@/services/student.service'
+import { formatStudentDisplayName } from '@/utils/student-display-name'
 import { groupService } from '@/services/group.service'
 import { scheduleService } from '@/services/schedule.service'
 import { settingsService } from '@/services/settings.service'
@@ -503,16 +505,17 @@ type SessionSlot = { n: number; start: string; end: string }
 const sessionSlots = ref<SessionSlot[]>([{ n: 1, start: '', end: '' }])
 const loadingSessions = ref(false)
 const showExportMenu = ref(false)
-const attendanceData = ref<Record<string, string>>({})
+/** Statuses the user changed. Saving sends only these rows. */
+const dirtyStatus = ref<Record<string, string>>({})
+const dirtyNoteIds = ref<Set<string>>(new Set())
 const attendanceNotes = ref<Record<string, string>>({})
-const loading = ref(false)
+const studentNames = ref<Record<string, string>>({})
 const loadingGroups = ref(false)
 const groupsError = ref('')
 const saving = ref(false)
 
 // Data from APIs
 const groups = ref<any[]>([])
-const students = ref<any[]>([])
 const existingAttendance = ref<any[]>([])
 const currentUser = ref<any>(null)
 
@@ -726,75 +729,75 @@ async function refreshSessionOptions() {
   }
 }
 
-// Load students for selected group
-const loadStudents = async (groupId: string) => {
-  try {
-    loading.value = true
-    const groupStudents = await studentService.getByGroup(groupId)
-    students.value = groupStudents.map(student => ({
-      id: student.id,
-      name: `${student.firstName || ''} ${student.lastName || ''}`.trim() || '—',
-      buses: student.buses || [],
-      firstName: student.firstName,
-      lastName: student.lastName,
-    }))
-    console.log('Students loaded:', students.value.length)
-  } catch (error) {
-    console.error('Error loading students:', error)
-    students.value = []
-  } finally {
-    loading.value = false
+type RosterStudent = {
+  id: string
+  name: string
+  buses: { title?: string }[]
+  firstName?: string
+  lastName?: string
+}
+
+function toRosterStudent(student: Student): RosterStudent {
+  const name = formatStudentDisplayName(student, locale.value).trim() || '—'
+  studentNames.value[student.id] = name
+  return {
+    id: student.id,
+    name,
+    buses: student.buses || [],
+    firstName: student.firstName,
+    lastName: student.lastName,
   }
 }
 
-// Load existing attendance for the selected date, group, and session
+async function listRosterPage(params: { page: number; limit: number; group_id: string }) {
+  const page = await studentService.listPage({
+    group_id: params.group_id,
+    page: params.page,
+    limit: params.limit,
+  })
+  return { ...page, items: (page.items || []).map(toRosterStudent) }
+}
+
+function clearEdits() {
+  dirtyStatus.value = {}
+  dirtyNoteIds.value = new Set()
+  attendanceNotes.value = {}
+}
+
+function existingRecord(studentId: string) {
+  return existingAttendance.value.find((record) => String(record.student_id) === String(studentId))
+}
+
+/** Saved or edited status. Empty when the row is only a display default. */
+function storedStatus(studentId: string): string | null {
+  if (dirtyStatus.value[studentId]) return dirtyStatus.value[studentId]
+  const record = existingRecord(studentId)
+  if (!record) return null
+  return record.status === 'excused' ? 'absent' : record.status
+}
+
+function hydrateVisibleNotes(list: RosterStudent[]) {
+  const next = { ...attendanceNotes.value }
+  for (const student of list) {
+    if (dirtyNoteIds.value.has(student.id)) continue
+    const record = existingRecord(student.id)
+    next[student.id] = record?.notes ? stripOnlineSessionMirrorNotes(String(record.notes)) : ''
+  }
+  attendanceNotes.value = next
+}
+
 const loadExistingAttendance = async (groupId: string, date: string) => {
   try {
-    const attendance = await attendanceService.getByGroup(
+    existingAttendance.value = await attendanceService.getByGroup(
       groupId,
       date,
       effectiveSessionNumber.value,
     )
-    existingAttendance.value = attendance
-
-    // Only populate attendance data from existing records if no current data exists
-    // This prevents clearing user's current edits when reloading after save
-    const hasCurrentData = Object.keys(attendanceData.value).length > 0
-
-    if (!hasCurrentData) {
-      attendanceData.value = {}
-      attendanceNotes.value = {}
-    }
-
-    attendance.forEach(record => {
-      // Only set if no current value exists (preserves user edits)
-      if (!hasCurrentData || !attendanceData.value[record.student_id]) {
-        attendanceData.value[record.student_id] = record.status === 'excused' ? 'absent' : record.status
-      }
-      if (record.notes != null && record.notes !== '' && (!hasCurrentData || !attendanceNotes.value[record.student_id])) {
-        attendanceNotes.value[record.student_id] = stripOnlineSessionMirrorNotes(record.notes)
-      }
-    })
-
-    console.log('Existing attendance loaded:', attendance.length, 'records')
   } catch (error) {
     console.error('Error loading existing attendance:', error)
     existingAttendance.value = []
-    // Only clear data if no current edits exist
-    if (Object.keys(attendanceData.value).length === 0) {
-      attendanceData.value = {}
-      attendanceNotes.value = {}
-    }
   }
-  applyDefaultPresent()
-}
-
-function applyDefaultPresent() {
-  for (const student of students.value) {
-    if (!attendanceData.value[student.id]) {
-      attendanceData.value[student.id] = 'present'
-    }
-  }
+  hydrateVisibleNotes(paginatedStudents.value)
 }
 
 const attendanceStatuses = [
@@ -834,42 +837,56 @@ const selectedGroup = computed(() => {
   return groups.value.find((group) => String(group.id) === String(sid))
 })
 
-const filteredStudents = computed(() => {
-  return students.value
-})
-
 const {
+  items: paginatedStudents,
+  total: studentTotal,
+  loading,
   currentPage,
-  paginatedItems: paginatedStudents,
   totalPages,
   goToPage,
-} = useClientPagination(filteredStudents)
+} = useServerPagination<RosterStudent, { group_id: string }>(
+  (params) => listRosterPage(params),
+  {
+    filters: () => ({ group_id: selectedGroupId.value }),
+    enabled: () => Boolean(selectedGroupId.value),
+  },
+)
 
-watch(selectedGroupId, () => {
-  currentPage.value = 1
+watch(paginatedStudents, (list) => {
+  hydrateVisibleNotes(list)
 })
 
 const attendanceStats = computed(() => {
-  const total = filteredStudents.value.length
-  const present = Object.values(attendanceData.value).filter(status => status === 'present').length
-  const absent = Object.values(attendanceData.value).filter(status => status === 'absent').length
-  const late = Object.values(attendanceData.value).filter(status => status === 'late').length
-  const excused = Object.values(attendanceData.value).filter(status => status === 'excused').length
-  const rate = total > 0 ? Math.round((present / total) * 100) : 0
-
+  const total = studentTotal.value
+  const counts = { present: 0, absent: 0, late: 0, excused: 0 }
+  const seen = new Set<string>()
+  for (const record of existingAttendance.value) {
+    const id = String(record.student_id)
+    if (seen.has(id)) continue
+    seen.add(id)
+    const status = dirtyStatus.value[id] || (record.status === 'excused' ? 'absent' : record.status)
+    if (status === 'present' || status === 'absent' || status === 'late' || status === 'excused') {
+      counts[status] += 1
+    }
+  }
+  for (const [id, status] of Object.entries(dirtyStatus.value)) {
+    if (seen.has(id)) continue
+    if (status === 'present' || status === 'absent' || status === 'late' || status === 'excused') {
+      counts[status] += 1
+    }
+  }
+  const rate = total > 0 ? Math.round((counts.present / total) * 100) : 0
   return {
     totalStudents: total,
-    presentStudents: present,
-    absentStudents: absent,
-    lateStudents: late,
-    excusedStudents: excused,
-    attendanceRate: rate
+    presentStudents: counts.present,
+    absentStudents: counts.absent,
+    lateStudents: counts.late,
+    excusedStudents: counts.excused,
+    attendanceRate: rate,
   }
 })
 
-const hasChanges = computed(() => {
-  return Object.keys(attendanceData.value).length > 0
-})
+const hasChanges = computed(() => Object.keys(dirtyStatus.value).length > 0 || dirtyNoteIds.value.size > 0)
 
 const saveLabel = computed(() => {
   if (saving.value) return t('attendanceManagement.saving')
@@ -883,12 +900,16 @@ const saveAndNotifyLabel = computed(() => {
   return t('attendanceManagement.actions.saveAndNotify')
 })
 
-const absentStudentNames = computed(() =>
-  filteredStudents.value
-    .filter((student) => attendanceData.value[student.id] === 'absent')
-    .map((student) => student.name)
-    .filter(Boolean),
-)
+const absentStudentNames = computed(() => {
+  const ids = new Set<string>()
+  for (const record of existingAttendance.value) {
+    if (storedStatus(String(record.student_id)) === 'absent') ids.add(String(record.student_id))
+  }
+  for (const [id, status] of Object.entries(dirtyStatus.value)) {
+    if (status === 'absent') ids.add(id)
+  }
+  return [...ids].map((id) => studentNames.value[id]).filter(Boolean)
+})
 
 const notifyCardBody = computed(() => {
   if (absentStudentNames.value.length) {
@@ -929,33 +950,23 @@ const isAttendanceAlreadyTaken = computed(() => {
 
 // Methods
 const onGroupChange = async () => {
-  attendanceData.value = {}
-  attendanceNotes.value = {}
+  clearEdits()
   existingAttendance.value = []
-
-  if (!selectedGroupId.value) {
-    students.value = []
-    return
-  }
-
-  await loadStudents(selectedGroupId.value)
+  if (!selectedGroupId.value) return
   await refreshSessionOptions()
   await loadExistingAttendance(selectedGroupId.value, selectedDate.value)
 }
 
 const onDateChange = async () => {
   if (!selectedGroupId.value) return
-
-  attendanceData.value = {}
-  attendanceNotes.value = {}
+  clearEdits()
   await refreshSessionOptions()
   await loadExistingAttendance(selectedGroupId.value, selectedDate.value)
 }
 
 const onSessionChange = async () => {
   if (!selectedGroupId.value) return
-  attendanceData.value = {}
-  attendanceNotes.value = {}
+  clearEdits()
   await loadExistingAttendance(selectedGroupId.value, selectedDate.value)
 }
 
@@ -997,7 +1008,11 @@ const saveAttendance = async () => {
     return
   }
 
-  if (Object.keys(attendanceData.value).length === 0) {
+  const dirtyIds = new Set<string>([
+    ...Object.keys(dirtyStatus.value),
+    ...dirtyNoteIds.value,
+  ])
+  if (dirtyIds.size === 0) {
     feedback.error(t('attendanceManagement.messages.markAtLeastOneStudent'), t('common.error'))
     return
   }
@@ -1005,13 +1020,15 @@ const saveAttendance = async () => {
   try {
     saving.value = true
 
-    // Prepare bulk attendance data
-    const attendances = Object.entries(attendanceData.value).map(([studentId, status]) => ({
-      student_id: studentId, // Keep as UUID string, don't convert to integer
-      status: status,
-      notes: attendanceNotes.value[studentId] || '',
-      is_excused: status === 'excused'
-    }))
+    const attendances = [...dirtyIds].map((studentId) => {
+      const status = storedStatus(studentId) || 'present'
+      return {
+        student_id: studentId,
+        status,
+        notes: attendanceNotes.value[studentId] || '',
+        is_excused: status === 'excused',
+      }
+    })
 
     const bulkData = {
       attendance_date: selectedDate.value,
@@ -1025,7 +1042,7 @@ const saveAttendance = async () => {
 
     await attendanceService.createBulk(bulkData)
 
-    // Reload existing attendance to show saved data without clearing current form data
+    clearEdits()
     await loadExistingAttendance(selectedGroupId.value, selectedDate.value)
 
     feedback.saved(t('attendanceManagement.messages.attendanceSaved'), t('common.success'))
@@ -1038,9 +1055,7 @@ const saveAttendance = async () => {
   }
 }
 
-const getAttendanceStatus = (studentId: string) => {
-  return attendanceData.value[studentId] || ''
-}
+const getAttendanceStatus = (studentId: string) => storedStatus(studentId) || 'present'
 
 function attendanceStatusLabel(studentId: string): string {
   const code = getAttendanceStatus(studentId)
@@ -1056,13 +1071,20 @@ function buildExportHeaders(): string[] {
   ]
 }
 
-function buildStudentExportRows(): (string | number)[][] {
-  return filteredStudents.value.map((student) => [
+function buildStudentExportRows(roster: RosterStudent[]): (string | number)[][] {
+  return roster.map((student) => [
     student.name,
     arrivalLabel(student),
     attendanceStatusLabel(student.id),
-    attendanceNotes.value[student.id] || '',
+    attendanceNotes.value[student.id] || (existingRecord(student.id)?.notes
+      ? stripOnlineSessionMirrorNotes(String(existingRecord(student.id).notes))
+      : ''),
   ])
+}
+
+async function rosterForExport(): Promise<RosterStudent[]> {
+  if (!selectedGroupId.value) return []
+  return fetchAllPages(listRosterPage, { group_id: selectedGroupId.value })
 }
 
 function buildSummaryLabelValueRows(): (string | number)[][] {
@@ -1088,7 +1110,7 @@ function supervisorName(): string {
   return `${currentUser.value?.firstName || ''} ${currentUser.value?.lastName || ''}`.trim() || '—'
 }
 
-function attendanceReportModel() {
+function attendanceReportModel(roster: RosterStudent[]) {
   const stats = attendanceStats.value
   return {
     title: t('attendanceManagement.title'),
@@ -1108,7 +1130,7 @@ function attendanceReportModel() {
       { label: t('attendanceManagement.attendanceRate'), value: `${stats.attendanceRate}%` },
     ],
     columns: buildExportHeaders(),
-    rows: buildStudentExportRows().map((row) => row.map((cell) => String(cell ?? ''))),
+    rows: buildStudentExportRows(roster).map((row) => row.map((cell) => String(cell ?? ''))),
   }
 }
 
@@ -1117,7 +1139,14 @@ function attendanceExportFilename(): string {
 }
 
 const updateAttendance = (studentId: string, status: string) => {
-  attendanceData.value[studentId] = status
+  dirtyStatus.value = { ...dirtyStatus.value, [studentId]: status }
+}
+
+function onNoteInput(studentId: string, value: string) {
+  attendanceNotes.value = { ...attendanceNotes.value, [studentId]: value }
+  const next = new Set(dirtyNoteIds.value)
+  next.add(studentId)
+  dirtyNoteIds.value = next
 }
 
 const STATUS_CYCLE = ['present', 'late', 'absent'] as const
@@ -1126,7 +1155,7 @@ function cycleAttendance(studentId: string) {
   const current = getAttendanceStatus(studentId)
   const index = STATUS_CYCLE.indexOf(current as (typeof STATUS_CYCLE)[number])
   const next = index === -1 ? STATUS_CYCLE[0] : STATUS_CYCLE[(index + 1) % STATUS_CYCLE.length]
-  attendanceData.value[studentId] = next
+  updateAttendance(studentId, next)
 }
 
 function cardStatusLabel(studentId: string) {
@@ -1144,33 +1173,34 @@ function cardStatusChipClass(studentId: string) {
 }
 
 const markAllPresent = () => {
-  filteredStudents.value.forEach(student => {
-    attendanceData.value[student.id] = 'present'
-  })
+  const next = { ...dirtyStatus.value }
+  for (const student of paginatedStudents.value) next[student.id] = 'present'
+  dirtyStatus.value = next
 }
 
 const markAllAbsent = () => {
-  filteredStudents.value.forEach(student => {
-    attendanceData.value[student.id] = 'absent'
-  })
+  const next = { ...dirtyStatus.value }
+  for (const student of paginatedStudents.value) next[student.id] = 'absent'
+  dirtyStatus.value = next
 }
 
 const resetAttendance = () => {
-  attendanceData.value = {}
-  attendanceNotes.value = {}
+  clearEdits()
+  hydrateVisibleNotes(paginatedStudents.value)
 }
 
-const exportAttendance = () => {
+const exportAttendance = async () => {
   if (!selectedGroup.value) {
     alert(t('attendanceManagement.messages.selectGroupFirst'))
     return
   }
-  if (filteredStudents.value.length === 0) {
+  const roster = await rosterForExport()
+  if (roster.length === 0) {
     alert(t('attendanceManagement.messages.noStudentsInGroup'))
     return
   }
 
-  const summaryRows = [...buildSummaryLabelValueRows(), buildExportHeaders(), ...buildStudentExportRows()]
+  const summaryRows = [...buildSummaryLabelValueRows(), buildExportHeaders(), ...buildStudentExportRows(roster)]
 
   const ws = XLSX.utils.aoa_to_sheet(summaryRows)
   const wb = XLSX.utils.book_new()
@@ -1181,22 +1211,24 @@ const exportAttendance = () => {
   XLSX.writeFile(wb, fname)
 }
 
-function canExportAttendance(): boolean {
+async function canExportAttendance(): Promise<RosterStudent[] | null> {
   if (!selectedGroup.value) {
     alert(t('attendanceManagement.messages.selectGroupFirst'))
-    return false
+    return null
   }
-  if (filteredStudents.value.length === 0) {
+  const roster = await rosterForExport()
+  if (roster.length === 0) {
     alert(t('attendanceManagement.messages.noStudentsInGroup'))
-    return false
+    return null
   }
-  return true
+  return roster
 }
 
 const exportAttendanceWord = async () => {
-  if (!canExportAttendance()) return
+  const roster = await canExportAttendance()
+  if (!roster) return
   try {
-    await downloadAttendanceReport(attendanceReportModel(), 'word', attendanceExportFilename())
+    await downloadAttendanceReport(attendanceReportModel(roster), 'word', attendanceExportFilename())
   } catch (e) {
     console.error('Word export failed:', e)
     alert(t('attendanceManagement.messages.pdfExportFailed'))
@@ -1204,9 +1236,10 @@ const exportAttendanceWord = async () => {
 }
 
 const printAttendance = async () => {
-  if (!canExportAttendance()) return
+  const roster = await canExportAttendance()
+  if (!roster) return
   try {
-    await downloadAttendanceReport(attendanceReportModel(), 'pdf', attendanceExportFilename())
+    await downloadAttendanceReport(attendanceReportModel(roster), 'pdf', attendanceExportFilename())
   } catch (e) {
     console.error('PDF export failed:', e)
     alert(t('attendanceManagement.messages.pdfExportFailed'))
