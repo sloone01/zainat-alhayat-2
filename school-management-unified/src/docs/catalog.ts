@@ -10,6 +10,7 @@ export const DOCS_NAV: DocsNavNode[] = [
     groupKey: 'staffGettingStarted',
     children: [
       { slug: 'admin-overview' },
+      { slug: 'try-demo' },
       { slug: 'sign-in' },
       { slug: 'school-settings' },
       { slug: 'users-and-roles' },
@@ -94,7 +95,12 @@ export const DOCS_NAV: DocsNavNode[] = [
     id: 'parent-getting-started',
     audience: 'parents',
     groupKey: 'parentGettingStarted',
-    children: [{ slug: 'parent-sign-in' }, { slug: 'parent-dashboard' }, { slug: 'switching-children' }],
+    children: [
+      { slug: 'parent-sign-in' },
+      { slug: 'parent-try-demo' },
+      { slug: 'parent-dashboard' },
+      { slug: 'switching-children' },
+    ],
   },
   {
     id: 'parent-children',

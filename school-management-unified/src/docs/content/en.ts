@@ -1,6 +1,50 @@
 import type { DocsContentMap } from '../types'
 
 export const docsEn: DocsContentMap = {
+  'try-demo': {
+    title: 'Try the demo',
+    intro:
+      'FIKR has a public demo school, FIKR Demo School, with sample students, classes, timetables, fees, and buses. Anyone can sign in with the logins below, on the website or in the FIKR mobile app. The password for all four is `DemoPass1`.',
+    who: 'Schools evaluating FIKR, new staff in training, and App Store / Google Play reviewers.',
+    when: 'Before subscribing, when showing FIKR to someone, or to practise a task without touching real data.',
+    steps: [
+      'School admin: `admin@fikr-demo.com` / `DemoPass1` — the full school dashboard (students, fees, schedules, attendance, transport, messages, settings).',
+      'Teacher: `teacher@fikr-demo.com` / `DemoPass1` — a teacher with real classes and a weekly timetable.',
+      'Driver: `driver@fikr-demo.com` / `DemoPass1` — the transport app with a demo bus (Live dashboard, Bus log, Fleet, Chats).',
+      'Parent: `parent@fikr-demo.com` / `DemoPass1` — a parent with one child in a class: schedule, attendance, fees, and chats.',
+      'Open Sign in on www.fikr.om (or the FIKR app), enter one of the logins, and explore.',
+    ],
+    notes: [
+      'All demo people are sample records, not real families or staff.',
+      'Demo logins cannot change their password, profile, or active state, and cannot be edited or deleted from user management.',
+      'Nothing is sent from the demo school: no email, SMS, or WhatsApp leaves FIKR. Push notifications only reach phones signed in to a demo login.',
+      'Every night at 03:00 (Muscat time) the four logins and the school name are restored. Other changes visitors make (students, fees, settings) are not rolled back, so the demo may show other visitors’ edits.',
+      'Do not enter real personal information in the demo school.',
+    ],
+    appearsAs: {
+      teacher: 'Sign in as `teacher@fikr-demo.com` to see the teaching menu and timetable.',
+      parent: 'Sign in as `parent@fikr-demo.com` to see the parent dashboard for one child.',
+      driver: 'Sign in as `driver@fikr-demo.com` on the mobile app to see the transport screens.',
+    },
+    related: ['admin-overview', 'sign-in'],
+  },
+  'parent-try-demo': {
+    title: 'Try the parent app',
+    intro:
+      'To see what a parent sees in FIKR, sign in with the demo parent login on FIKR Demo School. The child and data are sample records.',
+    who: 'Anyone who wants to see the parent experience before their school creates an account for them.',
+    when: 'Before your school sends your login, or when showing the app to a parent.',
+    steps: [
+      'Open www.fikr.om or the FIKR app, then Sign in.',
+      'Email: `parent@fikr-demo.com` — password: `DemoPass1`.',
+      'You land on the parent dashboard: schedule, attendance, fees, chats, and the bus.',
+    ],
+    notes: [
+      'This login cannot change its password or profile, and nothing is emailed, texted, or sent on WhatsApp from it.',
+      'Your real login is created and sent by your school; there is no self sign-up in the app.',
+    ],
+    related: ['parent-sign-in', 'parent-dashboard'],
+  },
   'admin-overview': {
     title: 'School admin overview',
     intro:
