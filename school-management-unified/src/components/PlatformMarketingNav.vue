@@ -57,10 +57,11 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import { DEMO_SCHOOL_SLUG } from '@/demo/defaults'
 
 const route = useRoute()
 const menuOpen = ref(false)
-const demoSchoolPath = '/s/zinat-al-haya'
+const demoSchoolPath = `/s/${DEMO_SCHOOL_SLUG}`
 
 const isHome = computed(() => route.path === '/')
 const isDocs = computed(() => route.path === '/docs' || route.path.startsWith('/docs/'))

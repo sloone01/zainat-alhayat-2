@@ -28,10 +28,10 @@ Do **not** treat `README.md` as current product truth (it is outdated). Do **not
 
 ## 1. What this product is
 
-**FIKR** is a multi-tenant school / kindergarten platform. Zinat Al-Haya Kindergarten exists as **two** same-name tenants (school PK is UUID, not serial `1`):
+**FIKR** is a multi-tenant school / kindergarten platform. Two tenants come from the Zinat Al-Haya data (school PK is UUID, not serial `1`):
 
-- **Demo** — `landing_slug`: `zinat-al-haya`, shown as **FIKR Demo School / مدرسة فكر التجريبية** with the FIKR logo. People on this school are anonymized demo records. See **Public demo logins** below.
-- **Live 2026/2027** — `landing_slug`: `zinat-al-haya-live`. Zinat Al-Haya name + logo. Loaded from the school roster + transport register (see §9.10).
+- **Demo** — `landing_slug`: `fikr-demo` (`/s/fikr-demo`), shown as **FIKR Demo School / مدرسة فكر التجريبية** with the FIKR logo. People on this school are anonymized demo records. See **Public demo logins** below.
+- **Live 2026/2027** — `landing_slug`: `zinat-al-haya` (`/s/zinat-al-haya`). Zinat Al-Haya name + logo. Loaded from the school roster + transport register (see §9.10). The old address `/s/zinat-al-haya-live` (and `/login` under it) redirects here.
 
 **Public demo logins** (anyone, and the App Store / Play reviewers), password `DemoPass1` (`DEMO_PASSWORD`): `admin@fikr-demo.com`, `teacher@fikr-demo.com`, `driver@fikr-demo.com`, `parent@fikr-demo.com`. `DemoAccountsService` (`common/demo/`) keeps them on the demo school at boot and **nightly at 03:00 Muscat**: password, active, role, school, user group (`school_admin` / `teacher` / `mod_driver` / parent), driver on a bus, parent linked to a demo child, and the school name + logo. The first run takes over the demo-school teacher with the most timetable rows and the first demo parent from a fixed list (their old emails change to the new ones) so the logins open with real classes and a child. It does not roll back other data visitors change. These four cannot change their password, profile, or active state, and cannot be reset, edited, or deleted from user management (403 “Demo accounts cannot be changed”); “forgot password” for them sends nothing. **No email, SMS, or WhatsApp leaves the server** when the send runs for a demo school (`fikr-demo-b` included) or the recipient belongs only to demo schools; the transaction log keeps the row as `skipped`. Turn all of this off with `DEMO_ACCOUNTS_ENABLED=false`.
 
@@ -134,7 +134,7 @@ Migrations: `school-management-backend/src/migrations/`. Run only when code is n
 | `/change-password` | Signed-in user with `must_change_password` | Same split layout as login; required after first login / reset |
 | `/student-enrollment` | Prospective family | Public enrollment application (no auth). Query: `school_id` (UUID only). Same wizard chrome/fields as `/students/register` (`EnrollmentWizardChrome` + compact steps), plus an **installment plan** step: `GET /api/public/enrollment-fees/plans` and preview via `GET /api/public/enrollment-fees/preview` (advance + weighted schedule from grade fee package timing). Selected `installment_plan_id` is stored on the application. Civil ID first: `GET /api/public/students/lookup` — same school loads details (or already-registered); other school only allows a new application. Loads school name/logo/brand colors via `GET /api/public/landing/school-id/:id` on an **unauthenticated** axios client (no JWT — expired staff tokens must not 401 public meta). Review step loads **school** and **parent** responsibility lists from `GET /api/public/enrollment-responsibilities?school_id=` (managed under `/settings/enrollment-responsibilities`). Validation / resolve / submit errors use `useFeedback()` toasts (not inline banners or `alert()`). |
 
-`/s/default` redirects to `/s/zinat-al-haya`. `/for-schools` redirects to `/`.
+`/s/default` redirects to `/s/fikr-demo`. `/for-schools` redirects to `/`.
 
 ---
 
@@ -493,7 +493,7 @@ Send path **must** take an explicit `locale` (`en` | `ar`) and resolve that loca
 
 Zinat **live** fleet (2026/2027, one bus per student): حافلة اليحمدي, الثابتي, الحزم, علاية, الشخابيط, سفالة, وادي نام, جديا, plus private-car routes القابل, مصرون, الصرم. Plate is appended to the bus title. Repeatable load: `node school-management-backend/scripts/import-zinat-2026-roster.js --apply`.
 
-**Module-role demo seed** (local): `node school-management-backend/scripts/seed-demo-module-users.js --apply` — user groups per module (incl. Driver) on `zinat-al-haya` + second school `fikr-demo-b`, one login per group, 3 teachers / 6 students / parents, driver + Demo Bus A on school A. Password `DemoPass123!`. See `TESTER_LOGINS.md`.
+**Module-role demo seed** (local): `node school-management-backend/scripts/seed-demo-module-users.js --apply` — user groups per module (incl. Driver) on `fikr-demo` + second school `fikr-demo-b`, one login per group, 3 teachers / 6 students / parents, driver + Demo Bus A on school A. Password `DemoPass123!`. See `TESTER_LOGINS.md`.
 
 ---
 

@@ -46,7 +46,7 @@ export class DemoAccountsService implements OnApplicationBootstrap {
   }
 
   private demoSlug(): string {
-    return (process.env.DEMO_SCHOOL_SLUG || 'zinat-al-haya').trim().toLowerCase();
+    return (process.env.DEMO_SCHOOL_SLUG || 'fikr-demo').trim().toLowerCase();
   }
 
   private demoPassword(): string {

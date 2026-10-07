@@ -525,7 +525,7 @@ export class AuthService {
   }
 
   async issueDemoSession(audience: 'staff' | 'parents'): Promise<any> {
-    const slug = (process.env.DEMO_SCHOOL_SLUG || 'zinat-al-haya').trim().toLowerCase();
+    const slug = (process.env.DEMO_SCHOOL_SLUG || 'fikr-demo').trim().toLowerCase();
     const school = await this.schoolRepository.findOne({ where: { landing_slug: slug } });
     if (!school) {
       throw new ServiceUnavailableException('Demo school is not configured');

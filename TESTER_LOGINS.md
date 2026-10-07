@@ -2,7 +2,8 @@
 
 **Environment:** Railway production  
 **API:** https://divine-clarity-production-d359.up.railway.app/api  
-**Demo school login:** `/s/zinat-al-haya/login` (shown as FIKR Demo School)  
+**Demo school login:** `/s/fikr-demo/login` (FIKR Demo School)  
+**Real school login:** `/s/zinat-al-haya/login` (Zinat Al-Haya Kindergarten)  
 **Platform login:** `/login`
 
 ## Public demo logins (share freely, give to App Store / Play review)
@@ -23,8 +24,8 @@ These cannot change their password or profile. Nothing is emailed, texted, or se
 | Role | Email | Password | Where to sign in |
 |------|-------|----------|------------------|
 | Platform super admin | `superadmin@zinat.platform` | `SuperAdmin123!` | `/login` → platform (schools, plans) |
-| School admin (demo) | `admin@zinatalhaykindergarten.com` | `Admin123!` | `/login` or `/s/zinat-al-haya/login` |
-| School admin (live) | `Zahra@gmail.com` | `ZahraAdmin123` | `/login` |
+| School admin (demo) | `admin@zinatalhaykindergarten.com` | `Admin123!` | `/login` or `/s/fikr-demo/login` |
+| School admin (live) | `Zahra@gmail.com` | `ZahraAdmin123` | `/login` or `/s/zinat-al-haya/login` |
 | Parent (demo) | `parent_95064063@zinat.local` | `DemoPass123!` | `/login` |
 
 `moza@zinat.local` and `parent.test@zinat.local` may no longer work: the first demo reset can take over the demo teacher with the most classes and `parent.test@zinat.local` as `teacher@fikr-demo.com` / `parent@fikr-demo.com`.
@@ -45,7 +46,7 @@ node scripts/seed-demo-module-users.js --apply
 
 | School | Slug | Notes |
 |--------|------|--------|
-| FIKR Demo School | `zinat-al-haya` | School A — module users, 2 teachers, 3 students, driver + Demo Bus A |
+| FIKR Demo School | `fikr-demo` | School A — module users, 2 teachers, 3 students, driver + Demo Bus A |
 | FIKR Demo School B | `fikr-demo-b` | School B — admin, 1 teacher, 3 students |
 
 ### Module users (School A — one group per module)

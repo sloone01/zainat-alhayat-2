@@ -2,7 +2,7 @@
 /**
  * One-off Zinat 2026/2027 load:
  *  1. Anonymize people on the existing demo school (keep name + logo + staff logins).
- *  2. Create a second school with the same branding (slug zinat-al-haya-live).
+ *  2. Create a second school with the same branding (slug zinat-al-haya).
  *  3. Import roster, class groups, parents, fleet, and one bus per student.
  *
  * Usage (from school-management-backend):
@@ -24,8 +24,8 @@ const bcrypt = require('bcryptjs');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const APPLY = process.argv.includes('--apply');
-const DEMO_SLUG = process.env.DEMO_SCHOOL_SLUG || 'zinat-al-haya';
-const LIVE_SLUG = process.env.LIVE_SCHOOL_SLUG || 'zinat-al-haya-live';
+const DEMO_SLUG = process.env.DEMO_SCHOOL_SLUG || 'fikr-demo';
+const LIVE_SLUG = process.env.LIVE_SCHOOL_SLUG || 'zinat-al-haya';
 const LIVE_ADMIN_EMAIL = process.env.LIVE_ADMIN_EMAIL || 'Zahra@gmail.com';
 const LIVE_ADMIN_PASSWORD = process.env.LIVE_ADMIN_PASSWORD || 'ZahraAdmin123';
 const PARENT_PASSWORD = 'DemoPass123!';

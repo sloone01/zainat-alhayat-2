@@ -53,7 +53,15 @@ const router = createRouter({
     },
     {
       path: '/s/default',
+      redirect: '/s/fikr-demo',
+    },
+    {
+      path: '/s/zinat-al-haya-live',
       redirect: '/s/zinat-al-haya',
+    },
+    {
+      path: '/s/zinat-al-haya-live/login',
+      redirect: '/s/zinat-al-haya/login',
     },
     {
       // "login" is not a school slug — same screen as /login
