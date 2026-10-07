@@ -5809,15 +5809,7 @@
     "linkTransfers": "Transfers",
     "linkPlans": "Plans",
     "linkRoles": "User groups",
-    "linkNotifications": "Notification templates",
-    "deleteAccount": "Delete account",
-    "deleteAccountPassword": "Password",
-    "deleteAccountConfirm": "Delete account",
-    "deleteAccountWorking": "Deleting…",
-    "deleteAccountWarning": "This turns off your login and removes your name, email, and mobile from it. Your school keeps student attendance, grades, and fee records. This cannot be undone.",
-    "deleteAccountWrongPassword": "Current password is incorrect",
-    "deleteAccountBlocked": "This account cannot be deleted in the app. Email admin@fikr.om.",
-    "deleteAccountFailed": "Could not delete the account. Please try again."
+    "linkNotifications": "Notification templates"
   },
   "platformCustomRequests": {
     "nav": "Custom plan requests",
@@ -5866,9 +5858,9 @@
     "privacy5Title": "Who else receives data",
     "privacy5Body": "Your school.\nThawani, when a fee is paid online.\nGoogle Firebase, to deliver push notifications.\nDaily, to host live meetings.\nThe server that hosts FIKR.",
     "privacy6Title": "How long we keep it",
-    "privacy6Body": "We keep a login while it is active. When you delete the account, we turn it off and remove the name, email, mobile, and parent contact details on that login. School operational records stay with the school.",
-    "privacy7Title": "Delete your account",
-    "privacy7Body": "Open Account in the app, choose Delete account, and confirm with your password. You can also email admin@fikr.om.",
+    "privacy6Body": "The school keeps student attendance, grades, fees, and other school records for as long as the school needs them. A person's login stays while the school keeps it active.",
+    "privacy7Title": "Closing a login",
+    "privacy7Body": "The school creates the login, and the school closes it. A parent, teacher, or driver does not delete that login from the app. Ask your school to close it. The school can also ask FIKR at admin@fikr.om. Closing a login does not erase the child's attendance, grades, or invoices.",
     "privacy8Title": "Security",
     "privacy8Body": "The app talks to the server over HTTPS. Do not share your password.",
     "terms1Title": "The service",
@@ -5880,7 +5872,7 @@
     "terms4Title": "Payments",
     "terms4Body": "Fee payments in the app are school fees. Online card payment is processed by Thawani under the school's payment setup.",
     "terms5Title": "Stopping use",
-    "terms5Body": "You may delete your login from Account. The school or FIKR may suspend a login that misuses the service.",
+    "terms5Body": "The school can close a login. A person does not delete a school login from the app. FIKR may also suspend a login that misuses the service, when the school asks or when the subscription ends.",
     "terms6Title": "Contact",
     "terms6Body": "Questions about these terms: admin@fikr.om, +968 99788677, or +968 98234590."
   }
