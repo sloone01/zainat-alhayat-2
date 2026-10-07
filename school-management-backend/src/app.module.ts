@@ -250,6 +250,7 @@ import { PublicSubscriptionModule } from './public-subscription.module';
 import { RbacModule } from './rbac/rbac.module';
 import { ClaimGuard } from './rbac/claim.guard';
 import { PlatformBillingModule } from './platform-billing/platform-billing.module';
+import { DemoModule } from './common/demo/demo.module';
 
 @Module({
   imports: [
@@ -280,6 +281,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
       useFactory: (configService: ConfigService) => getDatabaseConfig(configService),
       inject: [ConfigService],
     }),
+    DemoModule,
     NotificationsModule,
     // After NotificationsModule so MailService is available for error alert emails
     ErrorsModule,

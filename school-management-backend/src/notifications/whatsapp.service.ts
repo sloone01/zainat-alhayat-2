@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { OutboundMessageTransaction } from '../entities/outbound-message-transaction.entity';
 import { InfobipClient } from './infobip.client';
 import { getOutboundContext } from './outbound-message-context';
+import { DemoAccountsService } from '../common/demo/demo-accounts.service';
 
 @Injectable()
 export class WhatsAppService {
@@ -15,6 +16,7 @@ export class WhatsAppService {
     private readonly infobip: InfobipClient,
     @InjectRepository(OutboundMessageTransaction)
     private readonly txRepo: Repository<OutboundMessageTransaction>,
+    private readonly demo: DemoAccountsService,
   ) {}
 
   isConfigured(): boolean {
@@ -34,6 +36,7 @@ export class WhatsAppService {
     if (!to) throw new Error('Recipient phone is required');
     if (!body) throw new Error('WhatsApp body is required');
     const ctx = getOutboundContext();
+    if (await this.skipForDemo(to, body, ctx)) return;
     try {
       const sent = await this.infobip.sendWhatsAppText({ to, body });
       this.logger.log(`WhatsApp sent to ${to}`);
@@ -63,6 +66,7 @@ export class WhatsAppService {
     if (!options.mediaUrl?.trim()) throw new Error('WhatsApp media URL is required');
     const ctx = getOutboundContext();
     const body = options.filename || options.caption || 'document';
+    if (await this.skipForDemo(to, body, ctx)) return;
     try {
       const sent = await this.infobip.sendWhatsAppDocument(options);
       await this.persistTx({
@@ -86,6 +90,7 @@ export class WhatsAppService {
     if (!options.mediaUrl?.trim()) throw new Error('WhatsApp media URL is required');
     const ctx = getOutboundContext();
     const body = options.caption || 'image';
+    if (await this.skipForDemo(to, body, ctx)) return;
     try {
       const sent = await this.infobip.sendWhatsAppImage(options);
       await this.persistTx({
@@ -103,10 +108,21 @@ export class WhatsAppService {
     }
   }
 
+  private async skipForDemo(
+    to: string,
+    body: string,
+    ctx: ReturnType<typeof getOutboundContext>,
+  ): Promise<boolean> {
+    if (!(await this.demo.shouldSuppressOutbound(to, 'phone', ctx))) return false;
+    this.logger.log(`WhatsApp to ${to} skipped (demo school)`);
+    await this.persistTx({ to, body, status: 'skipped', errorMessage: 'Demo school: not sent', ctx });
+    return true;
+  }
+
   private async persistTx(input: {
     to: string;
     body: string;
-    status: 'sent' | 'failed';
+    status: 'sent' | 'failed' | 'skipped';
     errorMessage: string | null;
     providerMessageId?: string | null;
     ctx: ReturnType<typeof getOutboundContext>;

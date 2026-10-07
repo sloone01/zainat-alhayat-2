@@ -214,9 +214,8 @@ docker exec -i zinat_postgres_prod pg_restore -U school_admin -d school_manageme
 | **School admin (demo)** | `admin@zinatalhaykindergarten.com` | `Admin123!` | Demo Zinat (`landing_slug` `zinat-al-haya`) |
 | **School admin (live)** | `Zahra@gmail.com` | `ZahraAdmin123` | Live 2026/2027 roster (`landing_slug` `zinat-al-haya-live`) |
 | **School admin (alt)** | `Zahra@gmail.com` | `ZahraAdmin123` | School id `1` |
-| **Teacher** | `moza@zinat.local` | `DemoPass123!` | School id `1` |
 | **Parent** | `parent_95064063@zinat.local` | `DemoPass123!` | School id `1` |
-| **Parent** | `parent.test@zinat.local` | `DemoPass123!` | School id `1` |
+| **Public demo** | `admin@` / `teacher@` / `driver@` / `parent@fikr-demo.com` | `DemoPass1` | Demo school; restored at boot + nightly by `DemoAccountsService` (the first run renames the demo teacher with the most classes and `parent.test@zinat.local`) |
 
 School login also works at `/s/zinat-al-haya/login`.
 

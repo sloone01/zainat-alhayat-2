@@ -31,6 +31,7 @@ export interface UserListQuery extends PageQuery {
 import { applyBilingualName, normalizeCivilId, normalizeEmail } from '../common/identity/bilingual-name';
 import { ensureStaffMembership, hasStaffMembership } from '../common/identity/staff-membership';
 import { AuthService } from '../auth/auth.service';
+import { DemoAccountsService } from '../common/demo/demo-accounts.service';
 
 export type AppUserType = 'staff' | 'parent' | 'student' | 'platform';
 
@@ -109,6 +110,7 @@ export class UserService {
     private readonly notifications: NotificationDispatcherService,
     @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
+    private readonly demo: DemoAccountsService,
   ) {}
 
   private generateTempPassword(): string {
@@ -714,6 +716,7 @@ export class UserService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto, actor?: User): Promise<User> {
+    await this.demo.assertNotPublicDemoUser(id);
     const user = await this.findOne(id);
 
     if (updateUserDto.username || updateUserDto.email) {
@@ -778,6 +781,7 @@ export class UserService {
   }
 
   async updatePassword(id: string, newPassword: string): Promise<void> {
+    await this.demo.assertNotPublicDemoUser(id);
     const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
     await this.userRepository.update(id, {
@@ -788,6 +792,7 @@ export class UserService {
 
   /** Admin reset: email a one-time link. Does not change the current password. */
   async resetPasswordAndNotify(id: string, actor?: User): Promise<void> {
+    await this.demo.assertNotPublicDemoUser(id);
     const user = await this.findOne(id);
     if (user.user_type === 'parent' && !actor?.isSuperAdmin && !actor?.isSystemUser) {
       throw new ForbiddenException('A parent password cannot be reset from a school');
@@ -799,6 +804,7 @@ export class UserService {
   }
 
   async remove(id: string): Promise<void> {
+    await this.demo.assertNotPublicDemoUser(id);
     const user = await this.findOne(id);
     await this.userRepository.remove(user);
   }
@@ -860,6 +866,7 @@ export class UserService {
   }
 
   async toggleActive(id: string): Promise<User> {
+    await this.demo.assertNotPublicDemoUser(id);
     const user = await this.findOne(id);
     user.isActive = !user.isActive;
     return this.userRepository.save(user);

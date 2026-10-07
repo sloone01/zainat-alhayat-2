@@ -2,19 +2,32 @@
 
 **Environment:** Railway production  
 **API:** https://divine-clarity-production-d359.up.railway.app/api  
-**School site login:** `/s/zinat-al-haya/login`  
+**Demo school login:** `/s/zinat-al-haya/login` (shown as FIKR Demo School)  
 **Platform login:** `/login`
+
+## Public demo logins (share freely, give to App Store / Play review)
+
+Password for all four: `DemoPass1`
+
+| Role | Email |
+|------|-------|
+| School admin | `admin@fikr-demo.com` |
+| Teacher | `teacher@fikr-demo.com` |
+| Driver | `driver@fikr-demo.com` |
+| Parent | `parent@fikr-demo.com` |
+
+These cannot change their password or profile. Nothing is emailed, texted, or sent on WhatsApp from the demo school. Logins and the school name reset every night at 03:00 Muscat time.
+
+## Internal logins
 
 | Role | Email | Password | Where to sign in |
 |------|-------|----------|------------------|
 | Platform super admin | `superadmin@zinat.platform` | `SuperAdmin123!` | `/login` → platform (schools, plans) |
-| School admin | `admin@zinatalhaykindergarten.com` | `Admin123!` | `/login` or `/s/zinat-al-haya/login` |
-| School admin (alt) | `Zahra@gmail.com` | `ZahraAdmin123` | `/login` or `/s/zinat-al-haya/login` |
-| Teacher | `moza@zinat.local` | `DemoPass123!` | `/login` or `/s/zinat-al-haya/login` |
-| Parent | `parent_95064063@zinat.local` | `DemoPass123!` | `/login` or `/s/zinat-al-haya/login` |
-| Parent | `parent.test@zinat.local` | `DemoPass123!` | `/login` or `/s/zinat-al-haya/login` |
+| School admin (demo) | `admin@zinatalhaykindergarten.com` | `Admin123!` | `/login` or `/s/zinat-al-haya/login` |
+| School admin (live) | `Zahra@gmail.com` | `ZahraAdmin123` | `/login` |
+| Parent (demo) | `parent_95064063@zinat.local` | `DemoPass123!` | `/login` |
 
-Source: verified accounts in `AGENT_DEPLOY_HANDOFF.md` §8 (same dump as production).
+`moza@zinat.local` and `parent.test@zinat.local` may no longer work: the first demo reset can take over the demo teacher with the most classes and `parent.test@zinat.local` as `teacher@fikr-demo.com` / `parent@fikr-demo.com`.
 
 ---
 
@@ -32,7 +45,7 @@ node scripts/seed-demo-module-users.js --apply
 
 | School | Slug | Notes |
 |--------|------|--------|
-| Zinat Al-Haya (demo) | `zinat-al-haya` | School A — module users, 2 teachers, 3 students, driver + Demo Bus A |
+| FIKR Demo School | `zinat-al-haya` | School A — module users, 2 teachers, 3 students, driver + Demo Bus A |
 | FIKR Demo School B | `fikr-demo-b` | School B — admin, 1 teacher, 3 students |
 
 ### Module users (School A — one group per module)
@@ -54,15 +67,16 @@ node scripts/seed-demo-module-users.js --apply
 | `mod.notifications@fikr-demo.com` | Module: Notifications |
 | `mod.reports@fikr-demo.com` | Module: Reports |
 
-### Teachers / driver / School B admin
+### Teachers / School B admin
 
 | Email | School | Role |
 |-------|--------|------|
 | `teacher1@fikr-demo.com` | A | Teacher |
 | `teacher2@fikr-demo.com` | A | Teacher |
 | `teacher3@fikr-demo.com` | B | Teacher |
-| `driver@fikr-demo.com` | A | Driver group + Demo Bus A |
 | `admin.b@fikr-demo.com` | B | School Admin |
+
+`driver@fikr-demo.com` is a public demo login (password `DemoPass1`), not `DemoPass123!`.
 
 ### Parents (linked children)
 
