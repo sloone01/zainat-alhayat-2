@@ -204,6 +204,8 @@ export class SchoolLandingPageService {
     return {
       id: school.id,
       name: brandName,
+      name_en: (landing?.brand_name_en || school.name_en || '').trim() || null,
+      name_ar: (landing?.brand_name_ar || school.name_ar || '').trim() || null,
       logo_url: logo,
       brand_primary_color: landing?.brand_primary_color?.trim() || null,
       brand_accent_color: landing?.brand_accent_color?.trim() || null,

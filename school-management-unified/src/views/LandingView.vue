@@ -189,7 +189,7 @@
             {{ $t('features.title') }}
           </h2>
           <p class="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
-            {{ $t('features.description') }}
+            {{ $t('features.description', { name: brandName }) }}
           </p>
         </div>
 
@@ -270,7 +270,7 @@
             {{ $t('cta.title') }}
           </h2>
           <p class="text-lg md:text-xl text-purple-100 leading-relaxed">
-            {{ $t('cta.description') }}
+            {{ $t('cta.description', { name: brandName }) }}
           </p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <button
@@ -314,6 +314,7 @@ import schoolAppImage from '@/assets/school-app.jpg'
 import {
   schoolLandingService,
   type SchoolLandingContent,
+  type SchoolLandingMeta,
 } from '@/services/school-landing.service'
 
 const router = useRouter()
@@ -324,6 +325,7 @@ const isMobileMenuOpen = ref(false)
 const loginNavigating = ref(false)
 const isRTL = computed(() => locale.value === 'ar')
 const cms = ref<SchoolLandingContent | null>(null)
+const schoolMeta = ref<SchoolLandingMeta | null>(null)
 
 function pick(en: string | null | undefined, ar: string | null | undefined, fallback: string) {
   const v = locale.value === 'ar' ? ar || en : en || ar
@@ -331,7 +333,11 @@ function pick(en: string | null | undefined, ar: string | null | undefined, fall
 }
 
 const brandName = computed(() =>
-  pick(cms.value?.brand_name_en, cms.value?.brand_name_ar, t('hero.brandName')),
+  pick(
+    cms.value?.brand_name_en,
+    cms.value?.brand_name_ar,
+    pick(schoolMeta.value?.name_en, schoolMeta.value?.name_ar, schoolMeta.value?.name || t('hero.brandName')),
+  ),
 )
 const heroBadge = computed(() =>
   pick(cms.value?.badge_en, cms.value?.badge_ar, t('hero.badge')),
@@ -348,7 +354,9 @@ const ctaPrimary = computed(() =>
 const ctaSecondary = computed(() =>
   pick(cms.value?.cta_secondary_en, cms.value?.cta_secondary_ar, t('nav.signIn')),
 )
-const logoSrc = computed(() => cms.value?.logo_url || '/zlogo.jpeg')
+const logoSrc = computed(
+  () => cms.value?.logo_url || schoolMeta.value?.logo_url || '/zlogo.jpeg',
+)
 const heroImageSrc = computed(() => cms.value?.hero_image_url || childrenPlayingImage)
 
 const defaultFeatures = [
@@ -472,6 +480,14 @@ onMounted(async () => {
       : await schoolLandingService.getPublicDefault()
   } catch {
     cms.value = null
+  }
+  const slug = typeof route.params.slug === 'string' ? route.params.slug.trim() : ''
+  if (!cms.value && slug) {
+    try {
+      schoolMeta.value = await schoolLandingService.getSchoolMetaBySlug(slug)
+    } catch {
+      schoolMeta.value = null
+    }
   }
 })
 

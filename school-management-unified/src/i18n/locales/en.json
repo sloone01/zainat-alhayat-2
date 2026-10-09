@@ -816,7 +816,7 @@
   "features": {
     "badge": "Our Programs",
     "title": "Comprehensive Early Childhood Education",
-    "description": "At Zinat Al-Haya Kindergarten, we offer age-appropriate programs designed to nurture every aspect of your child's development through play-based learning and structured activities.",
+    "description": "At {name}, we offer age-appropriate programs designed to nurture every aspect of your child's development through play-based learning and structured activities.",
     "items": {
       "studentManagement": {
         "title": "Pre-K Program (Ages 4-5)",
@@ -969,7 +969,7 @@
   },
   "cta": {
     "title": "Ready to give your child the best start in life?",
-    "description": "Join our community of families who trust Zinat Al-Haya Kindergarten for their children's early education. Schedule a visit today and see why we're the preferred choice for quality early childhood education.",
+    "description": "Join our community of families who trust {name} for their children's early education. Schedule a visit today and see why we're the preferred choice for quality early childhood education.",
     "startTrial": "Schedule a Visit",
     "scheduleDemo": "Contact Us",
     "enrollNow": "Enroll Now"
