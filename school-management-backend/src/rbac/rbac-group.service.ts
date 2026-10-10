@@ -40,6 +40,7 @@ const TEACHER_TEMPLATE_PAGES = [
   'groups',
   'students',
   'courses',
+  'standalone_courses',
   'course_enrollments',
   'graded_courses',
   'schedules',

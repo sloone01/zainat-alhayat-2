@@ -13,11 +13,13 @@ import {
   Logger,
   Request,
   BadRequestException,
+  ForbiddenException,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { CourseService } from '../services/course.service';
 import type { CreateCourseDto, UpdateCourseDto } from '../services/course.service';
 import { RequireClaim } from '../rbac/require-claim.decorator';
+import { RbacPermissionService } from '../rbac/rbac-permission.service';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId, assertSameSchool, RequestedSchoolIdPipe } from '../common/security/school-access';
 import { wantsPage } from '../common/pagination';
@@ -27,7 +29,19 @@ import { wantsPage } from '../common/pagination';
 export class CourseController {
   private readonly logger = new Logger(CourseController.name);
 
-  constructor(private readonly courseService: CourseService) {}
+  constructor(
+    private readonly courseService: CourseService,
+    private readonly permissions: RbacPermissionService,
+  ) {}
+
+  /** Independent courses are their own module; `courses` claims alone do not cover them. */
+  private async assertKindClaim(user: User, courseKind: string | null | undefined, action: string) {
+    if (courseKind?.trim() !== 'standalone') return;
+    if (user.isSuperAdmin || user.isSystemUser) return;
+    if (!(await this.permissions.hasClaim(user.id, 'standalone_courses', action))) {
+      throw new ForbiddenException(`Missing claim standalone_courses:${action}`);
+    }
+  }
 
   private schoolOf(req: { user: User }, requested?: string | null): string {
     const schoolId = resolveActorSchoolId(req.user, requested);
@@ -44,6 +58,7 @@ export class CourseController {
     @Request() req: { user: User },
     @Body() createCourseDto: CreateCourseDto,
   ) {
+    await this.assertKindClaim(req.user, createCourseDto.course_kind, 'create');
     const schoolId = this.schoolOf(req, createCourseDto.school_id);
     createCourseDto.school_id = schoolId;
     this.logger.log(`POST /courses - Creating course: ${JSON.stringify(createCourseDto)}`);
@@ -72,6 +87,7 @@ export class CourseController {
     @Query('status') status?: string,
     @Query('category') category?: string,
   ) {
+    await this.assertKindClaim(req.user, courseKind, 'view');
     const requested = schoolId ? String(schoolId) : undefined;
     const schoolIdNum = this.schoolOf(req, requested);
     this.logger.log(
@@ -165,6 +181,7 @@ export class CourseController {
   ) {
     const source = await this.courseService.findOne(id);
     assertSameSchool(req.user, source.school_id);
+    await this.assertKindClaim(req.user, source.course_kind, 'create');
     const course = await this.courseService.duplicate(id, body?.newName, source.school_id);
     return {
       success: true,
@@ -179,6 +196,7 @@ export class CourseController {
     try {
       const course = await this.courseService.findOne(id);
       assertSameSchool(req.user, course.school_id);
+      await this.assertKindClaim(req.user, course.course_kind, 'view');
       this.logger.log(`GET /courses/${id} - Course retrieved successfully`);
       return {
         success: true,
@@ -211,6 +229,8 @@ export class CourseController {
   ) {
     const course = await this.courseService.findOne(id);
     assertSameSchool(req.user, course.school_id);
+    await this.assertKindClaim(req.user, course.course_kind, 'edit');
+    await this.assertKindClaim(req.user, updateCourseDto.course_kind, 'edit');
     return {
       success: true,
       data: await this.courseService.update(id, updateCourseDto),
@@ -227,6 +247,7 @@ export class CourseController {
   ) {
     const course = await this.courseService.findOne(id);
     assertSameSchool(req.user, course.school_id);
+    await this.assertKindClaim(req.user, course.course_kind, 'edit');
     return {
       success: true,
       data: await this.courseService.updateStatus(id, isActive),
@@ -240,6 +261,7 @@ export class CourseController {
   async remove(@Request() req: { user: User }, @Param('id') id: string) {
     const course = await this.courseService.findOne(id);
     assertSameSchool(req.user, course.school_id);
+    await this.assertKindClaim(req.user, course.course_kind, 'delete');
     await this.courseService.remove(id);
     return {
       success: true,
