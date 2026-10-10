@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export type PlatformBillingPeriod = 'monthly' | 'semester' | 'yearly' | 'summer'
 
@@ -180,6 +181,17 @@ class PlatformBillingApiService extends BaseApiService {
 
   listAdminPlans(): Promise<PlatformPlansCatalog> {
     return this.get('/platform/plans')
+  }
+
+  listAdminPlansPage(params: { page: number; limit: number; q?: string; status?: string }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status && params.status !== 'all') query.status = params.status
+    return this.get<
+      PageResult<PlatformPlansCatalog['plans'][number]> & {
+        stats?: { total: number; active: number; seats: number }
+      }
+    >('/platform/plans', query)
   }
 
   getPlanDetail(code: string): Promise<PlatformPlanDetail> {

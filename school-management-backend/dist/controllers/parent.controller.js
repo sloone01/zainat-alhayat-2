@@ -26,6 +26,7 @@ const roles_guard_1 = require("../auth/roles.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 const school_access_1 = require("../common/security/school-access");
+const pagination_1 = require("../common/pagination");
 let ParentController = class ParentController {
     parentService;
     studentService;
@@ -46,19 +47,55 @@ let ParentController = class ParentController {
         const dashboardData = await this.parentService.getParentDashboardData(req.user.id);
         return { success: true, data: dashboardData };
     }
-    async getMyWeeklyPlans(req) {
+    async getMyWeeklyPlans(req, page, limit, childId, weekStart, status) {
+        if ((0, pagination_1.wantsPage)(page)) {
+            const data = await this.parentService.getParentWeeklyPlansPage(req.user.id, {
+                page,
+                limit,
+                childId,
+                weekStart,
+                status,
+            });
+            return { success: true, data };
+        }
         const data = await this.parentService.getParentWeeklyPlans(req.user.id);
         return { success: true, data };
     }
-    async getMyAttendance(req, offsetRaw, limitRaw) {
+    async getMyAttendance(req, offsetRaw, limitRaw, page, childId, status) {
+        if ((0, pagination_1.wantsPage)(page)) {
+            const data = await this.parentService.getParentAttendancePage(req.user.id, {
+                page,
+                limit: limitRaw,
+                childId,
+                status,
+            });
+            return { success: true, data };
+        }
         const offset = Math.max(0, parseInt(offsetRaw ?? '0', 10) || 0);
         const limit = Math.min(50, Math.max(1, parseInt(limitRaw ?? '5', 10) || 5));
         const data = await this.parentService.getParentAttendanceView(req.user.id, offset, limit);
         return { success: true, data };
     }
-    async getMyAssignedActivities(req) {
+    async getMyAssignedActivities(req, page, limit, childId) {
+        if ((0, pagination_1.wantsPage)(page)) {
+            const data = await this.parentService.getParentAssignedActivitiesPage(req.user.id, {
+                page,
+                limit,
+                childId,
+            });
+            return { success: true, data };
+        }
         const data = await this.parentService.getParentAssignedActivities(req.user.id);
         return { success: true, data, count: data.length };
+    }
+    async getMyProgress(req, page, limit, childId, status) {
+        const data = await this.parentService.getParentProgressPage(req.user.id, {
+            page,
+            limit,
+            childId,
+            status,
+        });
+        return { success: true, data };
     }
     async getMyBusMovements(req, requestedSchoolId, date, limitRaw) {
         const limit = Math.min(100, Math.max(1, parseInt(limitRaw ?? '30', 10) || 30));
@@ -197,8 +234,13 @@ __decorate([
 __decorate([
     (0, common_1.Get)('dashboard/weekly-plans'),
     __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('limit')),
+    __param(3, (0, common_1.Query)('child_id')),
+    __param(4, (0, common_1.Query)('week_start')),
+    __param(5, (0, common_1.Query)('status')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "getMyWeeklyPlans", null);
 __decorate([
@@ -206,17 +248,34 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('offset')),
     __param(2, (0, common_1.Query)('limit')),
+    __param(3, (0, common_1.Query)('page')),
+    __param(4, (0, common_1.Query)('child_id')),
+    __param(5, (0, common_1.Query)('status')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "getMyAttendance", null);
 __decorate([
     (0, common_1.Get)('dashboard/activities'),
     __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('limit')),
+    __param(3, (0, common_1.Query)('child_id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, String, String, String]),
     __metadata("design:returntype", Promise)
 ], ParentController.prototype, "getMyAssignedActivities", null);
+__decorate([
+    (0, common_1.Get)('dashboard/progress'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('limit')),
+    __param(3, (0, common_1.Query)('child_id')),
+    __param(4, (0, common_1.Query)('status')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], ParentController.prototype, "getMyProgress", null);
 __decorate([
     (0, common_1.Get)('dashboard/bus-movements'),
     __param(0, (0, common_1.Request)()),

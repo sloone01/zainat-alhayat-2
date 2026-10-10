@@ -5,17 +5,6 @@
         :title="$t('enrollmentManagement.enrollmentDetails')"
         :subtitle="enrollment ? `${$t('enrollmentManagement.submittedOn')}: ${formatDate(enrollment.createdAt)}` : $t('enrollmentManagement.description')"
       >
-        <template #leading>
-          <router-link
-            to="/enrollments"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('common.back')"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </router-link>
-        </template>
         <template #actions>
           <button
             type="button"
@@ -36,9 +25,22 @@
       </FikrPageHeader>
 
       <!-- Loading State -->
-      <div v-if="loading" class="flex flex-col items-center justify-center py-8 text-center">
-        <FikrLoader size="sm" />
-        <p class="mt-2 text-sm text-gray-500">{{ $t('common.loading') }}</p>
+      <div v-if="loading" class="fk-card">
+        <header class="flex items-center gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <router-link
+            to="/enrollments"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('common.back')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </header>
+        <div class="flex flex-col items-center justify-center py-8 text-center">
+          <FikrLoader size="sm" />
+          <p class="mt-2 text-sm text-gray-500">{{ $t('common.loading') }}</p>
+        </div>
       </div>
 
       <!-- Enrollment Details -->
@@ -48,7 +50,18 @@
           <!-- Student Information -->
           <div class="bg-white shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">{{ $t('enrollmentManagement.studentInformation') }}</h3>
+              <div class="mb-4 flex items-center gap-3">
+                <router-link
+                  to="/enrollments"
+                  class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+                  :aria-label="$t('common.back')"
+                >
+                  <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </router-link>
+                <h3 class="text-lg font-medium text-gray-900">{{ $t('enrollmentManagement.studentInformation') }}</h3>
+              </div>
               <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
                 <div>
                   <dt class="text-sm font-medium text-gray-500">{{ $t('enrollmentManagement.fullName') }}</dt>
@@ -262,6 +275,59 @@
               </dl>
             </div>
           </div>
+
+          <!-- Identity documents -->
+          <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">{{ $t('enrollmentManagement.documents') }}</h3>
+              <div class="space-y-5">
+                <div>
+                  <h4 class="text-sm font-medium text-gray-700 mb-2">{{ $t('enrollment.parentIdDocuments') }}</h4>
+                  <ul v-if="enrollment.parentIdDocuments?.length" class="space-y-2">
+                    <li
+                      v-for="(doc, index) in enrollment.parentIdDocuments"
+                      :key="`parent-doc-${index}`"
+                      class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2"
+                    >
+                      <span class="text-sm text-gray-800">{{ attachmentLabel(doc, index + 1) }}</span>
+                      <button type="button" class="fk-btn fk-btn--pearl fk-btn--sm" @click="openAttachment(doc)">
+                        {{ $t('enrollmentManagement.viewDocument') }}
+                      </button>
+                    </li>
+                  </ul>
+                  <p v-else class="text-sm text-gray-500">{{ $t('common.notSpecified') }}</p>
+                </div>
+                <div class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2">
+                  <div>
+                    <p class="text-sm font-medium text-gray-700">{{ $t('enrollment.birthCertificate') }}</p>
+                    <p class="text-xs text-gray-500">{{ enrollment.birthCertificate ? attachmentLabel(enrollment.birthCertificate, 1) : $t('common.notSpecified') }}</p>
+                  </div>
+                  <button
+                    v-if="enrollment.birthCertificate"
+                    type="button"
+                    class="fk-btn fk-btn--pearl fk-btn--sm"
+                    @click="openAttachment(enrollment.birthCertificate)"
+                  >
+                    {{ $t('enrollmentManagement.viewDocument') }}
+                  </button>
+                </div>
+                <div class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2">
+                  <div>
+                    <p class="text-sm font-medium text-gray-700">{{ $t('enrollment.childIdDocument') }}</p>
+                    <p class="text-xs text-gray-500">{{ enrollment.childIdDocument ? attachmentLabel(enrollment.childIdDocument, 1) : $t('common.notSpecified') }}</p>
+                  </div>
+                  <button
+                    v-if="enrollment.childIdDocument"
+                    type="button"
+                    class="fk-btn fk-btn--pearl fk-btn--sm"
+                    @click="openAttachment(enrollment.childIdDocument)"
+                  >
+                    {{ $t('enrollmentManagement.viewDocument') }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Sidebar -->
@@ -294,7 +360,8 @@
                     {{ $t('enrollmentManagement.approve') }}
                   </button>
                   <button
-                    @click="rejectEnrollment"
+                    type="button"
+                    @click="openReject"
                     class="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:ring-2 focus:ring-red-500"
                   >
                     {{ $t('enrollmentManagement.reject') }}
@@ -325,11 +392,61 @@
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="fk-alert fk-alert--error">
-        <p class="font-medium">خطأ في تحميل البيانات</p>
-        <p>لم يتم العثور على طلب التسجيل المطلوب</p>
+      <div v-else-if="error" class="fk-card">
+        <header class="flex items-center gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <router-link
+            to="/enrollments"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('common.back')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </header>
+        <div class="fk-alert fk-alert--error m-5">
+          <p class="font-medium">خطأ في تحميل البيانات</p>
+          <p>لم يتم العثور على طلب التسجيل المطلوب</p>
+        </div>
       </div>
     </div>
+
+    <FikrDialog
+      :show="rejectOpen"
+      plain-footer
+      :title="$t('enrollmentManagement.rejectApplication')"
+      @close="closeReject"
+    >
+      <form id="enrollment-reject-form" class="fk-form" @submit.prevent="rejectEnrollment">
+        <div class="fk-form__section">
+          <div class="fk-form__row">
+            <label class="fk-flabel" for="enrollment-reject-reason">
+              <span>{{ $t('enrollmentManagement.rejectReason') }}</span>
+            </label>
+            <textarea
+              id="enrollment-reject-reason"
+              v-model="rejectReason"
+              rows="4"
+              class="fk-field"
+              required
+            />
+          </div>
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--pearl" @click="closeReject">
+          {{ $t('common.cancel') }}
+        </button>
+        <button
+          type="submit"
+          form="enrollment-reject-form"
+          class="fk-btn fk-btn--danger"
+          :disabled="rejecting || !rejectReason.trim()"
+        >
+          {{ $t('enrollmentManagement.reject') }}
+        </button>
+      </template>
+    </FikrDialog>
   </DashboardLayout>
 </template>
 
@@ -340,9 +457,11 @@ import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
 import { enrollmentService } from '@/services/enrollment.service'
 import { useFeedback } from '@/composables/useFeedback'
 import type { Enrollment } from '@/services/enrollment.service'
+import apiClient from '@/services/api'
 
 const { locale, t } = useI18n()
 const feedback = useFeedback()
@@ -358,9 +477,48 @@ const enrollment = ref<Enrollment | null>(null)
 const loading = ref(false)
 const error = ref(false)
 const printingDoc = ref(false)
+const rejectOpen = ref(false)
+const rejectReason = ref('')
+const rejecting = ref(false)
 
 // Computed properties
 const isRTL = computed(() => locale.value === 'ar')
+
+function attachmentLabel(doc: string, index: number): string {
+  if (!doc) return `—`
+  if (doc.startsWith('/api/attachments/')) {
+    return t('enrollment.uploadedAttachment')
+  }
+  if (doc.startsWith('data:')) {
+    const mime = doc.slice(5, doc.indexOf(';')) || ''
+    if (mime.includes('pdf')) return `PDF ${index}`
+    if (mime.includes('png')) return `PNG ${index}`
+    if (mime.includes('jpeg') || mime.includes('jpg')) return `JPG ${index}`
+    return `${t('enrollmentManagement.document')} ${index}`
+  }
+  return doc.split('/').pop() || `${t('enrollmentManagement.document')} ${index}`
+}
+
+async function openAttachment(doc: string) {
+  if (!doc) return
+  if (doc.startsWith('/api/attachments/')) {
+    try {
+      const path = doc.replace(/^\/api/, '')
+      const response = await apiClient.get(path, { responseType: 'blob' })
+      const blobUrl = URL.createObjectURL(response.data as Blob)
+      window.open(blobUrl, '_blank', 'noopener,noreferrer')
+    } catch (e) {
+      console.error(e)
+      feedback.error(t('enrollment.uploadFailed'))
+    }
+    return
+  }
+  if (doc.startsWith('data:') || doc.startsWith('http') || doc.startsWith('/')) {
+    window.open(doc, '_blank', 'noopener,noreferrer')
+    return
+  }
+  window.open(doc, '_blank', 'noopener,noreferrer')
+}
 
 // Methods
 const loadEnrollment = async () => {
@@ -462,19 +620,37 @@ const approveEnrollment = async () => {
   }
 }
 
+function openReject() {
+  rejectReason.value = ''
+  rejectOpen.value = true
+}
+
+function closeReject() {
+  if (rejecting.value) return
+  rejectOpen.value = false
+  rejectReason.value = ''
+}
+
 const rejectEnrollment = async () => {
   if (!enrollment.value) return
+  const notes = rejectReason.value.trim()
+  if (!notes) {
+    feedback.error(t('enrollmentManagement.rejectReasonRequired'))
+    return
+  }
 
-  const notes = prompt(t('enrollmentManagement.addNotes'))
-  if (notes !== null) {
-    try {
-      await enrollmentService.rejectEnrollment(enrollment.value.id, notes)
-      await loadEnrollment() // Refresh
-      feedback.saved(t('enrollmentManagement.rejectedOk'))
-    } catch (error) {
-      console.error('Failed to reject enrollment:', error)
-      feedback.error(apiErrorText(error) || t('enrollmentManagement.rejectFailed'))
-    }
+  try {
+    rejecting.value = true
+    await enrollmentService.rejectEnrollment(enrollment.value.id, notes)
+    rejectOpen.value = false
+    rejectReason.value = ''
+    await loadEnrollment()
+    feedback.saved(t('enrollmentManagement.rejectedOk'))
+  } catch (error) {
+    console.error('Failed to reject enrollment:', error)
+    feedback.error(apiErrorText(error) || t('enrollmentManagement.rejectFailed'))
+  } finally {
+    rejecting.value = false
   }
 }
 

@@ -10,12 +10,12 @@
         {{ loadError }}
       </div>
 
-      <div class="fk-card">
+      <div class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('roleManagement.listHeading') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('roleManagement.rolesCount', { count: filteredRoles.length }) }}
+              {{ $t('roleManagement.rolesCount', { count: totalRoles }) }}
             </p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -36,24 +36,25 @@
         </header>
 
         <div class="p-4 sm:p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
+          <div v-if="loading && !loaded && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
             <FikrLoader size="sm" />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <p
-            v-else-if="roles.length && !filteredRoles.length"
+            v-else-if="loaded && hasActiveFilters && totalRoles === 0"
             class="fk-empty text-sm text-fikr-ink-soft"
           >
             {{ $t('roleManagement.noRoleFilterResults') }}
           </p>
 
-          <template v-else-if="filteredRoles.length">
+          <template v-else-if="paginatedRoles.length">
             <div v-if="isCards" class="fk-grid">
               <KanbanCard
                 v-for="role in paginatedRoles"
                 :key="role.id"
                 :title="role.name"
+                :muted="role.isActive === false"
                 :description="role.code || '—'"
               >
                 <template #tags>
@@ -62,6 +63,9 @@
                   </KanbanTag>
                   <KanbanTag v-if="role.isSystem" dot="amber">
                     {{ $t('roleManagement.systemRole') }}
+                  </KanbanTag>
+                  <KanbanTag v-if="role.isActive === false" dot="gray">
+                    {{ $t('roleManagement.inactive') }}
                   </KanbanTag>
                 </template>
                 <template #actions>
@@ -77,9 +81,15 @@
                       {{ $t('roleManagement.clone') }}
                     </RowActionsItem>
                     <RowActionsItem
+                      v-if="role.systemKey !== 'super_admin'"
+                      :icon="role.isActive === false ? 'activate' : 'archive'"
+                      @click="onSetActive(role, role.isActive === false)"
+                    >
+                      {{ role.isActive === false ? $t('roleManagement.activate') : $t('roleManagement.deactivate') }}
+                    </RowActionsItem>
+                    <RowActionsItem
                       icon="delete"
                       danger
-                      :disabled="role.isSystem"
                       @click="onDelete(role)"
                     >
                       {{ $t('common.delete') }}
@@ -96,8 +106,8 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap">
-              <table class="fk-table">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable w-full">
                 <thead>
                   <tr>
                     <th>{{ $t('roleManagement.roleName') }}</th>
@@ -109,7 +119,12 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="role in paginatedRoles" :key="'list-' + role.id" class="hover:bg-fikr-pearl">
+                  <tr
+                    v-for="role in paginatedRoles"
+                    :key="'list-' + role.id"
+                    class="hover:bg-fikr-pearl"
+                    :class="role.isActive === false ? 'opacity-70' : ''"
+                  >
                     <td>
                       <div class="font-medium text-fikr-ink">{{ role.name }}</div>
                       <div class="text-xs text-fikr-ink-soft line-clamp-1">{{ role.description || '—' }}</div>
@@ -118,6 +133,12 @@
                         class="fk-chip fk-chip--amber mt-1"
                       >
                         {{ $t('roleManagement.systemRole') }}
+                      </span>
+                      <span
+                        v-if="role.isActive === false"
+                        class="fk-chip fk-chip--neutral mt-1 ms-1"
+                      >
+                        {{ $t('roleManagement.inactive') }}
                       </span>
                     </td>
                     <td class="font-mono text-xs text-fikr-ink-muted" dir="ltr">{{ role.code || '—' }}</td>
@@ -138,9 +159,15 @@
                             {{ $t('roleManagement.clone') }}
                           </RowActionsItem>
                           <RowActionsItem
+                            v-if="role.systemKey !== 'super_admin'"
+                            :icon="role.isActive === false ? 'activate' : 'archive'"
+                            @click="onSetActive(role, role.isActive === false)"
+                          >
+                            {{ role.isActive === false ? $t('roleManagement.activate') : $t('roleManagement.deactivate') }}
+                          </RowActionsItem>
+                          <RowActionsItem
                             icon="delete"
                             danger
-                            :disabled="role.isSystem"
                             @click="onDelete(role)"
                           >
                             {{ $t('common.delete') }}
@@ -156,12 +183,12 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredRoles.length > 0"
+              :show="totalRoles > 0"
               @update:page="goToPage"
             />
           </template>
 
-          <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
+          <div v-else-if="loaded" class="flex min-h-[16rem] flex-col items-center justify-center text-center">
             <div class="fk-empty__icon">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -238,12 +265,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
@@ -255,19 +284,18 @@ import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
-import { rbacService, type RbacGroup } from '@/services/rbac.service'
+import { useServerPagination } from '@/composables/useServerPagination'
+import { rbacService, type RbacGroup, type RbacGroupListParams } from '@/services/rbac.service'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
 const isRTL = computed(() => locale.value === 'ar')
 
-const loading = ref(false)
 const loadError = ref('')
 const searchQuery = ref('')
 const typeFilter = ref<'all' | 'staff' | 'parent' | 'student' | 'system'>('all')
-const roles = ref<RbacGroup[]>([])
 const showFilters = ref(false)
 const activeMenuId = ref<string | null>(null)
 
@@ -275,30 +303,32 @@ const hasActiveFilters = computed(() =>
   Boolean(searchQuery.value.trim()) || typeFilter.value !== 'all',
 )
 
-const filteredRoles = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return roles.value.filter((r) => {
-    const type = r.groupType || (r.isSystem ? 'system' : 'staff')
-    if (typeFilter.value !== 'all' && type !== typeFilter.value) return false
-    if (!q) return true
-    return (
-      r.name.toLowerCase().includes(q)
-      || (r.code || '').toLowerCase().includes(q)
-      || (r.description || '').toLowerCase().includes(q)
-    )
-  })
-})
-
 const {
+  items: paginatedRoles,
+  total: totalRoles,
+  loading,
+  loaded,
   currentPage,
-  paginatedItems: paginatedRoles,
   totalPages,
   goToPage,
-} = useClientPagination(filteredRoles)
-
-watch([searchQuery, typeFilter], () => {
-  currentPage.value = 1
-})
+  reload: loadAll,
+} = useServerPagination<RbacGroup, RbacGroupListParams>(
+  (params) => {
+    loadError.value = ''
+    return rbacService.listPage(params)
+  },
+  {
+    pageSize: 10,
+    filters: () => ({
+      q: searchQuery.value,
+      type: typeFilter.value,
+    }),
+    debounceKeys: ['q'],
+    onError: (err) => {
+      loadError.value = apiMessage(err) || 'Failed to load user groups'
+    },
+  },
+)
 
 function getClaimCount(role: RbacGroup) {
   let count = 0
@@ -332,21 +362,6 @@ function clearFilters() {
   typeFilter.value = 'all'
 }
 
-async function loadAll() {
-  loading.value = true
-  loadError.value = ''
-  try {
-    roles.value = await rbacService.listGroups()
-  } catch (e: unknown) {
-    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
-    const api = ax.response?.data?.message
-    loadError.value =
-      (Array.isArray(api) ? api.join(', ') : api) || ax.message || 'Failed to load user groups'
-  } finally {
-    loading.value = false
-  }
-}
-
 function onEdit(role: RbacGroup) {
   closeMenu()
   void router.push({ name: 'role-edit', params: { id: role.id } })
@@ -360,28 +375,66 @@ function onDelete(role: RbacGroup) {
   void deleteRole(role)
 }
 
+function onSetActive(role: RbacGroup, isActive: boolean) {
+  void setRoleActive(role, isActive)
+}
+
+async function setRoleActive(role: RbacGroup, isActive: boolean) {
+  closeMenu()
+  try {
+    await rbacService.updateGroup(role.id, { isActive })
+    await loadAll()
+    feedback.saved(isActive ? t('roleManagement.activated') : t('roleManagement.deactivated'))
+  } catch (e: unknown) {
+    feedback.error(apiMessage(e) || t('common.error'))
+  }
+}
+
 async function cloneRole(role: RbacGroup) {
   closeMenu()
   try {
     await rbacService.cloneGroup(role.id, { name: `${role.name} (copy)` })
     await loadAll()
   } catch (e: unknown) {
-    const err = e as Error
-    alert(err?.message || 'Clone failed')
+    feedback.error(apiMessage(e) || t('common.error'))
   }
 }
 
 async function deleteRole(role: RbacGroup) {
   closeMenu()
-  if (role.isSystem) return
-  if (!confirm(t('roleManagement.confirmDelete', { name: role.name }))) return
+  if ((role.memberCount ?? 0) > 0) {
+    feedback.alert(t('roleManagement.deleteBlockedLinked', { name: role.name }), t('common.delete'))
+    return
+  }
+  if (role.isSystem || role.groupType === 'parent' || role.groupType === 'student') {
+    feedback.alert(t('roleManagement.deleteBlockedFixed', { name: role.name }), t('common.delete'))
+    return
+  }
+  if (!(await feedback.confirm({
+    title: t('common.delete'),
+    message: t('roleManagement.confirmDelete', { name: role.name }),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  }))) return
   try {
     await rbacService.deleteGroup(role.id)
     await loadAll()
   } catch (e: unknown) {
-    const err = e as Error
-    alert(err?.message || 'Delete failed')
+    const ax = e as { response?: { status?: number } }
+    if (ax.response?.status === 409) {
+      feedback.alert(t('roleManagement.deleteBlockedLinked', { name: role.name }), t('common.delete'))
+      return
+    }
+    feedback.alert(apiMessage(e) || t('common.error'), t('common.delete'))
   }
+}
+
+function apiMessage(e: unknown): string {
+  const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
+  const raw = ax.response?.data?.message
+  if (Array.isArray(raw)) return raw.filter(Boolean).join(', ')
+  if (typeof raw === 'string' && raw.trim()) return raw.trim()
+  return typeof ax.message === 'string' ? ax.message : ''
 }
 
 onMounted(() => {

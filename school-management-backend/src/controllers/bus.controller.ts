@@ -26,6 +26,7 @@ import { BusEtaService } from '../services/bus-eta.service';
 import { StudentService } from '../services/student.service';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId, assertSameSchool } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 
 @Controller('buses')
 @UseGuards(JwtAuthGuard)
@@ -73,10 +74,22 @@ export class BusController {
     @Request() req: { user: User },
     @Query('school_id') schoolId?: string,
     @Query('is_active') isActive?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
   ) {
     const requested = schoolId ? String(schoolId) : undefined;
     const schoolIdNum = this.schoolOf(req, requested);
     const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
+    if (wantsPage(page)) {
+      const data = await this.busService.findPage(schoolIdNum, {
+        page,
+        limit,
+        q,
+        isActive: isActiveBool,
+      });
+      return { success: true, data };
+    }
     const buses = await this.busService.findAll(schoolIdNum, isActiveBool);
     return {
       success: true,

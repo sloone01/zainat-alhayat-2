@@ -1,4 +1,5 @@
 import { BaseApiService, apiClient } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export type CourseKind = 'milestone' | 'graded' | 'standalone'
 
@@ -53,6 +54,21 @@ class CourseMaterialApi extends BaseApiService {
   async listCourses(schoolId?: string): Promise<CourseMaterialCourseRow[]> {
     const q = schoolId ? `?school_id=${schoolId}` : ''
     return this.get<CourseMaterialCourseRow[]>(`/course-materials/courses${q}`)
+  }
+
+  async listCoursesPage(params: {
+    schoolId?: string
+    page?: number
+    limit?: number
+    kind?: string
+  }): Promise<PageResult<CourseMaterialCourseRow>> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.schoolId) query.school_id = params.schoolId
+    if (params.kind) query.kind = params.kind
+    return this.get('/course-materials/courses', query)
   }
 
   async list(schoolId: string | undefined, courseId: string): Promise<CourseMaterialRow[]> {

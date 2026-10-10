@@ -76,3 +76,50 @@ export function applyBilingualName(
     lastName: last_name_ar || last_name_en || '',
   };
 }
+
+/** Short student label: first + second + family (never third). */
+export type StudentDisplayNameParts = {
+  firstName?: string | null;
+  secondName?: string | null;
+  lastName?: string | null;
+  first_name_ar?: string | null;
+  first_name_en?: string | null;
+  secondNameEn?: string | null;
+  last_name_ar?: string | null;
+  last_name_en?: string | null;
+};
+
+function pickNamePart(
+  preferAr: boolean,
+  ar?: string | null,
+  en?: string | null,
+  legacy?: string | null,
+): string {
+  const a = trimToNull(ar) ?? '';
+  const e = trimToNull(en) ?? '';
+  const l = trimToNull(legacy) ?? '';
+  if (preferAr) return a || e || l;
+  return e || a || l;
+}
+
+export function formatStudentDisplayName(
+  student: StudentDisplayNameParts | null | undefined,
+  locale: string = 'ar',
+): string {
+  if (!student) return '';
+  const preferAr = !String(locale).toLowerCase().startsWith('en');
+  const first = pickNamePart(
+    preferAr,
+    student.first_name_ar,
+    student.first_name_en,
+    student.firstName,
+  );
+  const second = pickNamePart(preferAr, student.secondName, student.secondNameEn, null);
+  const family = pickNamePart(
+    preferAr,
+    student.last_name_ar,
+    student.last_name_en,
+    student.lastName,
+  );
+  return [first, second, family].filter(Boolean).join(' ');
+}

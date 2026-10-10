@@ -1,5 +1,7 @@
 import { BaseApiService, apiClient } from './api'
 import type { PageResult } from '@/composables/useServerPagination'
+import axios from 'axios'
+import { getApiBaseUrl } from '@/config/public-config'
 
 export interface MedicalReport {
   id: string
@@ -28,11 +30,15 @@ export interface Student {
   // Additional fields for frontend compatibility
   secondName?: string
   thirdName?: string
+  secondNameEn?: string | null
+  thirdNameEn?: string | null
   nationality?: string
   studentId?: string
   /** National/civil ID — used to create and sign in the student's login. */
   civil_id?: string | null
   photo?: string
+  /** draft → active on final register submit; inactive for deactivated. */
+  status?: 'draft' | 'active' | 'inactive'
   /** Present when loaded from API; used to scope admin views to the logged-in school */
   school_id?: string
   createdAt: Date
@@ -64,6 +70,8 @@ export interface CreateStudentRequest {
   // Additional fields
   secondName?: string
   thirdName?: string
+  secondNameEn?: string | null
+  thirdNameEn?: string | null
   nationality?: string
   studentId?: string
   civil_id?: string | null
@@ -104,6 +112,9 @@ export interface RegisterStudentInAppRequest {
   last_name_en?: string
   secondName?: string
   thirdName?: string
+  secondNameEn?: string
+  thirdNameEn?: string
+  tribe?: string
   dateOfBirth: string
   gender: 'male' | 'female'
   address?: string
@@ -117,12 +128,94 @@ export interface RegisterStudentInAppRequest {
   civil_id?: string
   photo?: string
   groupId: string
+  /** Complete a draft created after register step 1. */
+  draftStudentId?: string
   createStudentUser?: boolean
   studentEmail?: string
   parent?: RegisterStudentParentRequest
 }
 
+export interface SaveStudentRegisterDraftRequest {
+  draftStudentId?: string
+  firstName: string
+  lastName: string
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
+  secondName?: string
+  thirdName?: string
+  secondNameEn?: string
+  thirdNameEn?: string
+  tribe?: string
+  dateOfBirth: string
+  gender: 'male' | 'female'
+  nationality?: string
+  studentId?: string
+  civil_id?: string
+  photo?: string
+  notes?: string
+  address?: string
+  medicalInfo?: string
+  emergencyContact?: string
+}
+
+export interface SaveStudentRegisterDraftParentItem {
+  relationship: 'father' | 'mother' | 'guardian'
+  firstName?: string
+  lastName?: string
+  first_name_ar?: string
+  first_name_en?: string
+  last_name_ar?: string
+  last_name_en?: string
+  civil_id?: string
+  email?: string
+  phone?: string
+  tribe?: string
+  workplace?: string
+  workPhone?: string
+  maritalStatus?: string
+  createUser?: boolean
+}
+
+export interface SaveStudentRegisterDraftParentsRequest {
+  draftStudentId: string
+  parents: SaveStudentRegisterDraftParentItem[]
+  emergencyContact?: string
+}
+
 export interface UpdateStudentRequest extends Partial<CreateStudentRequest> {}
+
+export interface StudentCivilLookupStudent {
+  id: string
+  school_id: string | null
+  status: string
+  first_name_ar: string | null
+  first_name_en: string | null
+  last_name_ar: string | null
+  last_name_en: string | null
+  secondName: string | null
+  thirdName: string | null
+  secondNameEn: string | null
+  thirdNameEn: string | null
+  tribe: string | null
+  civil_id: string | null
+  gender: string
+  nationality: string | null
+  dateOfBirth: string | Date
+  photo: string | null
+}
+
+export interface StudentCivilLookupResult {
+  exists: boolean
+  same_school: boolean
+  status: 'draft' | 'active' | 'inactive' | null
+  already_registered: boolean
+  allow_new: boolean
+  /** Staff only: draft exists at another school — do not load; wait for that registration. */
+  registration_in_progress_elsewhere?: boolean
+  student: StudentCivilLookupStudent | null
+}
 
 export interface StudentProgress {
   student: Student
@@ -137,9 +230,23 @@ export interface StudentListParams {
   group_id?: string
   bus_id?: string
   age_group?: 'toddlers' | 'preschool' | 'kindergarten'
+  status?: 'draft' | 'active' | 'inactive'
 }
 
 class StudentService extends BaseApiService {
+  private publicClient = (() => {
+    const client = axios.create({
+      baseURL: getApiBaseUrl(),
+      timeout: 15000,
+      headers: { 'Content-Type': 'application/json' },
+    })
+    client.interceptors.request.use((config) => {
+      config.baseURL = getApiBaseUrl()
+      return config
+    })
+    return client
+  })()
+
   async getAll(): Promise<Student[]> {
     // School lists can be large; default 10s axios timeout is too tight on mobile/WAN.
     // Prefer listPage() for heavy screens (e.g. /students/payments).
@@ -156,6 +263,7 @@ class StudentService extends BaseApiService {
     if (params.group_id) query.group_id = params.group_id
     if (params.bus_id) query.bus_id = params.bus_id
     if (params.age_group) query.age_group = params.age_group
+    if (params.status) query.status = params.status
     return this.get('/students', query, { timeout: 60000 })
   }
 
@@ -165,6 +273,30 @@ class StudentService extends BaseApiService {
 
   async create(studentData: CreateStudentRequest): Promise<Student> {
     return this.post<Student>('/students', studentData)
+  }
+
+  async lookupByCivilId(civilId: string): Promise<StudentCivilLookupResult> {
+    return this.get<StudentCivilLookupResult>('/students/lookup', { civil_id: civilId.trim() })
+  }
+
+  async lookupByCivilIdPublic(civilId: string, schoolId: string): Promise<StudentCivilLookupResult> {
+    const response = await this.publicClient.get<{
+      success: boolean
+      data: StudentCivilLookupResult
+      message?: string
+    }>('/public/students/lookup', {
+      params: { civil_id: civilId.trim(), school_id: schoolId.trim() },
+    })
+    if (response.data.success) return response.data.data
+    throw new Error(response.data.message || 'Lookup failed')
+  }
+
+  async saveRegisterDraft(data: SaveStudentRegisterDraftRequest): Promise<Student> {
+    return this.post<Student>('/students/register/draft', data, { timeout: 30000 })
+  }
+
+  async saveRegisterDraftParents(data: SaveStudentRegisterDraftParentsRequest): Promise<Student> {
+    return this.post<Student>('/students/register/draft/parents', data, { timeout: 30000 })
   }
 
   async registerInApp(data: RegisterStudentInAppRequest): Promise<Student> {

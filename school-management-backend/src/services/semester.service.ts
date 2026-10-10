@@ -4,6 +4,21 @@ import { Repository } from 'typeorm';
 import { Semester } from '../entities/semester.entity';
 import { AcademicYear } from '../entities/academic-year.entity';
 
+/** Compare calendar days, not instants, so a year ending on the 29th accepts that day. */
+function calendarDayKey(value: Date | string | null | undefined): string {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export interface CreateSemesterDto {
   title: string;
   start_date: Date;
@@ -30,9 +45,33 @@ export class SemesterService {
     private academicYearRepository: Repository<AcademicYear>,
   ) {}
 
+  /** A semester end after the year end moves the year forward when no other year overlaps. */
+  private async extendYearThrough(academicYear: AcademicYear, endDay: string): Promise<void> {
+    const yearEnd = calendarDayKey(academicYear.end_date);
+    if (!endDay || !yearEnd || endDay <= yearEnd) return;
+
+    const overlapping = await this.academicYearRepository
+      .createQueryBuilder('year')
+      .where('year.school_id = :schoolId', { schoolId: academicYear.school_id })
+      .andWhere('year.id != :id', { id: academicYear.id })
+      .andWhere('year.start_date <= :endDate AND year.end_date >= :startDate', {
+        endDate: endDay,
+        startDate: calendarDayKey(academicYear.start_date),
+      })
+      .getOne();
+
+    if (overlapping) {
+      throw new BadRequestException('Semester end date overlaps another academic year');
+    }
+
+    academicYear.end_date = endDay as unknown as Date;
+    await this.academicYearRepository.save(academicYear);
+  }
+
   async create(createSemesterDto: CreateSemesterDto, schoolId: string): Promise<Semester> {
-    // Validate date range
-    if (createSemesterDto.start_date >= createSemesterDto.end_date) {
+    const startDay = calendarDayKey(createSemesterDto.start_date);
+    const endDay = calendarDayKey(createSemesterDto.end_date);
+    if (!startDay || !endDay || startDay >= endDay) {
       throw new BadRequestException('Start date must be before end date');
     }
 
@@ -48,9 +87,8 @@ export class SemesterService {
       throw new ForbiddenException('Academic year not in your school');
     }
 
-    // Validate semester dates are within academic year
-    if (createSemesterDto.start_date < academicYear.start_date ||
-        createSemesterDto.end_date > academicYear.end_date) {
+    const yearStart = calendarDayKey(academicYear.start_date);
+    if (!yearStart || startDay < yearStart) {
       throw new BadRequestException('Semester dates must be within the academic year range');
     }
 
@@ -87,6 +125,8 @@ export class SemesterService {
     if (makeActive) {
       await this.deactivateAllForSchool(schoolId);
     }
+
+    await this.extendYearThrough(academicYear, endDay);
 
     const semester = this.semesterRepository.create({
       ...createSemesterDto,
@@ -207,28 +247,17 @@ export class SemesterService {
     const semester = await this.findOne(id);
     const schoolId = String(semester.academicYear?.school_id ?? '');
 
-    // Validate date range if both dates are provided
-    if (updateSemesterDto.start_date && updateSemesterDto.end_date) {
-      if (updateSemesterDto.start_date >= updateSemesterDto.end_date) {
-        throw new BadRequestException('Start date must be before end date');
-      }
-    } else if (updateSemesterDto.start_date && semester.end_date) {
-      if (updateSemesterDto.start_date >= semester.end_date) {
-        throw new BadRequestException('Start date must be before end date');
-      }
-    } else if (updateSemesterDto.end_date && semester.start_date) {
-      if (semester.start_date >= updateSemesterDto.end_date) {
-        throw new BadRequestException('Start date must be before end date');
-      }
+    const nextStart = updateSemesterDto.start_date || semester.start_date;
+    const nextEnd = updateSemesterDto.end_date || semester.end_date;
+    const startDay = calendarDayKey(nextStart);
+    const endDay = calendarDayKey(nextEnd);
+    if (!startDay || !endDay || startDay >= endDay) {
+      throw new BadRequestException('Start date must be before end date');
     }
 
-    // Validate semester dates are within academic year if dates are being updated
     if (updateSemesterDto.start_date || updateSemesterDto.end_date) {
-      const startDate = updateSemesterDto.start_date || semester.start_date;
-      const endDate = updateSemesterDto.end_date || semester.end_date;
-
-      if (startDate < semester.academicYear.start_date ||
-          endDate > semester.academicYear.end_date) {
+      const yearStart = calendarDayKey(semester.academicYear.start_date);
+      if (!yearStart || startDay < yearStart) {
         throw new BadRequestException('Semester dates must be within the academic year range');
       }
     }
@@ -249,6 +278,10 @@ export class SemesterService {
 
     if (updateSemesterDto.is_active === true && schoolId) {
       await this.deactivateAllForSchool(schoolId);
+    }
+
+    if (updateSemesterDto.start_date || updateSemesterDto.end_date) {
+      await this.extendYearThrough(semester.academicYear, endDay);
     }
 
     Object.assign(semester, updateSemesterDto);

@@ -60,6 +60,10 @@ export class Parent {
   @Column({ name: 'responsible_phone', type: 'varchar', length: 30, nullable: true })
   responsiblePhone: string | null;
 
+  /** Lifecycle: draft (linked during in-progress register) → active. Existing parents keep active when only linked. */
+  @Column({ type: 'varchar', length: 24, default: 'active' })
+  status: 'draft' | 'active';
+
   @Column({ type: 'uuid', nullable: true })
   user_id: string;
 

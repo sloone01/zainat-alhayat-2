@@ -52,6 +52,8 @@ export interface SchoolLandingContent {
 export interface SchoolLandingMeta {
   id: string
   name: string
+  name_en?: string | null
+  name_ar?: string | null
   logo_url: string | null
   brand_primary_color?: string | null
   brand_accent_color?: string | null

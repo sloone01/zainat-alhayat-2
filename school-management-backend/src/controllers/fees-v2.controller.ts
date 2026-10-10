@@ -21,6 +21,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Public } from '../auth/public.decorator';
 import { resolveActorSchoolId } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { InstallmentPlanService } from '../services/installment-plan.service';
 import { GradeFeeLinkService } from '../services/grade-fee-link.service';
@@ -124,8 +125,24 @@ export class FeesV2Controller {
   // --- Installment plans ---
   @Get('installment-plans')
   @Roles('admin')
-  async listPlans(@Query('school_id') requestedSchoolId: string | undefined, @Request() req: { user: User }) {
+  async listPlans(
+    @Query('school_id') requestedSchoolId: string | undefined,
+    @Request() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+  ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (wantsPage(page)) {
+      const data = await this.installmentPlans.listPage(req.user, schoolId, {
+        page,
+        limit,
+        q,
+        status,
+      });
+      return { success: true, data };
+    }
     const data = await this.installmentPlans.list(req.user, schoolId);
     return { success: true, data };
   }
@@ -264,11 +281,35 @@ export class FeesV2Controller {
   async dueInstallmentsReport(
     @Query('as_of') asOf: string | undefined,
     @Query('bucket') bucket: string | undefined,
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
     @Request() req: { user: User },
   ) {
     const data = await this.chargeSheets.dueInstallmentsReport(req.user, {
       asOf,
       bucket: bucket as 'all' | 'due' | 'late' | 'upcoming' | undefined,
+      page,
+      limit,
+    });
+    return { success: true, data };
+  }
+
+  @Get('my-installments')
+  @Roles('parent', 'student')
+  async myInstallments(
+    @Request() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('surface') surface?: string,
+    @Query('student_id') studentId?: string,
+    @Query('bucket') bucket?: string,
+  ) {
+    const data = await this.chargeSheets.listMyInstallmentsPage(req.user, {
+      page,
+      limit,
+      surface: surface === 'mobile' ? 'mobile' : 'desktop',
+      studentId,
+      bucket,
     });
     return { success: true, data };
   }
@@ -348,7 +389,16 @@ export class FeesV2Controller {
 
   @Get('payments/pending')
   @Roles('admin', 'platform')
-  async listPendingPayments(@Request() req: { user: User }) {
+  async listPendingPayments(
+    @Request() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+  ) {
+    if (wantsPage(page)) {
+      const data = await this.feePayments.listPendingPage(req.user, { page, limit, q });
+      return { success: true, data };
+    }
     const data = await this.feePayments.listPendingForSchool(req.user);
     return { success: true, data };
   }
@@ -362,7 +412,24 @@ export class FeesV2Controller {
 
   @Get('transfers')
   @Roles('admin', 'platform')
-  async listTransfers(@Request() req: { user: User }) {
+  async listTransfers(
+    @Request() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('school_id') schoolId?: string,
+  ) {
+    if (wantsPage(page)) {
+      const data = await this.feePayments.listTransfersPage(req.user, {
+        page,
+        limit,
+        q,
+        status,
+        school_id: schoolId,
+      });
+      return { success: true, data };
+    }
     const data = await this.feePayments.listTransfers(req.user);
     return { success: true, data };
   }

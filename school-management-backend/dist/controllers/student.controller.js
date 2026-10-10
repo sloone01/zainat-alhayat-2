@@ -66,7 +66,34 @@ let StudentController = StudentController_1 = class StudentController {
             message: 'Student registered successfully',
         };
     }
-    async findAll(req, page, limit, q, feeLevel) {
+    async saveRegisterDraft(req, dto) {
+        const student = await this.studentService.saveRegisterDraft(dto, req.user);
+        return {
+            success: true,
+            data: student,
+            message: 'Student draft saved',
+        };
+    }
+    async saveRegisterDraftParents(req, dto) {
+        const student = await this.studentService.saveRegisterDraftParents(dto, req.user);
+        return {
+            success: true,
+            data: student,
+            message: 'Parent draft links saved',
+        };
+    }
+    async lookupByCivilId(req, civilId) {
+        if (!civilId?.trim()) {
+            throw new common_1.BadRequestException('civil_id is required');
+        }
+        const schoolId = this.schoolOf(req);
+        const data = await this.studentService.lookupByCivilId(civilId, {
+            schoolId,
+            publicMode: false,
+        });
+        return { success: true, data };
+    }
+    async findAll(req, page, limit, q, feeLevel, groupId, busId, ageGroup, status) {
         const schoolId = this.schoolOf(req);
         if (page != null && String(page).trim() !== '') {
             const data = await this.studentService.findPage(schoolId, {
@@ -76,6 +103,14 @@ let StudentController = StudentController_1 = class StudentController {
                 fee_level: feeLevel === 'with' || feeLevel === 'without' || feeLevel === 'all'
                     ? feeLevel
                     : 'all',
+                group_id: groupId?.trim() || undefined,
+                bus_id: busId?.trim() || undefined,
+                age_group: ageGroup === 'toddlers' || ageGroup === 'preschool' || ageGroup === 'kindergarten'
+                    ? ageGroup
+                    : undefined,
+                status: status === 'draft' || status === 'active' || status === 'inactive'
+                    ? status
+                    : undefined,
             });
             return { success: true, data };
         }
@@ -192,6 +227,38 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "registerInApp", null);
 __decorate([
+    (0, common_1.Post)('register/draft'),
+    (0, require_claim_decorator_1.RequireClaim)('students', 'create'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, biz_log_decorator_1.BizLog)('start saving a student register draft'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, student_register_dto_1.SaveStudentRegisterDraftDto]),
+    __metadata("design:returntype", Promise)
+], StudentController.prototype, "saveRegisterDraft", null);
+__decorate([
+    (0, common_1.Post)('register/draft/parents'),
+    (0, require_claim_decorator_1.RequireClaim)('students', 'create'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, biz_log_decorator_1.BizLog)('start linking draft parents on student register'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, student_register_dto_1.SaveStudentRegisterDraftParentsDto]),
+    __metadata("design:returntype", Promise)
+], StudentController.prototype, "saveRegisterDraftParents", null);
+__decorate([
+    (0, common_1.Get)('lookup'),
+    (0, require_claim_decorator_1.RequireClaim)('students', 'create'),
+    (0, biz_log_decorator_1.BizLog)('start looking up a student by civil id'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('civil_id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], StudentController.prototype, "lookupByCivilId", null);
+__decorate([
     (0, common_1.Get)(),
     (0, biz_log_decorator_1.BizLog)('start fetching students'),
     __param(0, (0, common_1.Request)()),
@@ -199,8 +266,12 @@ __decorate([
     __param(2, (0, common_1.Query)('limit')),
     __param(3, (0, common_1.Query)('q')),
     __param(4, (0, common_1.Query)('fee_level')),
+    __param(5, (0, common_1.Query)('group_id')),
+    __param(6, (0, common_1.Query)('bus_id')),
+    __param(7, (0, common_1.Query)('age_group')),
+    __param(8, (0, common_1.Query)('status')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], StudentController.prototype, "findAll", null);
 __decorate([

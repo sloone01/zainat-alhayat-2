@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -20,6 +21,8 @@ import { RbacUserGroupRole } from '../entities/rbac-user-group-role.entity';
 import { User } from '../entities/user.entity';
 import { Staff } from '../entities/staff.entity';
 import { normalizeSchoolId } from './rbac.types';
+import { resolveActorSchoolId } from '../common/security/school-access';
+import { likeTerm, paginateQueryBuilder, type PageQuery } from '../common/pagination';
 import { RbacPermissionService } from './rbac-permission.service';
 import { RBAC_ACTION_SEED, RBAC_PAGE_SEED } from './rbac-catalog.seed';
 
@@ -545,6 +548,52 @@ export class RbacGroupService {
     return this.enrichGroups(groups.filter((g) => g.groupType === 'staff'));
   }
 
+  /**
+   * Paged user-group list. Same scope as listGroups. Staff school comes from the
+   * JWT, so a leftover client school id is ignored. Permissions are attached
+   * only for the page of ids.
+   */
+  async listGroupsPage(
+    actor: User,
+    requestedSchoolId: string | null | undefined,
+    query: PageQuery & { q?: string; type?: string },
+  ) {
+    await this.ensureCatalogAndSystemGroups();
+    const type =
+      query.type === 'staff' || query.type === 'parent' || query.type === 'student' || query.type === 'system'
+        ? query.type
+        : undefined;
+
+    const qb = this.groupRepo.createQueryBuilder('g').leftJoinAndSelect('g.school', 'school');
+    if (actor.isSuperAdmin || actor.isSystemUser) {
+      const sid = requestedSchoolId === undefined ? null : normalizeSchoolId(requestedSchoolId);
+      if (sid == null) {
+        await this.ensureSchoolAdminTemplateFullClaims();
+        qb.andWhere('g."schoolId" IS NULL');
+      } else {
+        await this.ensureSchoolStaffDefaults(sid);
+        qb.andWhere('g."schoolId" = :sid', { sid }).andWhere(`g."groupType" = 'staff'`);
+      }
+    } else {
+      const sid = resolveActorSchoolId(actor);
+      if (sid == null) throw new ForbiddenException('School context required');
+      await this.ensureSchoolStaffDefaults(sid);
+      qb.andWhere('g."schoolId" = :sid', { sid }).andWhere(`g."groupType" = 'staff'`);
+    }
+    if (type) qb.andWhere('g."groupType" = :type', { type });
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `LOWER(CONCAT_WS(' ', g.name, COALESCE(g.code, ''), COALESCE(g.description, ''))) LIKE :term`,
+        { term },
+      );
+    }
+    qb.orderBy('g.name', 'ASC').addOrderBy('g.id', 'ASC');
+    const page = await paginateQueryBuilder(qb, query);
+    const items = await this.enrichGroups(page.items);
+    return { ...page, items };
+  }
+
   /** Ensure School Admin + Teacher staff groups exist for a school. */
   async ensureSchoolStaffDefaults(schoolId: string, adminUserId?: string) {
     await this.ensureSchoolAdminGroupForSchool(schoolId, adminUserId);
@@ -1018,7 +1067,12 @@ export class RbacGroupService {
     if (data.name != null) group.name = data.name.trim();
     if (data.description !== undefined) group.description = data.description?.trim() || null;
     if (data.color !== undefined) group.color = data.color;
-    if (data.isActive !== undefined && !group.isSystem) group.isActive = data.isActive;
+    if (data.isActive !== undefined) {
+      if (group.systemKey === 'super_admin') {
+        throw new BadRequestException('Super Admin group cannot be deactivated');
+      }
+      group.isActive = data.isActive;
+    }
     if (data.code != null && !group.isSystem) {
       const next = slugifyCode(data.code);
       if (next !== group.code) {
@@ -1035,11 +1089,17 @@ export class RbacGroupService {
   async deleteGroup(actor: User, id: string) {
     const group = await this.groupRepo.findOne({ where: { id } });
     if (!group) throw new NotFoundException('User group not found');
+    this.assertCanManageScope(actor, group.schoolId);
+    const members = await this.memberRepo.count({ where: { groupId: group.id } });
+    if (members > 0) {
+      throw new ConflictException(
+        'This role is assigned to users and cannot be deleted. Deactivate it instead.',
+      );
+    }
     if (group.isSystem) throw new BadRequestException('System groups cannot be deleted');
     if (group.groupType === 'parent' || group.groupType === 'student') {
       throw new BadRequestException('Parent/Student groups cannot be deleted');
     }
-    this.assertCanManageScope(actor, group.schoolId);
     await this.groupRepo.remove(group);
     this.permissionService.invalidateAllClaims('group-deleted');
   }

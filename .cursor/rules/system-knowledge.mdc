@@ -19,7 +19,10 @@ After you add or change a page, flow, API, or convention, update `SYSTEM.md` in 
 - `/students/register`: `student-register-form.mdc` (wizard, not a list)
 - Notifications: `notification-templates.mdc`
 - **API authZ / school scope:** `api-authz-school-scope.mdc` (RequireClaim + `resolveActorSchoolId` on every new/changed endpoint)
+- **File / document uploads:** `attachment-uploads.mdc` — always `AttachmentService` + GCS/`AttachmentStorage`; never base64 in JSON bodies
 - **Course statuses:** `course-status.mdc` — `status` (draft/submit) is independent of `is_active` (Active / Not active)
+- **Student display names:** `student-display-name.mdc` — always first + second + family (no third) via `formatStudentDisplayName`
+- **Printable reports:** `report-docx.mdc` — Word template filled at download; school name and logo come from settings
 - Run/DB/logins: `AGENT_DEPLOY_HANDOFF.md`
 
 Do not treat root `README.md` as current. Do not edit `_fikr-redesign-backup/` or `school-management-backend/dist/` as source.

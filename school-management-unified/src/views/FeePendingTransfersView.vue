@@ -10,9 +10,9 @@
         {{ actionError }}
       </div>
 
-      <section v-if="!loading && transfers.length" class="fk-promo" role="status">
+      <section v-if="!loading && total" class="fk-promo" role="status">
         <p class="fk-promo__eyebrow">{{ $t('feesV2.pendingTransfers') }}</p>
-        <h2 class="fk-promo__title">{{ $t('feesV2.pendingTransfersCount', { count: transfers.length }) }}</h2>
+        <h2 class="fk-promo__title">{{ $t('feesV2.pendingTransfersCount', { count: total }) }}</h2>
         <p class="fk-promo__body">{{ pendingTotalLine }}</p>
       </section>
 
@@ -21,7 +21,7 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('feesV2.pendingTransfers') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('feesV2.pendingTransfersCount', { count: transfers.length }) }}
+              {{ $t('feesV2.pendingTransfersCount', { count: total }) }}
             </p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -40,9 +40,9 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="transfers.length">
+          <template v-else-if="total > 0 || hasActiveFilters">
             <p
-              v-if="filteredTransfers.length === 0"
+              v-if="total === 0"
               class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
               {{ $t('feesV2.noTransferFilterResults') }}
@@ -149,7 +149,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredTransfers.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -214,7 +214,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -226,7 +226,7 @@ import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { feesV2Service, type FeeTransfer } from '@/services/fees-v2.service'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 import FikrLoader from '@/components/FikrLoader.vue'
@@ -235,53 +235,41 @@ const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
-const allTransfers = ref<FeeTransfer[]>([])
-const loading = ref(true)
 const busyId = ref<string | null>(null)
 const openingProof = ref(false)
 const actionError = ref('')
 const showFilters = ref(false)
 const searchQuery = ref('')
 const activeMenuId = ref<string | null>(null)
-
-const transfers = computed(() =>
-  allTransfers.value.filter((tr) => tr.status === 'pending_school'),
-)
+const amountTotal = ref('0')
 
 const hasActiveFilters = computed(() => Boolean(searchQuery.value.trim()))
 
-const filteredTransfers = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return transfers.value
-  return transfers.value.filter((tr) => {
-    const haystack = [
-      fmt(tr.total_amount),
-      tr.reference || '',
-      lineSummary(tr),
-    ].join(' ').toLowerCase()
-    return haystack.includes(q)
-  })
-})
-
 const {
+  items: paginatedTransfers,
+  total,
+  loading,
   currentPage,
-  paginatedItems: paginatedTransfers,
   totalPages,
   goToPage,
-} = useClientPagination(filteredTransfers)
-
-watch(searchQuery, () => {
-  currentPage.value = 1
-})
+  reload,
+} = useServerPagination(
+  async (params) => {
+    const page = await feesV2Service.listFeeTransfersPage({ ...params, status: 'pending_school' })
+    amountTotal.value = page.amount_total ?? '0'
+    return page
+  },
+  {
+    filters: () => ({ q: searchQuery.value }),
+    debounceKeys: ['q'],
+  },
+)
 
 function fmt(v: string | number) {
   return Number(v || 0).toFixed(3)
 }
 
-const pendingTotalLine = computed(() => {
-  const total = transfers.value.reduce((sum, tr) => sum + Number(tr.total_amount || 0), 0)
-  return `${fmt(total)} OMR`
-})
+const pendingTotalLine = computed(() => `${fmt(amountTotal.value)} OMR`)
 
 function openProof(url: string) {
   void (async () => {
@@ -331,14 +319,8 @@ function handleClickOutside(event: Event) {
 }
 
 async function load() {
-  loading.value = true
-  try {
-    allTransfers.value = await feesV2Service.listFeeTransfers()
-  } catch {
-    allTransfers.value = []
-  } finally {
-    loading.value = false
-  }
+  actionError.value = ''
+  await reload()
 }
 
 async function approve(id: string) {
@@ -373,7 +355,6 @@ async function reject(id: string) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  void load()
 })
 
 onUnmounted(() => {

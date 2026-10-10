@@ -66,6 +66,12 @@ export class Student {
   @Column({ length: 100, nullable: true })
   thirdName: string;
 
+  @Column({ name: 'second_name_en', type: 'varchar', length: 100, nullable: true })
+  secondNameEn: string | null;
+
+  @Column({ name: 'third_name_en', type: 'varchar', length: 100, nullable: true })
+  thirdNameEn: string | null;
+
   @Column({ length: 100, nullable: true })
   nationality: string;
 
@@ -74,6 +80,13 @@ export class Student {
 
   @Column({ name: 'civil_id', type: 'varchar', length: 20, nullable: true })
   civil_id: string | null; // National/civil ID — used to create & sign in the student login
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  tribe: string | null;
+
+  /** Lifecycle: draft (in-progress register) → active (submitted) → inactive. */
+  @Column({ type: 'varchar', length: 24, default: 'active' })
+  status: 'draft' | 'active' | 'inactive';
 
   @Column({ type: 'text', nullable: true })
   photo: string; // Photo URL or base64

@@ -103,18 +103,26 @@ function footerInner(config: LayoutBuilderConfig, locale: 'en' | 'ar'): string {
 }
 
 function headerBits(config: LayoutBuilderConfig, locale: 'en' | 'ar'): string {
-  const parts: string[] = []
-  if (config.showLogo) parts.push('{{schoolLogoHtml}}')
+  const titleParts: string[] = []
   if (config.showSchoolName) {
-    parts.push('<div style="font-size:18px;font-weight:700;line-height:1.3;">{{schoolName}}</div>')
+    titleParts.push('<div style="font-size:18px;font-weight:700;line-height:1.3;">{{schoolName}}</div>')
   }
   const subtitle = (locale === 'ar' ? config.subtitleAr : config.subtitleEn).trim()
   if (subtitle) {
-    parts.push(
+    titleParts.push(
       `<div style="font-size:13px;opacity:.92;margin-top:4px;line-height:1.4;">${escapeHtml(subtitle)}</div>`,
     )
   }
-  return parts.join('\n      ')
+  const title = titleParts.join('')
+  const logo = config.showLogo ? '{{schoolLogoHtml}}' : ''
+  if (logo && title) {
+    const isAr = locale === 'ar'
+    const titleCell = `<td valign="middle" align="${isAr ? 'right' : 'left'}" style="padding:${isAr ? '0 0 0 12px' : '0 12px 0 0'};">${title}</td>`
+    const logoCell = `<td valign="middle" align="${isAr ? 'left' : 'right'}" width="128" style="width:128px;padding:0;">${logo}</td>`
+    const cells = isAr ? `${logoCell}${titleCell}` : `${titleCell}${logoCell}`
+    return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" dir="ltr" style="width:100%;border-collapse:collapse;"><tr>${cells}</tr></table>`
+  }
+  return [logo, title].filter(Boolean).join('\n      ')
 }
 
 function bannerBlock(config: LayoutBuilderConfig): string {

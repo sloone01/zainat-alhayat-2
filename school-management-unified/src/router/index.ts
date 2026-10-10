@@ -10,6 +10,7 @@ import { demoPersonaFromQuery, ensureDemoSession } from '@/utils/demo-play'
 import { isNativeApp, isNativePublicLandingPath } from '@/utils/native-app'
 import { getSessionPersona, sessionHomePath, sessionMustChangePassword } from '@/utils/auth-token'
 import { useClaims } from '@/composables/useClaims'
+import { installRoutePageLoading } from '@/router/route-loading'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -52,7 +53,20 @@ const router = createRouter({
     },
     {
       path: '/s/default',
+      redirect: '/s/fikr-demo',
+    },
+    {
+      path: '/s/zinat-al-haya-live',
       redirect: '/s/zinat-al-haya',
+    },
+    {
+      path: '/s/zinat-al-haya-live/login',
+      redirect: '/s/zinat-al-haya/login',
+    },
+    {
+      // "login" is not a school slug — same screen as /login
+      path: '/s/login',
+      redirect: '/login',
     },
     {
       path: '/s/:slug',
@@ -86,6 +100,18 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
+    },
+    {
+      path: '/privacy',
+      name: 'privacy',
+      component: () => import('../views/LegalPageView.vue'),
+      meta: { legalDoc: 'privacy' },
+    },
+    {
+      path: '/terms',
+      name: 'terms',
+      component: () => import('../views/LegalPageView.vue'),
+      meta: { legalDoc: 'terms' },
     },
     {
       path: '/change-password',
@@ -760,6 +786,40 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
+      path: '/reports/students-export',
+      redirect: '/reports/exports/students',
+    },
+    {
+      path: '/reports/exports',
+      name: 'reports-exports',
+      component: () => import('../views/ReportExportsListView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/reports/exports/:key',
+      name: 'reports-export-edit',
+      component: () => import('../views/ReportExportEditView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/reports/export-templates',
+      name: 'reports-export-templates',
+      component: () => import('../views/ReportExportTemplatesListView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/reports/export-templates/new',
+      name: 'reports-export-template-new',
+      component: () => import('../views/ReportExportTemplateEditorView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/reports/export-templates/:id',
+      name: 'reports-export-template-edit',
+      component: () => import('../views/ReportExportTemplateEditorView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/course-materials',
       name: 'course-materials',
       component: () => import('../views/CourseMaterialsView.vue'),
@@ -1026,6 +1086,9 @@ function isPendingPaymentLock(): boolean {
   if (u.isSuperAdmin || u.user_type === 'platform' || u.isSystemUser) return false
   return u.school_status === 'pending_payment'
 }
+
+// Page loader first so it covers this guard (auth, claims) and the lazy chunk.
+installRoutePageLoading(router)
 
 // Navigation guard for authentication
 router.beforeEach(async (to, from, next) => {

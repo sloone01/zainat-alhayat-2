@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface Bus {
   id: string
@@ -123,12 +124,29 @@ export interface BusMovementLog {
   student?: { id: string; firstName: string; lastName: string }
 }
 
+export interface BusListParams {
+  page?: number
+  limit?: number
+  q?: string
+  schoolId?: string
+}
+
 class BusService extends BaseApiService {
   async getAll(schoolId?: string, activeOnly?: boolean): Promise<Bus[]> {
     const params: Record<string, string | number | boolean> = {}
     if (schoolId !== undefined) params.school_id = schoolId
     if (activeOnly === true) params.is_active = true
     return this.get<Bus[]>('/buses', params)
+  }
+
+  async listPage(params: BusListParams): Promise<PageResult<Bus>> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.schoolId) query.school_id = params.schoolId
+    return this.get<PageResult<Bus>>('/buses', query)
   }
 
   async getById(id: string): Promise<Bus> {

@@ -7,17 +7,18 @@
 
       <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <h2 class="fk-card__title">{{ $t('support.allRequests') }} ({{ items.length }})</h2>
-          <select v-model="statusFilter" class="fk-field w-auto min-w-[9rem]" @change="load">
+          <h2 class="fk-card__title">{{ $t('support.allRequests') }} ({{ total }})</h2>
+          <select v-model="statusFilter" class="fk-field w-auto min-w-[9rem]" @change="onFilter">
             <option value="">{{ $t('support.allStatuses') }}</option>
             <option v-for="s in SUPPORT_REQUEST_STATUSES" :key="s" :value="s">{{ $t(`support.status.${s}`) }}</option>
           </select>
         </header>
-        <div v-if="loading" class="flex items-center justify-center py-12"><FikrLoader /></div>
+        <div v-if="loading && !routePageLoading" class="flex items-center justify-center py-12"><FikrLoader /></div>
         <div v-else-if="!items.length" class="fk-empty">
           <p class="fk-empty__title">{{ $t('support.empty') }}</p>
         </div>
-        <ul v-else class="divide-y divide-fikr-hairline">
+        <template v-else>
+        <ul class="divide-y divide-fikr-hairline">
           <li v-for="item in items" :key="item.id" class="px-5 py-4 sm:px-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <button type="button" class="min-w-0 flex-1 text-start" @click="toggle(item.id)">
@@ -54,9 +55,20 @@
                 </select>
               </div>
             </div>
-            <SupportRequestBody v-if="expanded === item.id" class="mt-3" :html="item.description_html" />
+            <div v-if="expanded === item.id" class="mt-3">
+              <div v-if="detailLoading === item.id" class="flex justify-center py-6"><FikrLoader size="sm" /></div>
+              <SupportRequestBody v-else-if="item.description_html" :html="item.description_html" />
+            </div>
           </li>
         </ul>
+        <FikrPagination
+          wrapper-class="mx-5 mb-5 sm:mx-6"
+          :page="currentPage"
+          :pages="totalPages"
+          :show="total > 0"
+          @update:page="goToPage"
+        />
+        </template>
       </section>
     </div>
   </DashboardLayout>
@@ -69,6 +81,8 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
 import SupportRequestBody from '@/components/SupportRequestBody.vue'
+import FikrPagination from '@/components/FikrPagination.vue'
+import { routePageLoading } from '@/router/route-loading'
 import supportService, {
   SUPPORT_REQUEST_STATUSES,
   type SupportRequest,
@@ -83,18 +97,38 @@ const loading = ref(true)
 const error = ref('')
 const statusFilter = ref<SupportRequestStatus | ''>('')
 const expanded = ref<string | null>(null)
+const detailLoading = ref<string | null>(null)
 const busyId = ref<string | null>(null)
+const currentPage = ref(1)
+const totalPages = ref(1)
+const total = ref(0)
+const PAGE_SIZE = 20
 
 async function load() {
   loading.value = true
   error.value = ''
+  expanded.value = null
   try {
-    items.value = await supportService.getAll(statusFilter.value || undefined)
+    const page = await supportService.getAll(statusFilter.value || undefined, currentPage.value, PAGE_SIZE)
+    items.value = page.items
+    total.value = page.total
+    totalPages.value = page.pages
+    currentPage.value = page.page
   } catch {
     error.value = t('support.loadFailed')
   } finally {
     loading.value = false
   }
+}
+
+function goToPage(page: number) {
+  currentPage.value = page
+  void load()
+}
+
+function onFilter() {
+  currentPage.value = 1
+  void load()
 }
 
 async function changeStatus(item: SupportRequest, status: SupportRequestStatus) {
@@ -123,8 +157,25 @@ async function toggleFixed(item: SupportRequest) {
   }
 }
 
-function toggle(id: string) {
-  expanded.value = expanded.value === id ? null : id
+async function toggle(id: string) {
+  if (expanded.value === id) {
+    expanded.value = null
+    return
+  }
+  expanded.value = id
+  const item = items.value.find((row) => row.id === id)
+  if (!item || item.description_html != null) return
+  detailLoading.value = id
+  try {
+    const full = await supportService.getOne(id)
+    item.description_html = full.description_html
+    item.context = full.context
+  } catch {
+    error.value = t('support.loadFailed')
+    expanded.value = null
+  } finally {
+    detailLoading.value = null
+  }
 }
 
 function userName(item: SupportRequest): string {

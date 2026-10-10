@@ -31,9 +31,9 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="courses.length">
+          <template v-else-if="total > 0 || hasActiveFilters">
             <p
-              v-if="filteredCourses.length === 0"
+              v-if="total === 0"
               class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
               {{ $t('paymentSettings.noCourseFilterResults') }}
@@ -129,7 +129,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredCourses.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -221,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -234,10 +234,9 @@ import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { authService } from '@/services'
 import paymentConfigService, { type CoursePaymentSummaryRow } from '@/services/payment-config.service'
-import { isCourseSchedulable } from '@/utils/course-status'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
@@ -274,9 +273,7 @@ const schoolId = computed(() => {
   return id != null && String(id).trim() !== '' ? String(id) : ''
 })
 
-const loading = ref(true)
 const flashError = ref('')
-const courses = ref<CoursePaymentSummaryRow[]>([])
 
 const hasActiveFilters = computed(() =>
   Boolean(searchQuery.value.trim())
@@ -284,31 +281,28 @@ const hasActiveFilters = computed(() =>
   || statusFilter.value !== 'all',
 )
 
-const filteredCourses = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return courses.value.filter((c) => {
-    if (configFilter.value === 'configured' && !c.profile_configured) return false
-    if (configFilter.value === 'not_configured' && c.profile_configured) return false
-    if (statusFilter.value === 'active' && !c.is_active) return false
-    if (statusFilter.value === 'inactive' && c.is_active) return false
-    if (q) {
-      const haystack = `${courseDisplayName(c)} ${c.title || ''} ${c.name || ''}`.toLowerCase()
-      if (!haystack.includes(q)) return false
-    }
-    return true
-  })
-})
-
 const {
+  items: paginatedCourses,
+  total,
+  loading,
   currentPage,
-  paginatedItems: paginatedCourses,
   totalPages,
   goToPage,
-} = useClientPagination(filteredCourses)
-
-watch([searchQuery, statusFilter], () => {
-  currentPage.value = 1
-})
+} = useServerPagination(
+  (params) => paymentConfigService.listCoursesPaymentSummaryPage(params),
+  {
+    filters: () => ({
+      q: searchQuery.value,
+      status: statusFilter.value,
+      config: configFilter.value,
+    }),
+    debounceKeys: ['q'],
+    enabled: () => Boolean(schoolId.value),
+    onError: (e) => {
+      flashError.value = (e as Error)?.message || t('paymentSettings.loadError')
+    },
+  },
+)
 
 function clearFilters() {
   searchQuery.value = ''
@@ -326,29 +320,8 @@ function pricingBasisLabel(c: CoursePaymentSummaryRow) {
   return t('paymentSettings.coursePricingBasisUnset')
 }
 
-async function load() {
-  loading.value = true
-  flashError.value = ''
-  if (!schoolId.value) {
-    flashError.value = t('paymentSettings.loadError')
-    loading.value = false
-    return
-  }
-  try {
-    const cr = await paymentConfigService.listCoursesPaymentSummary(schoolId.value)
-    courses.value = [...cr]
-      .filter((c) => isCourseSchedulable(c))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  } catch (e: unknown) {
-    flashError.value = (e as Error)?.message || t('paymentSettings.loadError')
-  } finally {
-    loading.value = false
-  }
-}
-
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  void load()
 })
 
 onUnmounted(() => {

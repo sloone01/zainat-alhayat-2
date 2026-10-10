@@ -1,5 +1,8 @@
 <template>
-  <div class="relative inline-flex shrink-0 items-center justify-end">
+  <div
+    class="relative inline-flex shrink-0 items-center justify-end"
+    :class="open ? 'z-30' : ''"
+  >
     <button
       type="button"
       class="fk-menu-trigger"

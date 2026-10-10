@@ -74,27 +74,48 @@ function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob 
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
 }
 
+/** Shrink dimensions, not JPEG quality, so a large screenshot stays readable. */
+function downscale(src: HTMLCanvasElement, factor: number): HTMLCanvasElement {
+  const next = document.createElement('canvas')
+  next.width = Math.max(1, Math.round(src.width * factor))
+  next.height = Math.max(1, Math.round(src.height * factor))
+  const ctx = next.getContext('2d')
+  if (!ctx) return src
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(src, 0, 0, next.width, next.height)
+  return next
+}
+
 /** Screenshot of what is currently on screen, as a JPEG under the 5 MB upload limit. */
 async function captureScreenshot(): Promise<File | null> {
   const { default: html2canvas } = await import('html2canvas')
-  const canvas = await html2canvas(document.body, {
+  // Crop the viewport of the document (not a wild crop of `body` alone). Negated scroll
+  // offsets keep fixed chrome + scrolled content aligned with what the user sees.
+  let canvas = await html2canvas(document.documentElement, {
     x: window.scrollX,
     y: window.scrollY,
     width: window.innerWidth,
     height: window.innerHeight,
-    windowWidth: document.documentElement.clientWidth,
-    windowHeight: document.documentElement.clientHeight,
-    scale: Math.min(window.devicePixelRatio || 1, 1.5),
+    windowWidth: window.innerWidth,
+    windowHeight: window.innerHeight,
+    scrollX: -window.scrollX,
+    scrollY: -window.scrollY,
+    scale: Math.min(window.devicePixelRatio || 1, 2),
     useCORS: true,
+    allowTaint: false,
     logging: false,
+    imageTimeout: 5_000,
     ignoreElements: (el) => el instanceof HTMLElement && el.dataset.issueReportIgnore !== undefined,
   })
-  for (const quality of [0.85, 0.6, 0.4]) {
-    const blob = await canvasToBlob(canvas, quality)
-    if (blob && blob.size <= MAX_SCREENSHOT_BYTES) {
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  if (!canvas.width || !canvas.height) return null
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const blob = await canvasToBlob(canvas, 0.86)
+    if (blob && blob.size > 0 && blob.size <= MAX_SCREENSHOT_BYTES) {
       return new File([blob], `screenshot-${stamp}.jpg`, { type: 'image/jpeg' })
     }
+    canvas = downscale(canvas, 0.75)
   }
   return null
 }

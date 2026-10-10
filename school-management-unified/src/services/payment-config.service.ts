@@ -1,4 +1,6 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface SchoolPaymentLevel {
   id: string
@@ -38,6 +40,14 @@ export const PAYMENT_CHARGE_BILLING_OCCURRENCES: PaymentChargeBillingOccurrence[
   'other',
 ]
 
+export interface CatalogListParams {
+  page?: number
+  limit?: number
+  q?: string
+  status?: 'all' | 'active' | 'inactive' | ''
+  schoolId?: string
+}
+
 export interface PaymentCatalogRow {
   id: string
   school_id: string
@@ -47,6 +57,8 @@ export interface PaymentCatalogRow {
   sort_order: number
   is_active: boolean
   billing_occurrence?: PaymentChargeBillingOccurrence
+  package_names?: string[]
+  used_on_charges?: boolean
   created_at: string
   updated_at: string
 }
@@ -131,6 +143,17 @@ export interface CoursePaymentProfileApi {
   }>
 }
 
+function catalogPageQuery(params: CatalogListParams): Record<string, string | number> {
+  const query: Record<string, string | number> = {
+    page: params.page ?? 1,
+    limit: params.limit ?? 20,
+  }
+  if (params.q?.trim()) query.q = params.q.trim()
+  if (params.status && params.status !== 'all') query.status = params.status
+  if (params.schoolId) query.school_id = params.schoolId
+  return query
+}
+
 class PaymentConfigService extends BaseApiService {
   listLevels(schoolId: string) {
     return this.get<SchoolPaymentLevel[]>('/payment-config/levels', { school_id: schoolId })
@@ -138,6 +161,20 @@ class PaymentConfigService extends BaseApiService {
 
   listLevelsSummary(schoolId: string) {
     return this.get<SchoolPaymentLevelSummary[]>('/payment-config/levels-summary', { school_id: schoolId })
+  }
+
+  listLevelsSummaryPage(params: {
+    page: number
+    limit: number
+    q?: string
+    status?: string
+    config?: string
+  }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status && params.status !== 'all') query.status = params.status
+    if (params.config && params.config !== 'all') query.config = params.config
+    return this.get<PageResult<SchoolPaymentLevelSummary>>('/payment-config/levels-summary', query)
   }
 
   createLevel(schoolId: string, body: { code: string; name: string; sort_order?: number; is_active?: boolean }) {
@@ -154,6 +191,10 @@ class PaymentConfigService extends BaseApiService {
 
   listChargeTypes(schoolId: string) {
     return this.get<PaymentCatalogRow[]>('/payment-config/charge-types', { school_id: schoolId })
+  }
+
+  listChargeTypesPage(params: CatalogListParams) {
+    return this.get<PageResult<PaymentCatalogRow>>('/payment-config/charge-types', catalogPageQuery(params))
   }
 
   createChargeType(schoolId: string, body: {
@@ -177,12 +218,20 @@ class PaymentConfigService extends BaseApiService {
     return this.patch<PaymentCatalogRow>(`/payment-config/charge-types/${id}`, body)
   }
 
+  packagesUsingChargeType(id: string) {
+    return this.get<string[]>(`/payment-config/charge-types/${id}/packages`)
+  }
+
   deleteChargeType(id: string) {
     return this.delete(`/payment-config/charge-types/${id}`)
   }
 
   listDiscountTypes(schoolId: string) {
     return this.get<PaymentCatalogRow[]>('/payment-config/discount-types', { school_id: schoolId })
+  }
+
+  listDiscountTypesPage(params: CatalogListParams) {
+    return this.get<PageResult<PaymentCatalogRow>>('/payment-config/discount-types', catalogPageQuery(params))
   }
 
   createDiscountType(schoolId: string, body: { code: string; label: string; value?: string | null; sort_order?: number }) {
@@ -193,12 +242,20 @@ class PaymentConfigService extends BaseApiService {
     return this.patch<PaymentCatalogRow>(`/payment-config/discount-types/${id}`, body)
   }
 
+  packagesUsingDiscountType(id: string) {
+    return this.get<string[]>(`/payment-config/discount-types/${id}/packages`)
+  }
+
   deleteDiscountType(id: string) {
     return this.delete(`/payment-config/discount-types/${id}`)
   }
 
   listExtraTypes(schoolId: string) {
     return this.get<PaymentCatalogRow[]>('/payment-config/extra-types', { school_id: schoolId })
+  }
+
+  listExtraTypesPage(params: CatalogListParams) {
+    return this.get<PageResult<PaymentCatalogRow>>('/payment-config/extra-types', catalogPageQuery(params))
   }
 
   createExtraType(schoolId: string, body: { code: string; label: string; value?: string | null; sort_order?: number }) {
@@ -217,12 +274,20 @@ class PaymentConfigService extends BaseApiService {
     return this.get<PaymentCatalogRow[]>('/payment-config/inclusion-types', { school_id: schoolId })
   }
 
+  listInclusionTypesPage(params: CatalogListParams) {
+    return this.get<PageResult<PaymentCatalogRow>>('/payment-config/inclusion-types', catalogPageQuery(params))
+  }
+
   createInclusionType(schoolId: string, body: { code: string; label: string; value?: string | null; sort_order?: number }) {
     return this.post<PaymentCatalogRow>(`/payment-config/inclusion-types?school_id=${schoolId}`, body)
   }
 
   updateInclusionType(id: string, body: Partial<{ code: string; label: string; value: string | null; sort_order: number; is_active: boolean }>) {
     return this.patch<PaymentCatalogRow>(`/payment-config/inclusion-types/${id}`, body)
+  }
+
+  packagesUsingInclusionType(id: string) {
+    return this.get<string[]>(`/payment-config/inclusion-types/${id}/packages`)
   }
 
   deleteInclusionType(id: string) {
@@ -260,6 +325,20 @@ class PaymentConfigService extends BaseApiService {
 
   listCoursesPaymentSummary(schoolId: string) {
     return this.get<CoursePaymentSummaryRow[]>('/payment-config/courses-payment-summary', { school_id: schoolId })
+  }
+
+  listCoursesPaymentSummaryPage(params: {
+    page: number
+    limit: number
+    q?: string
+    status?: string
+    config?: string
+  }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status && params.status !== 'all') query.status = params.status
+    if (params.config && params.config !== 'all') query.config = params.config
+    return this.get<PageResult<CoursePaymentSummaryRow>>('/payment-config/courses-payment-summary', query)
   }
 
   getCoursePaymentProfile(courseId: string, schoolId: string) {

@@ -210,15 +210,51 @@ export class SupportRequestService {
     return { html, attachments };
   }
 
-  findForUser(userId: string): Promise<SupportRequest[]> {
-    return this.repo.find({ where: { user_id: userId }, order: { created_at: 'DESC' } });
-  }
+  /**
+   * List rows omit description HTML and diagnostics so a page of tickets does not
+   * pull every embedded screenshot. Open one ticket to load the body.
+   */
+  async findPage(opts: {
+    userId?: string;
+    status?: SupportRequestStatus;
+    page?: number;
+    limit?: number;
+    withUser?: boolean;
+  }): Promise<{
+    items: SupportRequest[];
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  }> {
+    const limit = Math.min(50, Math.max(1, Math.floor(opts.limit || 20)));
+    const requested = Math.max(1, Math.floor(opts.page || 1));
+    const base = this.repo.createQueryBuilder('sr');
+    if (opts.userId) base.where('sr.user_id = :userId', { userId: opts.userId });
+    if (opts.status) base.andWhere('sr.status = :status', { status: opts.status });
 
-  findAll(status?: SupportRequestStatus): Promise<SupportRequest[]> {
-    const qb = this.repo
-      .createQueryBuilder('sr')
-      .leftJoin('sr.user', 'user')
-      .addSelect([
+    const total = await base.clone().getCount();
+    const pages = Math.max(1, Math.ceil(total / limit) || 1);
+    const page = Math.min(requested, pages);
+
+    const qb = base
+      .clone()
+      .select([
+        'sr.id',
+        'sr.school_id',
+        'sr.user_id',
+        'sr.title',
+        'sr.status',
+        'sr.fixed',
+        'sr.fixed_at',
+        'sr.created_at',
+        'sr.updated_at',
+      ])
+      .orderBy('sr.created_at', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+    if (opts.withUser) {
+      qb.leftJoin('sr.user', 'user').addSelect([
         'user.id',
         'user.username',
         'user.email',
@@ -229,10 +265,10 @@ export class SupportRequestService {
         'user.last_name_ar',
         'user.last_name_en',
         'user.role',
-      ])
-      .orderBy('sr.created_at', 'DESC');
-    if (status) qb.where('sr.status = :status', { status });
-    return qb.getMany();
+      ]);
+    }
+    const items = await qb.getMany();
+    return { items, total, page, limit, pages };
   }
 
   async findOne(id: string): Promise<SupportRequest> {

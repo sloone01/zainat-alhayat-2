@@ -60,12 +60,12 @@
             <p class="fk-card__meta">
               <template v-if="!selectedCourseId">{{ $t('courseEnrollment.pickCourseFirst') }}</template>
               <template v-else-if="!loadingEnrollments">
-                {{ $t('courseEnrollment.enrolledCount', { count: enrollments.length }) }}
+                {{ $t('courseEnrollment.enrolledCount', { count: enrollmentTotal }) }}
               </template>
             </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
-            <ListViewModeToggle v-if="selectedCourseId && enrollments.length" v-model="viewMode" />
+            <ListViewModeToggle v-if="selectedCourseId && enrollmentTotal" v-model="viewMode" />
           </div>
         </header>
 
@@ -74,7 +74,7 @@
           class="grid grid-cols-2 gap-3 border-b border-gray-100 px-6 py-4 sm:grid-cols-3"
         >
           <div class="rounded-xl bg-primary-50/70 px-3 py-3 text-center ring-1 ring-primary-100">
-            <div class="text-xl font-bold tabular-nums text-primary-700">{{ enrollments.length }}</div>
+            <div class="text-xl font-bold tabular-nums text-primary-700">{{ enrollmentTotal }}</div>
             <div class="mt-0.5 text-[11px] font-medium text-gray-500">{{ $t('courseEnrollment.statEnrolled') }}</div>
           </div>
           <div class="rounded-xl bg-emerald-50/70 px-3 py-3 text-center ring-1 ring-emerald-100">
@@ -105,12 +105,12 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="enrollments.length">
+          <template v-else-if="enrollmentTotal">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <KanbanCard
                 v-for="row in paginatedEnrollments"
                 :key="row.id"
-                :title="`${row.student?.firstName || ''} ${row.student?.lastName || ''}`.trim()"
+                :title="enrollmentStudentName(row)"
                 :description="formatMoney(Number(row.payment?.base_total_amount || 0), row.payment?.currency || 'OMR')"
               >
                 <template #tags>
@@ -143,7 +143,7 @@
                 <tbody class="divide-y divide-gray-100">
                   <tr v-for="row in paginatedEnrollments" :key="'list-' + row.id" class="hover:bg-primary-50/20">
                     <td class="px-4 py-3 font-medium text-gray-900">
-                      {{ row.student?.firstName }} {{ row.student?.lastName }}
+                      {{ enrollmentStudentName(row) }}
                     </td>
                     <td class="px-4 py-3 tabular-nums text-gray-700">
                       {{ formatMoney(Number(row.payment?.base_total_amount || 0), row.payment?.currency || 'OMR') }}
@@ -171,7 +171,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="enrollments.length > 0"
+              :show="enrollmentTotal > 0"
               @update:page="goToPage"
             />
           </template>
@@ -260,6 +260,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import KanbanCard from '@/components/ui/kanban-card.vue'
@@ -269,7 +270,8 @@ import FikrToolbarSearch from '@/components/FikrToolbarSearch.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
+import { formatStudentDisplayName } from '@/utils/student-display-name'
 import courseEnrollmentService, {
   type CourseEnrollmentRow,
   type CourseEnrollmentStudentRow,
@@ -278,30 +280,47 @@ import courseEnrollmentService, {
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
 const courses = ref<EnrollableCourseRow['course'][]>([])
 const enrollableByCourse = ref<Map<string, EnrollableCourseRow>>(new Map())
 const selectedCourseId = ref('')
-const enrollments = ref<CourseEnrollmentRow[]>([])
 const {
+  items: paginatedEnrollments,
+  total: enrollmentTotal,
+  loading: loadingEnrollments,
   currentPage,
-  paginatedItems: paginatedEnrollments,
   totalPages,
   goToPage,
-} = useClientPagination(enrollments)
+  reload: reloadEnrollments,
+} = useServerPagination<CourseEnrollmentRow, { course_id: string; status: string }>(
+  (params) =>
+    courseEnrollmentService.listPage({
+      course_id: params.course_id,
+      status: params.status,
+      page: params.page,
+      limit: params.limit,
+    }),
+  {
+    filters: () => ({
+      course_id: selectedCourseId.value,
+      status: 'active',
+    }),
+    enabled: () => Boolean(selectedCourseId.value),
+  },
+)
 
 const students = ref<CourseEnrollmentStudentRow[]>([])
 const selectedStudentIds = ref<string[]>([])
 const studentSearch = ref('')
-const loadingEnrollments = ref(false)
 const enrolling = ref(false)
 const flash = ref('')
 const flashOk = ref(true)
 
 const enrolledStudentIds = computed(
-  () => new Set(enrollments.value.filter((e) => e.status === 'active').map((e) => e.student_id)),
+  () => new Set(paginatedEnrollments.value.filter((e) => e.status === 'active').map((e) => e.student_id)),
 )
 
 const filteredStudents = computed(() => {
@@ -335,9 +354,15 @@ function courseLabel(c: EnrollableCourseRow['course']) {
   return c.name || c.title || '—'
 }
 
+function enrollmentStudentName(row: CourseEnrollmentRow) {
+  return formatStudentDisplayName(row.student, locale.value) || '—'
+}
+
 function studentInitials(row: CourseEnrollmentRow) {
-  const f = row.student?.firstName?.charAt(0) || ''
-  const l = row.student?.lastName?.charAt(0) || ''
+  const name = enrollmentStudentName(row)
+  const parts = name.split(/\s+/).filter(Boolean)
+  const f = parts[0]?.charAt(0) || ''
+  const l = parts.length > 1 ? parts[parts.length - 1].charAt(0) : ''
   return `${f}${l}` || '?'
 }
 
@@ -363,19 +388,8 @@ async function loadStudents() {
 }
 
 async function loadEnrollments() {
-  if (!selectedCourseId.value) {
-    enrollments.value = []
-    return
-  }
-  loadingEnrollments.value = true
-  try {
-    enrollments.value = await courseEnrollmentService.list({
-      course_id: selectedCourseId.value,
-      status: 'active',
-    })
-  } finally {
-    loadingEnrollments.value = false
-  }
+  if (!selectedCourseId.value) return
+  await reloadEnrollments()
 }
 
 async function submitEnroll() {
@@ -404,7 +418,12 @@ async function submitEnroll() {
 }
 
 async function dropEnrollment(id: string) {
-  if (!window.confirm(t('courseEnrollment.dropConfirm'))) return
+  if (!(await feedback.confirm({
+    title: t('common.confirm'),
+    message: t('courseEnrollment.dropConfirm'),
+    confirmLabel: t('common.confirm'),
+    danger: true,
+  }))) return
   try {
     await courseEnrollmentService.drop(id)
     await loadEnrollments()
@@ -415,9 +434,7 @@ async function dropEnrollment(id: string) {
 }
 
 watch(selectedCourseId, () => {
-  currentPage.value = 1
   selectedStudentIds.value = []
-  loadEnrollments()
 })
 
 onMounted(async () => {

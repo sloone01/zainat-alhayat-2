@@ -20,7 +20,8 @@ You are deploying a **monorepo** school-management platform (NestJS + Vue 3) wit
 **Useful routes**
 - Platform hub: `/`, `/login`, `/subscribe`
 - Platform admin: `/platform/schools`, `/platform/plans` (super admin)
-- Demo school site: `/s/zinat-al-haya` (landing_slug `zinat-al-haya`; school PK is UUID)
+- Demo school site: `/s/fikr-demo` (landing_slug `fikr-demo`; school PK is UUID)
+- Real school site: `/s/zinat-al-haya` (landing_slug `zinat-al-haya`; `/s/zinat-al-haya-live` redirects)
 
 ---
 
@@ -211,14 +212,13 @@ docker exec -i zinat_postgres_prod pg_restore -U school_admin -d school_manageme
 | Type | Email | Password | Notes |
 |------|-------|----------|-------|
 | **Platform super admin** | `superadmin@zinat.platform` | `SuperAdmin123!` | No school; `/platform/schools`, `/platform/plans`. Login at `/login` |
-| **School admin (demo)** | `admin@zinatalhaykindergarten.com` | `Admin123!` | Demo Zinat (`landing_slug` `zinat-al-haya`) |
-| **School admin (live)** | `Zahra@gmail.com` | `ZahraAdmin123` | Live 2026/2027 roster (`landing_slug` `zinat-al-haya-live`) |
+| **School admin (demo)** | `admin@zinatalhaykindergarten.com` | `Admin123!` | FIKR Demo School (`landing_slug` `fikr-demo`) |
+| **School admin (live)** | `Zahra@gmail.com` | `ZahraAdmin123` | Live 2026/2027 roster (`landing_slug` `zinat-al-haya`) |
 | **School admin (alt)** | `Zahra@gmail.com` | `ZahraAdmin123` | School id `1` |
-| **Teacher** | `moza@zinat.local` | `DemoPass123!` | School id `1` |
 | **Parent** | `parent_95064063@zinat.local` | `DemoPass123!` | School id `1` |
-| **Parent** | `parent.test@zinat.local` | `DemoPass123!` | School id `1` |
+| **Public demo** | `admin@` / `teacher@` / `driver@` / `parent@fikr-demo.com` | `DemoPass1` | Demo school; restored at boot + nightly by `DemoAccountsService` (the first run renames the demo teacher with the most classes and `parent.test@zinat.local`) |
 
-School login also works at `/s/zinat-al-haya/login`.
+School login also works at `/s/fikr-demo/login` (demo) and `/s/zinat-al-haya/login` (live).
 
 ### Local module-role demo seed
 
@@ -227,7 +227,7 @@ cd school-management-backend
 node scripts/seed-demo-module-users.js --apply
 ```
 
-Creates module user-groups (incl. **Driver**) on demo `zinat-al-haya` + second school `fikr-demo-b`, one login per module, 3 teachers / 6 students / parents, and a driver + Demo Bus A on school A. Password: `DemoPass123!`. Full table: `TESTER_LOGINS.md`.
+Creates module user-groups (incl. **Driver**) on demo `fikr-demo` + second school `fikr-demo-b`, one login per module, 3 teachers / 6 students / parents, and a driver + Demo Bus A on school A. Password: `DemoPass123!`. Full table: `TESTER_LOGINS.md`.
 
 ### Reset another user’s password (admin API)
 
@@ -255,7 +255,7 @@ curl -s -X PATCH "http://localhost:3002/api/users/<USER_UUID>/password" \
 
 ## 9. Data snapshot (dump time)
 
-- Schools: demo `zinat-al-haya` (anonymized people) and live `zinat-al-haya-live` (2026/2027 roster); both named Zinat Al-Haya Kindergarten
+- Schools: demo `fikr-demo` (anonymized people, shown as FIKR Demo School) and live `zinat-al-haya` (2026/2027 roster, Zinat Al-Haya Kindergarten)
 - Users: 3 admin (1 super), 7 teachers, ~248 parents
 - Dump ≈ 433KB custom / 926KB SQL
 

@@ -5,6 +5,18 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import {
+  buildPage,
+  clampPage,
+  paginateQueryBuilder,
+  parsePageQuery,
+  wantsPage,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
+import { formatStudentDisplayName } from '../common/identity/bilingual-name';
+import { Schedule } from '../entities/schedule.entity';
+import { User } from '../entities/user.entity';
 import { Course } from '../entities/course.entity';
 import { GradedAssessmentScheme } from '../entities/graded-assessment-scheme.entity';
 import { GradedCriterion } from '../entities/graded-criterion.entity';
@@ -47,6 +59,12 @@ export type CriterionMarksGridResponse = {
   students: { id: string; name: string }[];
   /** `${studentId}:::${criterionId}` → mark string or null */
   marks: Record<string, string | null>;
+  /** Set when the request asked for `page` — the student rows of this page. */
+  items?: { id: string; name: string }[];
+  total?: number;
+  page?: number;
+  limit?: number;
+  pages?: number;
   /** School calendar semester marked “active now”; null if none set. */
   active_semester: {
     id: string;
@@ -109,6 +127,8 @@ export class GradedCriterionMarksService {
     private readonly groupRepo: Repository<Group>,
     @InjectRepository(Student)
     private readonly studentRepo: Repository<Student>,
+    @InjectRepository(Schedule)
+    private readonly scheduleRepo: Repository<Schedule>,
     private readonly notifications: NotificationDispatcherService,
     private readonly audience: NotificationAudienceService,
     private readonly semesterService: SemesterService,
@@ -169,11 +189,61 @@ export class GradedCriterionMarksService {
 
     return {
       group,
-      students: students.map((s) => ({
-        id: s.id,
-        name: `${s.firstName || ''} ${s.lastName || ''}`.trim() || s.id,
-      })),
+      students: students.map((s) => this.toGridStudent(s)),
     };
+  }
+
+  private toGridStudent(s: Student) {
+    return {
+      id: s.id,
+      name: formatStudentDisplayName(s) || s.id,
+      firstName: s.firstName,
+      secondName: s.secondName,
+      secondNameEn: s.secondNameEn,
+      lastName: s.lastName,
+      first_name_ar: s.first_name_ar,
+      first_name_en: s.first_name_en,
+      last_name_ar: s.last_name_ar,
+      last_name_en: s.last_name_en,
+    };
+  }
+
+  /** Distinct student ids first — the group join must not inflate the page count. */
+  private async pageStudentsInGroup(groupId: string, schoolId: string, query: PageQuery) {
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group || group.school_id !== schoolId) {
+      throw new NotFoundException('Group not found');
+    }
+    const idQb = this.studentRepo
+      .createQueryBuilder('s')
+      .innerJoin('s.groups', 'g', 'g.id = :gid', { gid: groupId })
+      .where('s.school_id = :sid', { sid: schoolId });
+    const totalRow = await idQb.clone().select('COUNT(DISTINCT s.id)', 'cnt').getRawOne<{ cnt: string }>();
+    const total = Number(totalRow?.cnt || 0);
+    const { page, limit } = parsePageQuery(query);
+    const safePage = clampPage(page, total, limit);
+    const idRows = await idQb
+      .clone()
+      .select('s.id', 'id')
+      .addSelect('MIN(s.firstName)', 'sort_first')
+      .addSelect('MIN(s.lastName)', 'sort_last')
+      .groupBy('s.id')
+      .orderBy('sort_first', 'ASC')
+      .addOrderBy('sort_last', 'ASC')
+      .addOrderBy('s.id', 'ASC')
+      .offset((safePage - 1) * limit)
+      .limit(limit)
+      .getRawMany<{ id: string }>();
+    const ids = idRows.map((row) => String(row.id));
+    const pages = Math.max(1, Math.ceil(total / limit) || 1);
+    if (!ids.length) return { group, students: [], total, page: safePage, limit, pages };
+    const rows = await this.studentRepo.find({ where: { id: In(ids) } });
+    const byId = new Map(rows.map((s) => [s.id, s]));
+    const students = ids
+      .map((id) => byId.get(id))
+      .filter((s): s is Student => !!s)
+      .map((s) => this.toGridStudent(s));
+    return { group, students, total, page: safePage, limit, pages };
   }
 
   private computeScores(
@@ -253,9 +323,28 @@ export class GradedCriterionMarksService {
     courseId: string,
     groupId: string,
     schoolId: string,
+    paging?: PageQuery,
   ): Promise<CriterionMarksGridResponse> {
     const { course, scheme } = await this.loadGradedCourse(courseId, schoolId);
-    const { group, students } = await this.studentsInGroup(groupId, schoolId);
+    const paged = Boolean(paging && wantsPage(paging.page));
+    let group: Group;
+    let students: ReturnType<GradedCriterionMarksService['toGridStudent']>[];
+    let studentPage: { total: number; page: number; limit: number; pages: number } | null = null;
+    if (paged && paging) {
+      const loaded = await this.pageStudentsInGroup(groupId, schoolId, paging);
+      group = loaded.group;
+      students = loaded.students;
+      studentPage = {
+        total: loaded.total,
+        page: loaded.page,
+        limit: loaded.limit,
+        pages: loaded.pages,
+      };
+    } else {
+      const loaded = await this.studentsInGroup(groupId, schoolId);
+      group = loaded.group;
+      students = loaded.students;
+    }
     const allCriteria = this.flattenCriteria(scheme);
     const activeResolved =
       await this.semesterService.resolveActiveGradedSemesterIndex(schoolId);
@@ -297,7 +386,156 @@ export class GradedCriterionMarksService {
       students,
       marks,
       active_semester,
+      ...(studentPage
+        ? {
+            items: students,
+            total: studentPage.total,
+            page: studentPage.page,
+            limit: studentPage.limit,
+            pages: studentPage.pages,
+          }
+        : {}),
     };
+  }
+
+  async listGroupsPage(
+    schoolId: string,
+    actor: User,
+    query: PageQuery,
+  ): Promise<
+    PageResult<{
+      id: string;
+      name: string;
+      age_range_min: number;
+      age_range_max: number;
+      studentsCount: number;
+      gradedCoursesCount: number;
+    }>
+  > {
+    const qb = this.groupRepo
+      .createQueryBuilder('g')
+      .where('g.school_id = :schoolId', { schoolId })
+      .orderBy('g.name', 'ASC')
+      .addOrderBy('g.id', 'ASC');
+    if (actor.role === 'teacher') {
+      qb.andWhere(
+        `EXISTS (
+          SELECT 1 FROM schedules sch
+          WHERE sch.group_id = g.id AND sch.teacher_id = :tid
+        )`,
+        { tid: actor.id },
+      );
+    }
+    const page = await paginateQueryBuilder(qb, query);
+    const ids = page.items.map((g) => g.id);
+    const students = new Map<string, number>();
+    const graded = new Map<string, number>();
+    if (ids.length) {
+      const studentRows = await this.studentRepo
+        .createQueryBuilder('s')
+        .innerJoin('s.groups', 'g', 'g.id IN (:...ids)', { ids })
+        .select('g.id', 'group_id')
+        .addSelect('COUNT(DISTINCT s.id)', 'cnt')
+        .groupBy('g.id')
+        .getRawMany<{ group_id: string; cnt: string }>();
+      for (const row of studentRows) students.set(String(row.group_id), Number(row.cnt) || 0);
+
+      const gradedQb = this.scheduleRepo
+        .createQueryBuilder('sch')
+        .innerJoin('sch.course', 'c', `c.course_kind = 'graded'`)
+        .where('sch.group_id IN (:...ids)', { ids })
+        .select('sch.group_id', 'group_id')
+        .addSelect('COUNT(DISTINCT sch.course_id)', 'cnt')
+        .groupBy('sch.group_id');
+      if (actor.role === 'teacher') {
+        gradedQb.andWhere('sch.teacher_id = :tid', { tid: actor.id });
+      }
+      const gradedRows = await gradedQb.getRawMany<{ group_id: string; cnt: string }>();
+      for (const row of gradedRows) graded.set(String(row.group_id), Number(row.cnt) || 0);
+    }
+    return {
+      ...page,
+      items: page.items.map((g) => ({
+        id: g.id,
+        name: g.name,
+        age_range_min: g.age_range_min,
+        age_range_max: g.age_range_max,
+        studentsCount: students.get(g.id) ?? 0,
+        gradedCoursesCount: graded.get(g.id) ?? 0,
+      })),
+    };
+  }
+
+  async listGroupCoursesPage(
+    schoolId: string,
+    groupId: string,
+    actor: User,
+    query: PageQuery,
+  ): Promise<
+    PageResult<{
+      id: string;
+      title: string;
+      time: string;
+      day: string;
+      criteriaCount: number;
+    }>
+  > {
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group || group.school_id !== schoolId) {
+      throw new NotFoundException('Group not found');
+    }
+    const idQb = this.scheduleRepo
+      .createQueryBuilder('sch')
+      .innerJoin('sch.course', 'c')
+      .where('sch.group_id = :gid', { gid: groupId })
+      .andWhere('c.school_id = :sid', { sid: schoolId })
+      .andWhere(`c.course_kind = 'graded'`)
+      .andWhere('sch.course_id IS NOT NULL');
+    if (actor.role === 'teacher') {
+      idQb.andWhere('sch.teacher_id = :tid', { tid: actor.id });
+    }
+    const totalRow = await idQb.clone().select('COUNT(DISTINCT sch.course_id)', 'cnt').getRawOne<{ cnt: string }>();
+    const total = Number(totalRow?.cnt || 0);
+    const { page, limit } = parsePageQuery(query);
+    const safePage = clampPage(page, total, limit);
+    const idRows = await idQb
+      .clone()
+      .select('sch.course_id', 'id')
+      .addSelect('MIN(c.name)', 'sort_name')
+      .addSelect('MIN(sch.start_time)', 'start_time')
+      .addSelect('MIN(sch.end_time)', 'end_time')
+      .addSelect('MIN(sch.day_of_week)', 'day')
+      .groupBy('sch.course_id')
+      .orderBy('sort_name', 'ASC')
+      .addOrderBy('sch.course_id', 'ASC')
+      .offset((safePage - 1) * limit)
+      .limit(limit)
+      .getRawMany<{ id: string; sort_name: string; start_time: string; end_time: string; day: string }>();
+    const ids = idRows.map((row) => String(row.id));
+    if (!ids.length) return buildPage([], total, safePage, limit);
+
+    const schemes = await this.schemeRepo.find({
+      where: { course_id: In(ids) },
+      relations: ['semesters', 'semesters.criteria'],
+    });
+    const criteriaCount = new Map(
+      schemes.map((scheme) => [
+        scheme.course_id,
+        (scheme.semesters || []).reduce((n, sem) => n + (sem.criteria?.length || 0), 0),
+      ]),
+    );
+    const items = idRows.map((row) => {
+      const start = String(row.start_time || '').slice(0, 5);
+      const end = String(row.end_time || '').slice(0, 5);
+      return {
+        id: String(row.id),
+        title: row.sort_name || 'Course',
+        time: [start, end].filter(Boolean).join(' – '),
+        day: row.day || '',
+        criteriaCount: criteriaCount.get(String(row.id)) ?? 0,
+      };
+    });
+    return buildPage(items, total, safePage, limit);
   }
 
   async saveMarksGrid(

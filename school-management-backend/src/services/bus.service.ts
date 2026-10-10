@@ -1,9 +1,42 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository, type ObjectLiteral, type SelectQueryBuilder } from 'typeorm';
 import { Bus } from '../entities/bus.entity';
 import { User } from '../entities/user.entity';
 import { hasStaffMembership } from '../common/identity/staff-membership';
+import {
+  buildPage,
+  clampPage,
+  likeTerm,
+  parsePageQuery,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
+
+/** Students are many-to-many; page distinct bus ids before loading the roster. */
+async function pageDistinctIds(
+  qb: SelectQueryBuilder<ObjectLiteral>,
+  alias: string,
+  query: PageQuery,
+  orderExpr: string,
+  orderDir: 'ASC' | 'DESC',
+): Promise<{ ids: string[]; total: number; page: number; limit: number }> {
+  const { page, limit } = parsePageQuery(query);
+  const totalRow = await qb.clone().select(`COUNT(DISTINCT ${alias}.id)`, 'cnt').getRawOne<{ cnt: string }>();
+  const total = Number(totalRow?.cnt ?? 0);
+  const safePage = clampPage(page, total, limit);
+  const idRows = await qb
+    .clone()
+    .select(`${alias}.id`, 'id')
+    .addSelect(`MAX(${orderExpr})`, 'sort_key')
+    .groupBy(`${alias}.id`)
+    .orderBy('sort_key', orderDir)
+    .addOrderBy(`${alias}.id`, 'ASC')
+    .offset((safePage - 1) * limit)
+    .limit(limit)
+    .getRawMany<{ id: string }>();
+  return { ids: idRows.map((row) => String(row.id)), total, page: safePage, limit };
+}
 
 export interface CreateBusDto {
   title: string;
@@ -111,6 +144,32 @@ export class BusService {
     }
 
     return qb.getMany();
+  }
+
+  async findPage(
+    schoolId: string,
+    query: PageQuery & { q?: string; isActive?: boolean },
+  ): Promise<PageResult<Bus>> {
+    const qb = this.busRepository.createQueryBuilder('bus').where('bus.school_id = :schoolId', { schoolId });
+    if (query.isActive !== undefined) {
+      qb.andWhere('bus.is_active = :isActive', { isActive: query.isActive });
+    }
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `LOWER(CONCAT_WS(' ', bus.title, bus.driver_name, COALESCE(bus.driver_contacts, ''))) LIKE :term`,
+        { term },
+      );
+    }
+    const { ids, total, page, limit } = await pageDistinctIds(qb, 'bus', query, 'bus.created_at', 'DESC');
+    if (!ids.length) return buildPage([], total, page, limit);
+    const rows = await this.busRepository.find({
+      where: { id: In(ids) },
+      relations: ['students', 'supervisor', 'driverUser'],
+    });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const items = ids.map((id) => byId.get(id)).filter((row): row is Bus => !!row);
+    return buildPage(items, total, page, limit);
   }
 
   async findOne(id: string): Promise<Bus> {

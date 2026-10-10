@@ -60,16 +60,16 @@
         <p class="docs-kicker">{{ groupLabel }}</p>
         <template v-if="article">
           <h1>{{ article.title }}</h1>
-          <p class="docs-intro">{{ article.intro }}</p>
+          <p class="docs-intro"><DocsRichText :text="article.intro" /></p>
 
           <dl class="docs-meta">
             <div>
               <dt>{{ $t('docs.who') }}</dt>
-              <dd>{{ article.who }}</dd>
+              <dd><DocsRichText :text="article.who" /></dd>
             </div>
             <div>
               <dt>{{ $t('docs.when') }}</dt>
-              <dd>{{ article.when }}</dd>
+              <dd><DocsRichText :text="article.when" /></dd>
             </div>
           </dl>
 
@@ -80,7 +80,7 @@
             <ol class="docs-steps">
               <li v-for="(step, i) in article.steps" :key="i">
                 <span class="docs-step-num">{{ i + 1 }}</span>
-                <span>{{ step }}</span>
+                <span><DocsRichText :text="step" /></span>
               </li>
             </ol>
           </section>
@@ -90,15 +90,15 @@
             <dl class="docs-appears__list">
               <div v-if="article.appearsAs?.teacher">
                 <dt>{{ $t('docs.roleTeacher') }}</dt>
-                <dd>{{ article.appearsAs.teacher }}</dd>
+                <dd><DocsRichText :text="article.appearsAs.teacher" /></dd>
               </div>
               <div v-if="article.appearsAs?.parent">
                 <dt>{{ $t('docs.roleParent') }}</dt>
-                <dd>{{ article.appearsAs.parent }}</dd>
+                <dd><DocsRichText :text="article.appearsAs.parent" /></dd>
               </div>
               <div v-if="article.appearsAs?.driver">
                 <dt>{{ $t('docs.roleDriver') }}</dt>
-                <dd>{{ article.appearsAs.driver }}</dd>
+                <dd><DocsRichText :text="article.appearsAs.driver" /></dd>
               </div>
             </dl>
           </section>
@@ -106,7 +106,7 @@
           <section v-if="article.notes?.length">
             <h2>{{ $t('docs.notes') }}</h2>
             <ul class="docs-notes">
-              <li v-for="note in article.notes" :key="stepKey(note)">{{ note }}</li>
+              <li v-for="note in article.notes" :key="stepKey(note)"><DocsRichText :text="note" /></li>
             </ul>
           </section>
 
@@ -134,6 +134,7 @@ import { useRoute } from 'vue-router'
 import PlatformMarketingNav from '@/components/PlatformMarketingNav.vue'
 import PlatformMarketingFooter from '@/components/PlatformMarketingFooter.vue'
 import DemoPlayer from '@/components/DemoPlayer.vue'
+import DocsRichText from '@/components/DocsRichText.vue'
 import {
   docsPath,
   firstSlug,

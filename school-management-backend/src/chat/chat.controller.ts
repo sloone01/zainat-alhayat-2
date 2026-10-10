@@ -14,6 +14,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RequireClaim, RequireAnyClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
+import { wantsPage } from '../common/pagination';
 import { ChatService } from './chat.service';
 import { DirectChatService } from './direct-chat.service';
 import { AdhocChatService } from './adhoc-chat.service';
@@ -269,12 +270,15 @@ export class ChatController {
     @Req() req: { user: User },
     @Param('threadId') threadId: string,
     @Query('limit') limit?: string,
+    @Query('before') before?: string,
+    @Query('before_id') beforeId?: string,
   ) {
     await this.directChatService.assertThreadMember(req.user, threadId);
-    const lim = limit ? parseInt(limit, 10) : 80;
+    const lim = limit ? parseInt(limit, 10) : 40;
     const data = await this.directChatService.getRecentMessages(
       threadId,
-      Number.isFinite(lim) ? lim : 80,
+      Number.isFinite(lim) ? lim : 40,
+      before ? { createdAt: before, id: beforeId || undefined } : undefined,
     );
     return { success: true, data, count: data.length };
   }
@@ -295,10 +299,16 @@ export class ChatController {
   async approvalInbox(
     @Req() req: { user: User },
     @Query('locale') locale?: 'en' | 'ar',
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     const loc = locale === 'en' ? 'en' : 'ar';
+    if (wantsPage(page)) {
+      const data = await this.directChatService.listApprovalInbox(req.user, loc, { page, limit });
+      return { success: true, data };
+    }
     const data = await this.directChatService.listApprovalInbox(req.user, loc);
-    return { success: true, data, count: data.length };
+    return { success: true, data, count: Array.isArray(data) ? data.length : 0 };
   }
 
   @Get('direct/messages/:messageId/letter-render')

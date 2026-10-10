@@ -55,6 +55,18 @@ class ScheduleService extends BaseApiService {
     return this.get<Schedule[]>(`/schedules/group/${groupId}`)
   }
 
+  /** Teachers do not have the school timetable claim. Load their own slots, then keep this group. */
+  async getSchedulesForGroup(
+    groupId: string,
+    actor?: { id?: string; role?: string } | null,
+  ): Promise<Schedule[]> {
+    if (actor?.role === 'teacher' && actor.id) {
+      const mine = await this.getSchedulesByTeacher(String(actor.id))
+      return mine.filter((row) => String(row.group_id ?? '') === String(groupId))
+    }
+    return this.getSchedulesByGroup(groupId)
+  }
+
   async getSchedulesByTeacher(teacherId: string): Promise<Schedule[]> {
     return this.get<Schedule[]>(`/schedules/teacher/${teacherId}`)
   }
@@ -99,12 +111,27 @@ class ScheduleService extends BaseApiService {
     return this.get<Schedule[]>(`/schedules/teacher/${teacherId}`)
   }
 
-  /** Distinct groups the teacher has at least one schedule row for */
+  /** Distinct groups the teacher has at least one schedule row for. */
   async getGroupsForTeacher(teacherId: string): Promise<Group[]> {
     const schedules = await this.getSchedulesByTeacher(teacherId)
-    const ids = [...new Set(schedules.map((s) => s.group_id).filter((id): id is string => Boolean(id)))]
-    const loaded = await Promise.all(ids.map((id) => groupService.getById(id).catch(() => null)))
-    return loaded.filter((g): g is Group => g != null)
+    const found = new Map<string, Group>()
+    const missing: string[] = []
+    for (const row of schedules) {
+      const id = String(row.group_id || row.group?.id || '')
+      if (!id || found.has(id)) continue
+      if (row.group?.id && row.group?.name) {
+        found.set(id, row.group as Group)
+      } else if (!missing.includes(id)) {
+        missing.push(id)
+      }
+    }
+    if (missing.length) {
+      const loaded = await Promise.all(missing.map((id) => groupService.getById(id).catch(() => null)))
+      loaded.forEach((group, index) => {
+        if (group) found.set(missing[index], group)
+      })
+    }
+    return [...found.values()]
   }
 }
 

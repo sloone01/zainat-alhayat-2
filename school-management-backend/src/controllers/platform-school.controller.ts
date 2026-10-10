@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Post,
   Put,
+  Query,
   Req,
   UploadedFiles,
   UseGuards,
@@ -17,6 +18,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { wantsPage } from '../common/pagination';
 import { diskStorage } from 'multer';
 import { existsSync, mkdirSync } from 'fs';
 import type { Express } from 'express';
@@ -56,7 +58,22 @@ export class PlatformSchoolController {
 
   @Get()
   @RequireClaim('platform_schools', 'view')
-  async list(@Req() req: { user: User }) {
+  async list(
+    @Req() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+  ) {
+    if (wantsPage(page)) {
+      const data = await this.platformSchoolService.listRegisteredSchoolsPage(req.user, {
+        page,
+        limit,
+        q,
+        status,
+      });
+      return { success: true, data };
+    }
     const data = await this.platformSchoolService.listRegisteredSchools(req.user);
     return { success: true, data, count: data.length };
   }

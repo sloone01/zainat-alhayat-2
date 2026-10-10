@@ -52,9 +52,22 @@
               </div>
             </dl>
 
-            <p v-if="!invoicePaid" class="text-sm font-semibold text-amber-800">
-              {{ $t('schoolBilling.notLaunched') }}
-            </p>
+            <template v-if="!invoicePaid">
+              <p class="text-sm text-fikr-ink-soft">{{ $t('schoolBilling.thawaniHint') }}</p>
+              <p v-if="payError" class="text-sm text-red-700">{{ payError }}</p>
+              <button
+                v-if="bundle?.thawani_configured"
+                type="button"
+                class="fk-btn fk-btn--primary inline-flex w-full justify-center sm:w-auto"
+                :disabled="paying"
+                @click="pay"
+              >
+                {{ paying ? $t('schoolBilling.paying') : $t('schoolBilling.payThawani') }}
+              </button>
+              <p v-else class="text-sm font-semibold text-amber-800">
+                {{ $t('schoolBilling.thawaniUnavailable') }}
+              </p>
+            </template>
             <router-link v-else to="/dashboard" class="fk-btn fk-btn--primary inline-flex">
               {{ $t('schoolBilling.goDashboard') }}
             </router-link>
@@ -81,6 +94,8 @@ const isRTL = computed(() => locale.value === 'ar')
 const loading = ref(true)
 const error = ref('')
 const bundle = ref<SchoolBillingMe | null>(null)
+const paying = ref(false)
+const payError = ref('')
 
 const invoice = computed<SchoolBillingInvoice | null>(() => bundle.value?.invoice ?? null)
 const displayInvoice = computed<SchoolBillingInvoice | null>(
@@ -141,7 +156,56 @@ async function load() {
   }
 }
 
-onMounted(() => {
+/** Start Thawani checkout: create a session and hand the browser to the checkout URL. */
+async function pay() {
+  if (paying.value) return
+  paying.value = true
+  payError.value = ''
+  try {
+    const base = `${window.location.origin}/billing`
+    const session = await schoolBillingService.createThawaniSession({
+      success_url: `${base}?pay=success`,
+      cancel_url: `${base}?pay=cancel`,
+    })
+    // Zero-amount invoices are settled server-side without a checkout redirect.
+    if (session.paid) {
+      await load()
+      paying.value = false
+      return
+    }
+    if (session.checkout_url) {
+      window.location.href = session.checkout_url
+      return // leaving the page for Thawani
+    }
+    payError.value = t('schoolBilling.payFailed')
+    paying.value = false
+  } catch (e) {
+    payError.value = extractApiMessage(e) || t('schoolBilling.payFailed')
+    paying.value = false
+  }
+}
+
+/** Handle the return from Thawani checkout (success_url / cancel_url). */
+async function handleCheckoutReturn() {
+  const params = new URLSearchParams(window.location.search)
+  const outcome = params.get('pay')
+  if (!outcome) return
+  // Clean the query so a refresh doesn't re-run this.
+  window.history.replaceState({}, '', '/billing')
+  if (outcome === 'success') {
+    try {
+      const res = await schoolBillingService.confirmThawani()
+      if (!res.paid) payError.value = t('schoolBilling.thawaniNotPaid')
+    } catch (e) {
+      payError.value = extractApiMessage(e) || t('schoolBilling.thawaniNotPaid')
+    }
+  } else if (outcome === 'cancel') {
+    payError.value = t('schoolBilling.thawaniNotPaid')
+  }
+}
+
+onMounted(async () => {
+  await handleCheckoutReturn()
   void load()
 })
 </script>

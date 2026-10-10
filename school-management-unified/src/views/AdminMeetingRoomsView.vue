@@ -8,11 +8,11 @@
 
       <div v-if="flashError" class="fk-alert fk-alert--error">{{ flashError }}</div>
 
-      <div class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('meetingRooms.roomsListTitle') }}</h2>
-            <p class="fk-card__meta">{{ $t('meetingRooms.roomsCount', { count: filteredRooms.length }) }}</p>
+            <p class="fk-card__meta">{{ $t('meetingRooms.roomsCount', { count: total }) }}</p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <FikrFilterButton
@@ -33,14 +33,14 @@
         </header>
 
         <div class="p-6">
-          <div v-if="pageLoading || roomsLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="(pageLoading || roomsLoading) && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="rooms.length">
+          <template v-else-if="total > 0 || hasActiveFilters">
             <p
-              v-if="filteredRooms.length === 0"
+              v-if="total === 0"
               class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
               {{ $t('meetingRooms.noFilterResults') }}
@@ -60,86 +60,79 @@
                 <template #meta>
                   <KanbanMeta icon="calendar">{{ formatDate(r.scheduled_at ?? r.created_at) }}</KanbanMeta>
                 </template>
-                <div class="mt-1">
-                  <button
-                    v-if="r.status === 'draft'"
-                    type="button"
-                    class="text-sm font-semibold text-primary-700 hover:text-primary-900"
-                    @click="openEdit(r)"
+                <template #actions>
+                  <RowActionsMenu
+                    :open="activeMenuId === r.id"
+                    placement="down"
+                    @toggle="toggleMenu(r.id)"
                   >
-                    {{ $t('meetingRooms.editDraft') }}
-                  </button>
-                  <router-link
-                    v-else
-                    :to="{ name: 'meeting-room', params: { id: r.id } }"
-                    class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:text-primary-900"
-                  >
-                    {{ $t('meetingRooms.openRoom') }}
-                  </router-link>
-                </div>
+                    <RowActionsItem v-if="r.status === 'draft'" icon="edit" @click="openEdit(r)">
+                      {{ $t('meetingRooms.editDraft') }}
+                    </RowActionsItem>
+                    <RowActionsItem v-else icon="view" @click="openRoom(r.id)">
+                      {{ $t('meetingRooms.openRoom') }}
+                    </RowActionsItem>
+                  </RowActionsMenu>
+                </template>
               </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start font-semibold">{{ $t('meetingRooms.colTitle') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('meetingRooms.colScheduled') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('meetingRooms.colInvitees') }}</th>
-                    <th class="px-4 py-3 text-start font-semibold whitespace-nowrap">{{ $t('meetingRooms.colCreated') }}</th>
-                    <th class="px-4 py-3 text-end font-semibold">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('meetingRooms.colTitle') }}</th>
+                    <th>{{ $t('meetingRooms.colScheduled') }}</th>
+                    <th>{{ $t('meetingRooms.colInvitees') }}</th>
+                    <th>{{ $t('meetingRooms.colCreated') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="r in paginatedRooms" :key="'list-' + r.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 font-medium text-gray-900">
-                      <span class="inline-flex items-center gap-2">
+                <tbody>
+                  <tr v-for="(r, roomIndex) in paginatedRooms" :key="'list-' + r.id">
+                    <td>
+                      <span class="inline-flex items-center gap-2 font-medium">
                         {{ r.title }}
                         <span
                           v-if="roomBadge(r) === 'draft'"
-                          class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-100"
+                          class="fk-pill fk-pill--outline"
                         >
                           {{ $t('meetingRooms.statusDraft') }}
                         </span>
                         <span
                           v-else-if="roomBadge(r) === 'live'"
-                          class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-100"
+                          class="fk-pill fk-pill--teal"
                         >
                           {{ $t('meetingRooms.statusLive') }}
                         </span>
                         <span
                           v-else-if="roomBadge(r) === 'expired'"
-                          class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600 ring-1 ring-gray-200"
+                          class="fk-pill fk-pill--mist"
                         >
                           {{ $t('meetingRooms.statusExpired') }}
                         </span>
                       </span>
                     </td>
-                    <td class="px-4 py-3 text-gray-700 whitespace-nowrap tabular-nums">
+                    <td class="whitespace-nowrap tabular-nums">
                       {{ formatDate(r.scheduled_at ?? r.created_at) }}
                     </td>
-                    <td class="px-4 py-3 text-gray-700 tabular-nums">{{ r.invitee_count }}</td>
-                    <td class="px-4 py-3 text-gray-600 whitespace-nowrap tabular-nums">{{ formatDate(r.created_at) }}</td>
-                    <td class="px-4 py-3 text-end whitespace-nowrap">
-                      <button
-                        v-if="r.status === 'draft'"
-                        type="button"
-                        class="inline-flex items-center gap-1 font-semibold text-primary-700 hover:text-primary-900"
-                        @click="openEdit(r)"
-                      >
-                        {{ $t('meetingRooms.editDraft') }}
-                      </button>
-                      <router-link
-                        v-else
-                        :to="{ name: 'meeting-room', params: { id: r.id } }"
-                        class="inline-flex items-center gap-1 font-semibold text-primary-700 hover:text-primary-900"
-                      >
-                        {{ $t('meetingRooms.openRoom') }}
-                        <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </router-link>
+                    <td class="tabular-nums">{{ r.invitee_count }}</td>
+                    <td class="whitespace-nowrap tabular-nums">{{ formatDate(r.created_at) }}</td>
+                    <td>
+                      <div class="flex justify-end">
+                        <RowActionsMenu
+                          :open="activeMenuId === 'list-' + r.id"
+                          :placement="roomIndex === 0 ? 'down' : 'up'"
+                          @toggle="toggleMenu('list-' + r.id)"
+                        >
+                          <RowActionsItem v-if="r.status === 'draft'" icon="edit" @click="openEdit(r)">
+                            {{ $t('meetingRooms.editDraft') }}
+                          </RowActionsItem>
+                          <RowActionsItem v-else icon="view" @click="openRoom(r.id)">
+                            {{ $t('meetingRooms.openRoom') }}
+                          </RowActionsItem>
+                        </RowActionsMenu>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -149,7 +142,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredRooms.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -174,7 +167,7 @@
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
       <div
         v-if="showFilters"
@@ -467,7 +460,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
@@ -481,7 +474,7 @@ import IconPlus from '@/components/icons/IconPlus.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { authService } from '@/services'
 import { groupService, type Group } from '@/services/group.service'
 import userService, { type User } from '@/services/user.service'
@@ -495,6 +488,9 @@ import {
 import { meetingRoomPresence } from '@/utils/meeting-host'
 import { personFullName } from '@/utils/person-name'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
+import RowActionsMenu from '@/components/RowActionsMenu.vue'
+import RowActionsItem from '@/components/RowActionsItem.vue'
 
 const router = useRouter()
 const { locale, t } = useI18n()
@@ -503,6 +499,22 @@ const { viewMode, isCards } = useListViewMode()
 const showFilters = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref<'all' | 'draft' | 'scheduled'>('all')
+const activeMenuId = ref<string | null>(null)
+
+function toggleMenu(id: string) {
+  activeMenuId.value = activeMenuId.value === id ? null : id
+}
+
+function openRoom(id: string) {
+  activeMenuId.value = null
+  void router.push({ name: 'meeting-room', params: { id } })
+}
+
+function handleClickOutside(event: Event) {
+  if (activeMenuId.value && !(event.target as Element).closest('.relative')) {
+    activeMenuId.value = null
+  }
+}
 
 const schoolId = computed(() => {
   const raw = (authService.getStoredUser() as { school_id?: string | null } | null)?.school_id
@@ -528,36 +540,33 @@ const saving = ref(false)
 const saveMode = ref<'draft' | 'create' | 'open' | ''>('')
 const createError = ref('')
 const editingId = ref<string | null>(null)
-const rooms = ref<MeetingRoomListRow[]>([])
-const filteredRooms = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return rooms.value.filter((r) => {
-    const status = r.status || 'scheduled'
-    if (statusFilter.value !== 'all' && status !== statusFilter.value) return false
-    if (q && !r.title.toLowerCase().includes(q)) return false
-    return true
-  })
-})
 const hasActiveFilters = computed(
   () => Boolean(searchQuery.value.trim()) || statusFilter.value !== 'all',
 )
 const {
+  items: paginatedRooms,
+  total,
+  loading: roomsLoading,
   currentPage,
-  paginatedItems: paginatedRooms,
   totalPages,
   goToPage,
-} = useClientPagination(filteredRooms)
-
-watch([searchQuery, statusFilter], () => {
-  currentPage.value = 1
-})
+  reload: loadRooms,
+} = useServerPagination(
+  (params) => meetingRoomService.listPage(params),
+  {
+    filters: () => ({ q: searchQuery.value, status: statusFilter.value }),
+    debounceKeys: ['q'],
+    enabled: () => Boolean(schoolId.value),
+    onError: (e) => {
+      flashError.value = apiErrorMessage(e, t('meetingRooms.loadFailed'))
+    },
+  },
+)
 
 function clearFilters() {
   searchQuery.value = ''
   statusFilter.value = 'all'
 }
-
-const roomsLoading = ref(false)
 
 const scheduledAtLocal = ref(defaultScheduledDatetimeLocal())
 const scheduledAtValid = computed(() => {
@@ -711,6 +720,7 @@ function openNew() {
 }
 
 function openEdit(row: MeetingRoomListRow) {
+  activeMenuId.value = null
   resetForm()
   editingId.value = row.id
   title.value = row.title
@@ -747,19 +757,6 @@ function apiErrorMessage(e: unknown, fallback: string): string {
     return e.message || fallback
   }
   return e instanceof Error ? e.message : fallback
-}
-
-async function loadRooms() {
-  roomsLoading.value = true
-  flashError.value = ''
-  try {
-    rooms.value = await meetingRoomService.list(schoolId.value)
-  } catch (e: unknown) {
-    flashError.value = apiErrorMessage(e, t('meetingRooms.loadFailed'))
-    rooms.value = []
-  } finally {
-    roomsLoading.value = false
-  }
 }
 
 async function onSave(opts: { draft: boolean; open: boolean }) {
@@ -802,16 +799,20 @@ async function onSave(opts: { draft: boolean; open: boolean }) {
 }
 
 onMounted(async () => {
+  document.addEventListener('click', handleClickOutside)
   pageLoading.value = true
   try {
     const [g, u] = await Promise.all([groupService.getAll(schoolId.value), userService.getAllUsers()])
     groups.value = g
     users.value = u
-    await loadRooms()
   } catch (e: unknown) {
     flashError.value = apiErrorMessage(e, t('meetingRooms.loadFailed'))
   } finally {
     pageLoading.value = false
   }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>

@@ -22,7 +22,7 @@
         </template>
       </FikrPageHeader>
 
-      <div class="fk-card max-w-4xl p-5 sm:p-6">
+      <div class="fk-card w-full p-5 sm:p-6">
         <div class="flex flex-wrap gap-2 rounded-pill bg-fikr-surface-low p-1.5">
           <button
             v-for="(tab, i) in tabs"
@@ -42,7 +42,7 @@
 
         <p v-if="error" class="fk-alert fk-alert--error mt-4">{{ error }}</p>
 
-        <div v-if="loading" class="py-10 text-center text-sm text-fikr-ink-soft">{{ $t('common.loading') }}</div>
+        <div v-if="loading && !routePageLoading" class="py-10 text-center text-sm text-fikr-ink-soft">{{ $t('common.loading') }}</div>
 
         <div v-else class="fk-form mt-5">
           <template v-if="activeTab === 'Branding'">
@@ -237,6 +237,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import { routePageLoading } from '@/router/route-loading'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import {
   schoolLandingService,

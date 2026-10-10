@@ -128,9 +128,9 @@
           :placeholder="$t('enrollment.previousSchoolPlaceholder')"
         >
       </div>
-    </div>
 
-    <slot name="after" />
+      <slot name="after" />
+    </div>
 
     <WizardStepNav
       v-if="compact"

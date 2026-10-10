@@ -18,6 +18,7 @@ const common_1 = require("@nestjs/common");
 const course_service_1 = require("../services/course.service");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 const school_access_1 = require("../common/security/school-access");
+const pagination_1 = require("../common/pagination");
 let CourseController = CourseController_1 = class CourseController {
     courseService;
     logger = new common_1.Logger(CourseController_1.name);
@@ -49,10 +50,21 @@ let CourseController = CourseController_1 = class CourseController {
             throw error;
         }
     }
-    async findAll(req, schoolId, courseKind) {
+    async findAll(req, schoolId, courseKind, page, limit, q, status, category) {
         const requested = schoolId ? String(schoolId) : undefined;
         const schoolIdNum = this.schoolOf(req, requested);
         this.logger.log(`GET /courses - school_id: ${schoolIdNum}, course_kind: ${courseKind ?? 'any'}`);
+        if ((0, pagination_1.wantsPage)(page)) {
+            const data = await this.courseService.findPage(schoolIdNum, {
+                page,
+                limit,
+                q,
+                status: status?.trim() || undefined,
+                category: category?.trim() || undefined,
+                course_kind: courseKind?.trim() || undefined,
+            });
+            return { success: true, data };
+        }
         const courses = await this.courseService.findAll(schoolIdNum, courseKind);
         this.logger.log(`GET /courses - Retrieved ${courses.length} courses for school_id: ${schoolIdNum}`);
         return {
@@ -182,8 +194,13 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('school_id')),
     __param(2, (0, common_1.Query)('course_kind')),
+    __param(3, (0, common_1.Query)('page')),
+    __param(4, (0, common_1.Query)('limit')),
+    __param(5, (0, common_1.Query)('q')),
+    __param(6, (0, common_1.Query)('status')),
+    __param(7, (0, common_1.Query)('category')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], CourseController.prototype, "findAll", null);
 __decorate([

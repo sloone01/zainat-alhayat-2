@@ -9,6 +9,30 @@ export class Enrollment {
   @Column({ length: 200 })
   fullName: string;
 
+  @Column({ name: 'first_name_ar', type: 'varchar', length: 100, nullable: true })
+  first_name_ar?: string | null;
+
+  @Column({ name: 'first_name_en', type: 'varchar', length: 100, nullable: true })
+  first_name_en?: string | null;
+
+  @Column({ name: 'last_name_ar', type: 'varchar', length: 100, nullable: true })
+  last_name_ar?: string | null;
+
+  @Column({ name: 'last_name_en', type: 'varchar', length: 100, nullable: true })
+  last_name_en?: string | null;
+
+  @Column({ name: 'second_name', type: 'varchar', length: 100, nullable: true })
+  secondName?: string | null;
+
+  @Column({ name: 'third_name', type: 'varchar', length: 100, nullable: true })
+  thirdName?: string | null;
+
+  @Column({ name: 'second_name_en', type: 'varchar', length: 100, nullable: true })
+  secondNameEn?: string | null;
+
+  @Column({ name: 'third_name_en', type: 'varchar', length: 100, nullable: true })
+  thirdNameEn?: string | null;
+
   @Column({ length: 100, nullable: true })
   tribe?: string;
 
@@ -84,6 +108,18 @@ export class Enrollment {
   @Column({ type: 'json', nullable: true })
   medicalReports?: string[]; // Array of file paths or base64 strings
 
+  /** Parent civil ID / passport scans (base64 data URLs). */
+  @Column({ name: 'parent_id_documents', type: 'json', nullable: true })
+  parentIdDocuments?: string[];
+
+  /** Child birth certificate scan (base64 data URL). */
+  @Column({ name: 'birth_certificate', type: 'text', nullable: true })
+  birthCertificate?: string | null;
+
+  /** Child civil ID / passport scan (base64 data URL). */
+  @Column({ name: 'child_id_document', type: 'text', nullable: true })
+  childIdDocument?: string | null;
+
   // Guardian Information
   @Column({
     type: 'enum',
@@ -95,6 +131,21 @@ export class Enrollment {
   // Father Information
   @Column({ length: 200, nullable: true })
   fatherFullName?: string;
+
+  @Column({ name: 'father_first_name_ar', type: 'varchar', length: 100, nullable: true })
+  father_first_name_ar?: string | null;
+
+  @Column({ name: 'father_first_name_en', type: 'varchar', length: 100, nullable: true })
+  father_first_name_en?: string | null;
+
+  @Column({ name: 'father_last_name_ar', type: 'varchar', length: 100, nullable: true })
+  father_last_name_ar?: string | null;
+
+  @Column({ name: 'father_last_name_en', type: 'varchar', length: 100, nullable: true })
+  father_last_name_en?: string | null;
+
+  @Column({ name: 'father_civil_id', type: 'varchar', length: 40, nullable: true })
+  father_civil_id?: string | null;
 
   @Column({ length: 100, nullable: true })
   fatherTribe?: string;
@@ -117,6 +168,21 @@ export class Enrollment {
   // Mother Information
   @Column({ length: 200, nullable: true })
   motherFullName?: string;
+
+  @Column({ name: 'mother_first_name_ar', type: 'varchar', length: 100, nullable: true })
+  mother_first_name_ar?: string | null;
+
+  @Column({ name: 'mother_first_name_en', type: 'varchar', length: 100, nullable: true })
+  mother_first_name_en?: string | null;
+
+  @Column({ name: 'mother_last_name_ar', type: 'varchar', length: 100, nullable: true })
+  mother_last_name_ar?: string | null;
+
+  @Column({ name: 'mother_last_name_en', type: 'varchar', length: 100, nullable: true })
+  mother_last_name_en?: string | null;
+
+  @Column({ name: 'mother_civil_id', type: 'varchar', length: 40, nullable: true })
+  mother_civil_id?: string | null;
 
   @Column({ length: 100, nullable: true })
   motherTribe?: string;
@@ -196,11 +262,15 @@ export class Enrollment {
 
   // Application Status
   @Column({
-    type: 'enum',
-    enum: ['pending', 'approved', 'rejected', 'enrolled'],
-    default: 'pending'
+    type: 'varchar',
+    length: 24,
+    default: 'pending',
   })
-  status: 'pending' | 'approved' | 'rejected' | 'enrolled';
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'enrolled';
+
+  /** Wizard snapshot for public draft resume (civil-ID lookup). Cleared on submit. */
+  @Column({ name: 'draft_payload', type: 'jsonb', nullable: true })
+  draft_payload?: Record<string, unknown> | null;
 
   @Column({ type: 'text', nullable: true })
   notes?: string;

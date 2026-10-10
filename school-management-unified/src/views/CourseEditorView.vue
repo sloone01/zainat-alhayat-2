@@ -316,24 +316,46 @@
                         class="grid grid-cols-[minmax(0,1fr)_1.75rem] items-start gap-x-2 px-3 py-2"
                         role="listitem"
                       >
-                        <div class="min-w-0 space-y-1.5">
-                          <input
-                            :id="`course-milestone-title-${index}-${mIndex}`"
-                            v-model="milestone.title"
-                            type="text"
-                            class="fk-field fk-field--sm min-w-0 bg-white/90"
-                            :required="activeTab === 'phases'"
-                            :aria-label="$t('courseManagement.milestoneTitle')"
-                            :placeholder="$t('courseManagement.milestoneTitlePlaceholder')"
-                          >
-                          <input
-                            v-model="milestone.description"
-                            type="text"
-                            class="fk-field fk-field--sm min-w-0 bg-white/90"
-                            :aria-label="$t('courseManagement.milestoneDescription')"
-                            :placeholder="$t('courseManagement.milestoneDescriptionPlaceholder')"
-                          >
+                        <div v-if="isMilestoneOpen(milestone)" class="min-w-0 space-y-2">
+                          <div>
+                            <label
+                              class="mb-1.5 block text-xs font-medium text-gray-600"
+                              :for="`course-milestone-title-${index}-${mIndex}`"
+                            >
+                              {{ $t('courseManagement.milestoneTitle') }}
+                            </label>
+                            <input
+                              :id="`course-milestone-title-${index}-${mIndex}`"
+                              v-model="milestone.title"
+                              type="text"
+                              class="fk-field fk-field--sm min-w-0 bg-white/90"
+                              :required="activeTab === 'phases'"
+                            >
+                          </div>
+                          <div>
+                            <label
+                              class="mb-1.5 block text-xs font-medium text-gray-600"
+                              :for="`course-milestone-desc-${index}-${mIndex}`"
+                            >
+                              {{ $t('courseManagement.milestoneDescription') }}
+                            </label>
+                            <input
+                              :id="`course-milestone-desc-${index}-${mIndex}`"
+                              v-model="milestone.description"
+                              type="text"
+                              class="fk-field fk-field--sm min-w-0 bg-white/90"
+                            >
+                          </div>
                         </div>
+                        <button
+                          v-else
+                          type="button"
+                          class="min-w-0 truncate py-1.5 text-start text-sm font-medium text-gray-900"
+                          :aria-label="$t('courseManagement.expandMilestone')"
+                          @click="openMilestone(milestone)"
+                        >
+                          {{ milestone.title || `${$t('courseManagement.milestone')} ${mIndex + 1}` }}
+                        </button>
                         <button
                           type="button"
                           class="inline-flex h-8 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
@@ -632,15 +654,40 @@ const removePhase = (index: number) => {
   }
 }
 
+const closedMilestoneIds = ref(new Set<string | number>())
+
+function isMilestoneOpen(milestone: EditorMilestone) {
+  return milestone.id == null || !closedMilestoneIds.value.has(milestone.id)
+}
+
+function openMilestone(milestone: EditorMilestone) {
+  if (milestone.id == null) return
+  const next = new Set(closedMilestoneIds.value)
+  next.delete(milestone.id)
+  closedMilestoneIds.value = next
+}
+
 const addMilestone = (phaseIndex: number) => {
-  formData.value.phases[phaseIndex].milestones.push(emptyMilestone())
+  const list = formData.value.phases[phaseIndex].milestones
+  const previous = list[list.length - 1]
+  const created = emptyMilestone()
+  list.push(created)
+  const next = new Set(closedMilestoneIds.value)
+  if (previous?.id != null) next.add(previous.id)
+  if (created.id != null) next.delete(created.id)
+  closedMilestoneIds.value = next
   activePhaseIndex.value = phaseIndex
-  const mIndex = formData.value.phases[phaseIndex].milestones.length - 1
+  const mIndex = list.length - 1
   focusMilestoneTitle(phaseIndex, mIndex)
 }
 
 const removeMilestone = (phaseIndex: number, milestoneIndex: number) => {
+  const removed = formData.value.phases[phaseIndex].milestones[milestoneIndex]
   formData.value.phases[phaseIndex].milestones.splice(milestoneIndex, 1)
+  if (removed?.id == null) return
+  const next = new Set(closedMilestoneIds.value)
+  next.delete(removed.id)
+  closedMilestoneIds.value = next
 }
 
 function mapApiMilestone(m: any): EditorMilestone {

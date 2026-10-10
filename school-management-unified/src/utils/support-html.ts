@@ -22,6 +22,10 @@ export async function resolveSupportHtml(html: string): Promise<{ html: string; 
         const objectUrl = await fetchAuthenticatedMediaObjectUrl(src)
         objectUrls.push(objectUrl)
         img.setAttribute('src', objectUrl)
+        img.removeAttribute('width')
+        img.removeAttribute('height')
+        img.setAttribute('loading', 'lazy')
+        img.setAttribute('decoding', 'async')
       } catch {
         img.removeAttribute('src')
         img.setAttribute('alt', img.getAttribute('alt') || 'image unavailable')

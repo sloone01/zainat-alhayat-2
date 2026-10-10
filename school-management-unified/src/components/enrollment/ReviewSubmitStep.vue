@@ -165,12 +165,15 @@ type SummaryBlock = { key: string; title: string; rows: SummaryRow[] }
 const summaryBlocks = computed((): SummaryBlock[] => {
   const f = props.formData
   const studentRows: SummaryRow[] = [
-    { label: t('students.firstNameAr'), value: blank(f.student?.first_name_ar) },
-    { label: t('students.firstNameEn'), value: blank(f.student?.first_name_en) },
-    { label: t('students.lastNameAr'), value: blank(f.student?.last_name_ar) },
-    { label: t('students.lastNameEn'), value: blank(f.student?.last_name_en) },
-    { label: t('enrollment.tribe'), value: blank(f.student?.tribe) },
     { label: t('enrollment.idNumber'), value: blank(f.student?.idNumber) },
+    { label: t('students.firstNameAr'), value: blank(f.student?.first_name_ar) },
+    { label: t('students.secondNameAr'), value: blank(f.student?.secondName) },
+    { label: t('students.thirdNameAr'), value: blank(f.student?.thirdName) },
+    { label: t('students.lastNameAr'), value: blank(f.student?.last_name_ar) },
+    { label: t('students.firstNameEn'), value: blank(f.student?.first_name_en) },
+    { label: t('students.secondNameEn'), value: blank(f.student?.secondNameEn) },
+    { label: t('students.thirdNameEn'), value: blank(f.student?.thirdNameEn) },
+    { label: t('students.lastNameEn'), value: blank(f.student?.last_name_en) },
     {
       label: t('enrollment.gender'),
       value: f.student?.gender ? t(`enrollment.${f.student.gender}`) : t('common.notSpecified'),
@@ -261,12 +264,30 @@ const summaryBlocks = computed((): SummaryBlock[] => {
     { label: t('enrollment.alleyNumber'), value: blank(f.address?.alleyNumber) },
   ]
 
+  const documentRows: SummaryRow[] = [
+    {
+      label: t('enrollment.parentIdDocuments'),
+      value: f.documents?.parentIdDocuments?.length
+        ? `${f.documents.parentIdDocuments.length} ${t('enrollment.uploadedFiles')}`
+        : t('common.notSpecified'),
+    },
+    {
+      label: t('enrollment.birthCertificate'),
+      value: f.documents?.birthCertificate ? t('enrollment.uploadedFiles') : t('common.notSpecified'),
+    },
+    {
+      label: t('enrollment.childIdDocument'),
+      value: f.documents?.childIdDocument ? t('enrollment.uploadedFiles') : t('common.notSpecified'),
+    },
+  ]
+
   return [
     { key: 'student', title: t('enrollment.steps.student'), rows: studentRows },
     { key: 'academic', title: t('enrollment.steps.academic'), rows: academicRows },
     { key: 'health', title: t('enrollment.steps.health'), rows: healthRows },
     { key: 'guardian', title: t('enrollment.steps.guardian'), rows: guardianRows },
     { key: 'address', title: t('enrollment.steps.address'), rows: addressRows },
+    { key: 'documents', title: t('enrollment.steps.documents'), rows: documentRows },
   ]
 })
 

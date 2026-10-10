@@ -154,22 +154,43 @@
         </div>
       </div>
 
-      <!-- Schedule Grid -->
+      <!-- Week calendar: Sunday–Thursday, one column per day -->
       <div v-if="selectedGroupId" class="fk-card overflow-hidden">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <h2 class="fk-card__title truncate">{{ formatWeekRange(selectedWeekStart) }}</h2>
+          <button type="button" class="fk-btn fk-btn--primary fk-btn--sm" @click="openNewTask">
+            {{ $t('teacherWeeklySessions.newTask') }}
+          </button>
+        </header>
         <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
-
-        <FullScreenCalendar
-          v-else
-          :data="calendarData"
-          :month="calendarMonth"
-          :selected="calendarSelected"
-          @select-day="onCalendarSelectDay"
-          @month-change="onCalendarMonthChange"
-          @event-click="onCalendarEventClick"
-        />
+        <div v-else class="grid grid-cols-1 gap-3 p-4 sm:p-5 lg:grid-cols-5">
+          <section
+            v-for="col in weekColumns"
+            :key="col.key"
+            class="flex min-h-48 flex-col rounded-2xl border border-fikr-hairline bg-white"
+            :class="col.isToday ? 'border-primary-300 bg-primary-50/40' : ''"
+          >
+            <header class="border-b border-fikr-hairline px-3 py-3 text-center">
+              <p class="text-xs font-semibold text-fikr-ink-muted">{{ col.label }}</p>
+              <p class="mt-0.5 text-lg font-semibold text-fikr-ink" dir="ltr">{{ col.dayNum }}</p>
+            </header>
+            <ul class="m-0 flex list-none flex-col gap-2 p-2">
+              <li v-for="event in col.events" :key="event.id">
+                <button
+                  type="button"
+                  class="flex w-full cursor-pointer flex-col items-start gap-1 rounded-xl bg-primary-50 px-2.5 py-2 text-start text-xs text-primary-900 transition-colors hover:bg-primary-100"
+                  @click="openTaskModal(event.payload)"
+                >
+                  <span class="font-semibold leading-snug">{{ event.name }}</span>
+                  <span class="leading-snug text-primary-800" dir="ltr">{{ event.time }}</span>
+                </button>
+              </li>
+            </ul>
+          </section>
+        </div>
       </div>
 
       <!-- No Group Selected State -->
@@ -186,6 +207,42 @@
       </div>
     </div>
 
+    <FikrDialog
+      :show="newTaskOpen"
+      :title="$t('teacherWeeklySessions.newTask')"
+      size="md"
+      plain-footer
+      @close="closeNewTask"
+    >
+      <form id="teacher-new-task" class="fk-form" @submit.prevent="saveNewTask">
+        <div class="fk-form__section space-y-4">
+          <div>
+            <label class="fk-flabel" for="teacher-new-task-session"><span>{{ $t('teacherWeeklySessions.chooseSession') }}</span></label>
+            <select id="teacher-new-task-session" v-model="newTaskScheduleId" required class="fk-field">
+              <option v-for="cls in currentSchedule" :key="cls.schedule_id" :value="cls.schedule_id">
+                {{ sessionOptionLabel(cls) }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="fk-flabel" for="teacher-new-task-title"><span>{{ $t('teacherWeeklySessions.taskTitle') }}</span></label>
+            <input id="teacher-new-task-title" v-model="newTaskTitle" type="text" required class="fk-field" />
+          </div>
+          <div>
+            <label class="fk-flabel" for="teacher-new-task-body"><span>{{ $t('teacherWeeklySessions.taskDescription') }}</span></label>
+            <textarea id="teacher-new-task-body" v-model="newTaskDescription" rows="3" class="fk-field" />
+          </div>
+          <p v-if="newTaskError" class="fk-alert fk-alert--error">{{ newTaskError }}</p>
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--mist" @click="closeNewTask">{{ $t('common.cancel') }}</button>
+        <button type="submit" form="teacher-new-task" class="fk-btn fk-btn--navy" :disabled="newTaskSaving">
+          {{ newTaskSaving ? $t('common.loading') : $t('common.save') }}
+        </button>
+      </template>
+    </FikrDialog>
+
     <!-- Task Completion Modal (Read-only with completion options) -->
     <TaskCompletionModal
       :show="showTaskModal"
@@ -196,19 +253,16 @@
       :courses="courses"
       :groups="groups"
       :can-start-online-session="canStartOnlineSession"
+      :invite-busy="inviteBusy"
+      :start-busy="startBusy"
+      :completion-busy="completionBusy"
       @close="closeTaskModal"
-      @complete="openCompletionForm"
+      @complete="submitTaskCompletion"
+      @replace-file="replaceTaskFile"
       @postpone="postponeTask"
       @viewDetails="openDetailsModal"
+      @send-invite="onSendOnlineInvite"
       @start-online="onStartOnlineSession"
-    />
-
-    <!-- Task Completion Form -->
-    <TaskCompletionForm
-      :show="showCompletionForm"
-      :task="selectedTask"
-      @close="closeCompletionForm"
-      @submit="submitTaskCompletion"
     />
 
     <!-- Task Details Modal -->
@@ -227,8 +281,9 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
+import FikrDialog from '@/components/FikrDialog.vue'
+import { useFeedback } from '@/composables/useFeedback'
 import TaskCompletionModal from '@/components/TaskCompletionModal.vue'
-import TaskCompletionForm from '@/components/TaskCompletionForm.vue'
 import TaskDetailsModal from '@/components/TaskDetailsModal.vue'
 import { scheduleService } from '@/services/schedule.service'
 import { weeklySessionPlanService } from '@/services/weekly-session-plan.service'
@@ -238,19 +293,11 @@ import { authService } from '@/services/auth.service'
 import { sessionMediaService } from '@/services/session-media.service'
 import { onlineSessionService } from '@/services/online-session.service'
 import type { User } from '@/services/user.service'
-import FullScreenCalendar from '@/components/ui/fullscreen-calendar.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
-import {
-  dateForWeekdayInWeek,
-  groupDatedEvents,
-  isSameMonth,
-  parseLocalDateKey,
-  startOfToday,
-  startOfWeek,
-  type CalendarEvent,
-} from '@/utils/calendar-date'
+import { dateForWeekdayInWeek, parseLocalDateKey } from '@/utils/calendar-date'
 
 const { t, locale } = useI18n()
+const feedback = useFeedback()
 const router = useRouter()
 
 const isRTL = computed(() => locale.value === 'ar')
@@ -284,10 +331,9 @@ const teachers = ref<User[]>([])
 const tasksBySchedule = ref({})
 const currentUser = ref(null)
 const showTaskModal = ref(false)
-const showCompletionForm = ref(false)
 const showDetailsModal = ref(false)
+const completionBusy = ref(false)
 const selectedSchedule = ref(null)
-const selectedTask = ref(null)
 const selectedTaskForDetails = ref(null)
 
 // Week days configuration
@@ -362,11 +408,12 @@ const normalizeDayKey = (rawDay: string) => {
 
 // Helper methods
 const formatWeekRange = (weekStart: string): string => {
-  const start = new Date(weekStart)
+  const start = parseLocalDateKey(weekStart) || new Date(weekStart)
   const end = new Date(start)
-  end.setDate(start.getDate() + 6)
-  const loc = locale.value === 'ar' ? 'ar-SA' : undefined
-  return `${start.toLocaleDateString(loc)} - ${end.toLocaleDateString(loc)}`
+  end.setDate(start.getDate() + 4)
+  const loc = locale.value === 'ar' ? 'ar' : 'en'
+  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
+  return `${start.toLocaleDateString(loc, opts)} – ${end.toLocaleDateString(loc, opts)}`
 }
 
 const formatDate = (dateString: string): string => {
@@ -414,44 +461,105 @@ const getTeacherName = (teacherId: string): string => {
   return teacher ? (teacher.fullName || `${teacher.firstName} ${teacher.lastName}`) : 'معلم غير معروف'
 }
 
-const getTaskCount = (scheduleId: string): number => {
-  return tasksBySchedule.value[scheduleId]?.length || 0
+const getOpenTaskCount = (scheduleId: string): number => {
+  const tasks = tasksBySchedule.value[scheduleId] || []
+  return tasks.filter((task) => !task.is_completed).length
 }
 
-const calendarMonth = computed(() => parseLocalDateKey(selectedWeekStart.value) || startOfToday())
-const calendarSelected = computed(() => parseLocalDateKey(selectedWeekStart.value) || startOfToday())
+const SCHOOL_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'] as const
 
-const calendarData = computed(() =>
-  groupDatedEvents(
-    (currentSchedule.value as any[]).flatMap((cls) => {
-      const day = dateForWeekdayInWeek(selectedWeekStart.value, cls.day)
-      if (!day) return []
-      const taskCount = getTaskCount(cls.schedule_id)
-      const time = cls.endTime ? `${cls.startTime}–${cls.endTime}` : String(cls.startTime || '')
-      return [{
-        day,
-        event: {
+const weekColumns = computed(() => {
+  const loc = locale.value === 'ar' ? 'ar' : 'en'
+  const today = new Date()
+  return SCHOOL_DAYS.map((key) => {
+    const date = dateForWeekdayInWeek(selectedWeekStart.value, key)
+    const events = (currentSchedule.value as Array<{
+      id: string
+      day: string
+      startTime: string
+      endTime?: string
+      course_id: string
+      schedule_id: string
+    }>)
+      .filter((cls) => cls.day === key)
+      .slice()
+      .sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)))
+      .map((cls) => {
+        const openCount = getOpenTaskCount(cls.schedule_id)
+        const time = cls.endTime ? `${cls.startTime}–${cls.endTime}` : String(cls.startTime || '')
+        return {
           id: cls.id,
           name: getCourseName(cls.course_id),
-          time: taskCount ? `${time} · ${taskCount} ${t('common.tasks')}` : time,
+          time: `${time} · ${t('teacherWeeklySessions.tasksToDo', { n: openCount })}`,
           payload: cls,
-        } satisfies CalendarEvent,
-      }]
-    }),
-  ),
-)
+        }
+      })
+    return {
+      key,
+      label: t(`scheduleManagement.days.${key}`),
+      dayNum: date ? new Intl.DateTimeFormat(loc, { day: 'numeric' }).format(date) : '',
+      isToday: Boolean(date && date.toDateString() === today.toDateString()),
+      events,
+    }
+  })
+})
 
-function onCalendarSelectDay(day: Date) {
-  selectedWeekStart.value = getWeekStart(day)
+const newTaskOpen = ref(false)
+const newTaskSaving = ref(false)
+const newTaskError = ref('')
+const newTaskTitle = ref('')
+const newTaskDescription = ref('')
+const newTaskScheduleId = ref('')
+
+function sessionOptionLabel(cls: { day?: string; startTime?: string; endTime?: string; course_id?: string }) {
+  const course = getCourseName(cls.course_id || '')
+  const when = [cls.day, cls.startTime && cls.endTime ? `${cls.startTime}–${cls.endTime}` : cls.startTime]
+    .filter(Boolean)
+    .join(' · ')
+  return when ? `${course} · ${when}` : course
 }
 
-function onCalendarMonthChange(month: Date) {
-  const today = startOfToday()
-  selectedWeekStart.value = getWeekStart(isSameMonth(today, month) ? today : startOfWeek(month))
+function openNewTask() {
+  const sessions = currentSchedule.value as Array<{ schedule_id: string }>
+  if (!selectedGroupId.value || !sessions.length) {
+    feedback.error(t('teacherWeeklySessions.noSessionForTask'))
+    return
+  }
+  newTaskScheduleId.value = sessions[0].schedule_id
+  newTaskTitle.value = ''
+  newTaskDescription.value = ''
+  newTaskError.value = ''
+  newTaskOpen.value = true
 }
 
-function onCalendarEventClick(event: CalendarEvent) {
-  openTaskModal(event.payload)
+function closeNewTask() {
+  if (newTaskSaving.value) return
+  newTaskOpen.value = false
+}
+
+async function saveNewTask() {
+  const title = newTaskTitle.value.trim()
+  if (!title || !newTaskScheduleId.value || !selectedGroupId.value) return
+  newTaskSaving.value = true
+  newTaskError.value = ''
+  try {
+    await weeklySessionPlanService.create({
+      groupId: selectedGroupId.value,
+      weekStartDate: selectedWeekStart.value,
+      scheduleId: newTaskScheduleId.value,
+      title,
+      description: newTaskDescription.value.trim(),
+    })
+    newTaskOpen.value = false
+    feedback.success(t('common.createdSuccessfully'))
+    await loadTasks(true)
+  } catch (e: unknown) {
+    const ax = e as { response?: { data?: { message?: string | string[] } }; message?: string }
+    const raw = ax.response?.data?.message
+    newTaskError.value = Array.isArray(raw) ? raw.join(', ') : raw || ax.message || t('teacherWeeklySessions.updateFailed')
+  } finally {
+    newTaskSaving.value = false
+  }
 }
 
 const getCompletedTaskCount = (scheduleId: string): number => {
@@ -590,7 +698,10 @@ const loadSchedulesAndCourses = async () => {
 
     // Try to load real data first
     try {
-      schedules.value = await scheduleService.getSchedulesByGroup(selectedGroupId.value)
+      schedules.value = await scheduleService.getSchedulesForGroup(
+        selectedGroupId.value,
+        currentUser.value,
+      )
 
       if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
         const uid = String(currentUser.value.id).trim()
@@ -866,9 +977,34 @@ function formatUnknownError(e: unknown): string {
   return String(e)
 }
 
+const inviteBusy = ref(false)
+const startBusy = ref(false)
+
+const onSendOnlineInvite = async () => {
+  const s = selectedSchedule.value as any
+  if (!s?.id || !selectedWeekStart.value || inviteBusy.value) return
+  inviteBusy.value = true
+  try {
+    const data = await onlineSessionService.invite({
+      schedule_id: s.id,
+      week_start_date: selectedWeekStart.value,
+    })
+    if (!data.notified) {
+      feedback.error(t('onlineSession.inviteNoParents'))
+      return
+    }
+    feedback.success(t('onlineSession.inviteSent'))
+  } catch (e: unknown) {
+    feedback.error(formatUnknownError(e))
+  } finally {
+    inviteBusy.value = false
+  }
+}
+
 const onStartOnlineSession = async () => {
   const s = selectedSchedule.value as any
-  if (!s?.id || !selectedWeekStart.value) return
+  if (!s?.id || !selectedWeekStart.value || startBusy.value) return
+  startBusy.value = true
   try {
     const data = await onlineSessionService.createOrGet({
       schedule_id: s.id,
@@ -877,27 +1013,44 @@ const onStartOnlineSession = async () => {
     closeTaskModal()
     await router.push({ name: 'online-session-room', params: { id: data.session.id } })
   } catch (e: unknown) {
-    alert(formatUnknownError(e))
+    feedback.error(formatUnknownError(e))
+  } finally {
+    startBusy.value = false
   }
 }
 
-// Task completion handlers
-const openCompletionForm = (taskId: string) => {
-  // Find the task
-  const allTasks = Object.values(tasksBySchedule.value).flat()
-  const task = allTasks.find(t => t.id === taskId)
-  if (task) {
-    selectedTask.value = task
-    showCompletionForm.value = true
+const replaceTaskFile = async (taskId: string, mediaId: string, file: File) => {
+  if (!taskId || !mediaId || completionBusy.value) return
+  completionBusy.value = true
+  try {
+    await sessionMediaService.uploadMultipleFiles(taskId, [file], false)
+    await sessionMediaService.deleteById(mediaId)
+    await loadTasks(true)
+    feedback.success(t('teacherWeeklySessions.taskUpdated'))
+  } catch (error: unknown) {
+    feedback.error(formatUnknownError(error))
+  } finally {
+    completionBusy.value = false
   }
 }
 
-const closeCompletionForm = () => {
-  selectedTask.value = null
-  showCompletionForm.value = false
+const submitTaskCompletion = async (taskId: string, description: string, files: File[]) => {
+  if (!taskId || completionBusy.value) return
+  completionBusy.value = true
+  try {
+    if (files.length > 0) {
+      await sessionMediaService.uploadMultipleFiles(taskId, files)
+    }
+    await weeklySessionPlanService.markComplete(taskId, description)
+    localStorage.removeItem(getStorageKey())
+    await loadTasks(true)
+    feedback.success(t('teacherWeeklySessions.taskUpdated'))
+  } catch (error: unknown) {
+    feedback.error(formatUnknownError(error))
+  } finally {
+    completionBusy.value = false
+  }
 }
-
-// Task details modal handlers
 const openDetailsModal = (task: any) => {
   selectedTaskForDetails.value = task
   showDetailsModal.value = true
@@ -906,97 +1059,6 @@ const openDetailsModal = (task: any) => {
 const closeDetailsModal = () => {
   selectedTaskForDetails.value = null
   showDetailsModal.value = false
-}
-
-const submitTaskCompletion = async (description: string, files: File[]) => {
-  if (!selectedTask.value) return
-
-  try {
-    console.log('🔄 Starting task completion process:', selectedTask.value.id)
-    console.log('📝 Description:', description)
-    console.log('📁 Files:', files.length)
-
-    // Handle file uploads FIRST if any
-    if (files.length > 0) {
-      console.log('📁 Uploading files to database...')
-      // FIXED: Since authentication is disabled, always use the first teacher
-      const uploadUserId = '0f851929-30b0-4b1c-8f64-779bd03dae03' // موزة معلمة (first user from DB)
-
-      console.log('📁 Uploading', files.length, 'files for user:', uploadUserId)
-
-      try {
-        console.log('📁 Uploading files to database...')
-
-        // Use the actual task ID for the session plan
-        const uploadedMedia = await sessionMediaService.uploadMultipleFiles(
-          selectedTask.value.id,
-          files,
-          uploadUserId
-        )
-
-        console.log('✅ Files uploaded successfully to database:', uploadedMedia)
-
-        // Update task with uploaded media info from database
-        selectedTask.value.media = uploadedMedia.map(media => ({
-          id: media.id.toString(),
-          file_name: media.file_name,
-          file_type: media.file_type,
-          file_size: media.file_size,
-          file_url: media.file_path,
-          uploaded_at: media.uploaded_at,
-          mime_type: media.mime_type
-        }))
-
-      } catch (uploadError) {
-        console.error('❌ Error uploading files to database:', uploadError)
-        console.error('Upload error details:', uploadError.response?.data || uploadError.message)
-
-        // Show specific error message
-        const errorMessage = uploadError.response?.data?.message || uploadError.message
-        alert('❌ فشل في رفع الملفات: ' + errorMessage)
-
-        // Don't continue with completion if file upload fails
-        return
-      }
-    }
-
-    // Now complete the task (after successful file upload)
-    console.log('💾 Saving task completion to backend...')
-    const completionData = {
-      is_completed: true,
-      completion_notes: description
-    }
-
-    const updatedTask = await weeklySessionPlanService.update(selectedTask.value.id, completionData)
-    console.log('✅ Task completion saved to backend:', updatedTask)
-
-    // Update the task in local state with the response from backend
-    selectedTask.value.is_completed = true
-    selectedTask.value.completion_description = description
-    selectedTask.value.completion_notes = description
-    selectedTask.value.completed_at = updatedTask.completion_date || updatedTask.completed_at || new Date().toISOString()
-    selectedTask.value.completed_by = '0f851929-30b0-4b1c-8f64-779bd03dae03' // Fixed user ID
-
-    // Clear localStorage cache to force reload from backend
-    localStorage.removeItem(getStorageKey())
-
-    // Reload tasks from backend to get the latest data
-    await loadTasks(true)
-
-    // Debug: Log the updated task data
-    console.log('🔍 Updated task after completion:', selectedTask.value)
-    console.log('🔍 Task completion_description:', selectedTask.value.completion_description)
-    console.log('🔍 Task completion_notes:', selectedTask.value.completion_notes)
-    console.log('🔍 Task media:', selectedTask.value.media)
-
-    alert('✅ تم إكمال المهمة بنجاح!')
-    closeCompletionForm()
-
-  } catch (error) {
-    console.error('❌ Error completing task:', error)
-    console.error('Error details:', error.response?.data || error.message)
-    alert('❌ حدث خطأ في إكمال المهمة: ' + (error.response?.data?.message || error.message))
-  }
 }
 
 const postponeTask = async (taskId: string, reason: string) => {
@@ -1049,6 +1111,10 @@ onMounted(async () => {
   try {
     await getCurrentUser()
     await loadGroups()
+    if (!selectedGroupId.value && groups.value[0]?.id) {
+      selectedGroupId.value = groups.value[0].id
+      await onGroupChange()
+    }
   } catch (error) {
     console.error('❌ Error in onMounted:', error)
   }

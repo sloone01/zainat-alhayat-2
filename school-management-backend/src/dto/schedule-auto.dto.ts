@@ -27,7 +27,7 @@ export class CreateScheduleLessonDemandDto {
 
   @Type(() => Number)
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(40)
   periods_per_week: number;
 }
@@ -44,7 +44,7 @@ export class UpdateScheduleLessonDemandDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(40)
   periods_per_week?: number;
 }
@@ -63,7 +63,7 @@ export class ReplaceScheduleLessonDemandItemDto {
 
   @Type(() => Number)
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(40)
   periods_per_week: number;
 }

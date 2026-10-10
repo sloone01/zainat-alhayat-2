@@ -19,6 +19,7 @@ import { GradedCriterionMarksService } from '../services/graded-criterion-marks.
 import { SaveCriterionMarksGridDto } from '../dto/graded-criterion-marks.dto';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 
 @Controller('graded-criterion-marks')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -35,6 +36,42 @@ export class GradedCriterionMarksController {
     return schoolId;
   }
 
+  /** Groups the marks screen lists (admin: school, teacher: assigned classes). */
+  @Get('groups')
+  async groups(
+    @Request() req: { user: User },
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (!wantsPage(page)) {
+      throw new BadRequestException('page is required');
+    }
+    const data = await this.marksService.listGroupsPage(schoolId, req.user, { page, limit });
+    return { success: true, data };
+  }
+
+  /** Graded courses scheduled for one class. */
+  @Get('group-courses')
+  async groupCourses(
+    @Request() req: { user: User },
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @Query('group_id', ParseUUIDPipe) groupId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (!wantsPage(page)) {
+      throw new BadRequestException('page is required');
+    }
+    const data = await this.marksService.listGroupCoursesPage(schoolId, groupId, req.user, {
+      page,
+      limit,
+    });
+    return { success: true, data };
+  }
+
   /** Students × criteria grid for a graded course + class */
   @Get('grid')
   async grid(
@@ -42,12 +79,15 @@ export class GradedCriterionMarksController {
     @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
     @Query('group_id', ParseUUIDPipe) groupId: string,
     @Query('course_id', ParseUUIDPipe) courseId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
     const data = await this.marksService.getMarksGrid(
       courseId,
       groupId,
       schoolId,
+      wantsPage(page) ? { page, limit } : undefined,
     );
     return { success: true, data };
   }

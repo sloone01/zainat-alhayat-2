@@ -481,10 +481,12 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import FikrLoader from '@/components/FikrLoader.vue'
 import type { WeeklySessionPlan } from '../services'
 
 const { t, locale } = useI18n()
+const feedback = useFeedback()
 
 // RTL support
 const isRTL = computed(() => locale.value === 'ar')
@@ -685,10 +687,14 @@ const submitTaskCompletion = async () => {
   }
 }
 
-const deleteTask = (taskId: string) => {
-  if (confirm(t('weeklySessionPlans.confirmDelete'))) {
-    emit('delete', taskId)
-  }
+const deleteTask = async (taskId: string) => {
+  const ok = await feedback.confirm({
+    title: t('common.delete'),
+    message: t('weeklySessionPlans.confirmDelete'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  })
+  if (ok) emit('delete', taskId)
 }
 
 // Watch for show changes to reset form

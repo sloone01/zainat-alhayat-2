@@ -66,8 +66,11 @@ export const RBAC_PAGE_SEED: RbacPageSeed[] = [
   { key: 'progress', route: '/progress', nameEn: 'Progress', nameAr: 'التقدم', scope: 'school', sortOrder: 36, actions: ['view', 'search', 'edit'] },
   { key: 'activities', route: '/activities', nameEn: 'Activities', nameAr: 'الأنشطة', scope: 'school', sortOrder: 37, actions: [...CRUD, 'approve'] },
   { key: 'approvals', route: '/approvals', nameEn: 'Approvals', nameAr: 'الموافقات', scope: 'school', sortOrder: 38, actions: ['view', 'search', 'approve'] },
-  { key: 'reports', route: '/reports', nameEn: 'Reports', nameAr: 'التقارير', scope: 'school', sortOrder: 39, actions: ['view', 'search', 'export'] },
+  { key: 'reports', route: '/reports', nameEn: 'Reports', nameAr: 'التقارير', scope: 'school', sortOrder: 39, actions: ['view', 'search', 'edit', 'export'] },
   { key: 'reports_fees_due', route: '/reports/fees/due-installments', nameEn: 'Due / late fees', nameAr: 'الرسوم المستحقة والمتأخرة', scope: 'school', sortOrder: 39, actions: ['view', 'search', 'export'] },
+  { key: 'reports_exports', route: '/reports/exports', nameEn: 'Report exports', nameAr: 'تصدير التقارير', scope: 'school', sortOrder: 39, actions: ['view', 'edit'] },
+  { key: 'reports_export_templates', route: '/reports/export-templates', nameEn: 'Export templates', nameAr: 'قوالب التصدير', scope: 'school', sortOrder: 39, actions: ['view', 'edit', 'delete'] },
+  { key: 'reports_student_export', route: '/reports/exports/students', nameEn: 'Student list export', nameAr: 'تصدير قائمة الطلاب', scope: 'school', sortOrder: 39, actions: ['view', 'edit'] },
 
   { key: 'enrollments', route: '/enrollments', nameEn: 'Enrollments', nameAr: 'طلبات التسجيل', scope: 'school', sortOrder: 40, actions: [...VIEW_EDIT, 'approve', 'export', 'delete'] },
   { key: 'enrollment_responsibilities', route: '/settings/enrollment-responsibilities', nameEn: 'Enrollment responsibilities', nameAr: 'مسؤوليات التسجيل', scope: 'school', sortOrder: 40, actions: [...CRUD] },

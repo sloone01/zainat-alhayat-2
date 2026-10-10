@@ -27,6 +27,8 @@
         v-else-if="currentStep === 1"
         v-model="formData.student"
         compact
+        mode="staff"
+        :school-id="schoolId"
         @next="handleNext"
       />
       <AcademicInfoStep
@@ -49,6 +51,7 @@
         v-model="formData.guardian"
         compact
         edit-mode
+        :student-civil-id="formData.student.idNumber"
         @next="handleNext"
         @back="handleBack"
       />
@@ -59,8 +62,17 @@
         @next="handleNext"
         @back="handleBack"
       />
-      <PaymentPlanStep
+      <DocumentsStep
         v-else-if="currentStep === 6"
+        v-model="formData.documents"
+        compact
+        variant="staff"
+        :school-id="schoolId"
+        @next="handleNext"
+        @back="handleBack"
+      />
+      <PaymentPlanStep
+        v-else-if="currentStep === 7"
         v-model="selectedPlanId"
         :school-id="schoolId"
         :grade-level="formData.academic.gradeLevel"
@@ -68,7 +80,7 @@
         @back="handleBack"
       />
       <ReviewSubmitStep
-        v-else-if="currentStep === 7"
+        v-else-if="currentStep === 8"
         :form-data="formData"
         compact
         is-editing
@@ -99,9 +111,10 @@ import AcademicInfoStep from '@/components/enrollment/AcademicInfoStep.vue'
 import HealthInfoStep from '@/components/enrollment/HealthInfoStep.vue'
 import GuardianInfoStep from '@/components/enrollment/GuardianInfoStep.vue'
 import AddressInfoStep from '@/components/enrollment/AddressInfoStep.vue'
+import DocumentsStep from '@/components/enrollment/DocumentsStep.vue'
 import PaymentPlanStep from '@/components/enrollment/PaymentPlanStep.vue'
 import ReviewSubmitStep from '@/components/enrollment/ReviewSubmitStep.vue'
-import { createEmptyStaffIntakeForm, fileToDataUrl, formatStaffIntakeDate, splitFullName } from '@/components/enrollment/staffIntake'
+import { createEmptyStaffIntakeForm, formatStaffIntakeDate, splitFullName } from '@/components/enrollment/staffIntake'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t } = useI18n()
@@ -110,7 +123,7 @@ const router = useRouter()
 const route = useRoute()
 const enrollmentId = route.params.id as string
 const currentStep = ref(1)
-const totalSteps = 7
+const totalSteps = 8
 const loading = ref(true)
 const isSubmitting = ref(false)
 const formData = ref(createEmptyStaffIntakeForm())
@@ -123,6 +136,7 @@ const steps = computed(() => [
   { key: 'health', shortTitle: t('enrollment.steps.health'), title: t('enrollment.steps.health'), description: t('enrollment.healthDescription') },
   { key: 'guardian', shortTitle: t('enrollment.steps.guardian'), title: t('enrollment.steps.guardian'), description: t('enrollment.guardianDescription') },
   { key: 'address', shortTitle: t('enrollment.steps.address'), title: t('enrollment.steps.address'), description: t('enrollment.addressDescription') },
+  { key: 'documents', shortTitle: t('students.stepShortDocuments'), title: t('enrollment.steps.documents'), description: t('enrollment.documentsDescription') },
   { key: 'payment', shortTitle: t('enrollment.steps.payment'), title: t('enrollment.steps.payment'), description: t('enrollment.paymentPlanDescription') },
   { key: 'review', shortTitle: t('students.stepShortReview'), title: t('enrollment.steps.review'), description: t('enrollment.reviewDescription') },
 ])
@@ -139,10 +153,14 @@ const loadEnrollmentData = async () => {
     formData.value = {
       student: {
         fullName: enrollment.fullName || '',
-        first_name_ar: studentNames.firstName,
-        first_name_en: studentNames.firstName,
-        last_name_ar: studentNames.lastName,
-        last_name_en: studentNames.lastName,
+        first_name_ar: enrollment.first_name_ar || studentNames.firstName,
+        first_name_en: enrollment.first_name_en || '',
+        secondName: enrollment.secondName || studentNames.secondName || '',
+        thirdName: enrollment.thirdName || studentNames.thirdName || '',
+        secondNameEn: enrollment.secondNameEn || '',
+        thirdNameEn: enrollment.thirdNameEn || '',
+        last_name_ar: enrollment.last_name_ar || studentNames.lastName,
+        last_name_en: enrollment.last_name_en || '',
         tribe: enrollment.tribe || '',
         idNumber: enrollment.idNumber || '',
         gender: enrollment.gender || 'male',
@@ -174,11 +192,11 @@ const loadEnrollmentData = async () => {
         type: enrollment.guardianType || 'father',
         fatherInfo: {
           fullName: enrollment.fatherFullName || '',
-          first_name_ar: fatherNames.firstName,
-          first_name_en: fatherNames.firstName,
-          last_name_ar: fatherNames.lastName,
-          last_name_en: fatherNames.lastName,
-          civil_id: '',
+          first_name_ar: enrollment.father_first_name_ar || fatherNames.firstName,
+          first_name_en: enrollment.father_first_name_en || '',
+          last_name_ar: enrollment.father_last_name_ar || fatherNames.lastName,
+          last_name_en: enrollment.father_last_name_en || '',
+          civil_id: enrollment.father_civil_id || '',
           tribe: enrollment.fatherTribe || '',
           workplace: enrollment.fatherWorkplace || '',
           workPhone: enrollment.fatherWorkPhone || '',
@@ -188,11 +206,11 @@ const loadEnrollmentData = async () => {
         },
         motherInfo: {
           fullName: enrollment.motherFullName || '',
-          first_name_ar: motherNames.firstName,
-          first_name_en: motherNames.firstName,
-          last_name_ar: motherNames.lastName,
-          last_name_en: motherNames.lastName,
-          civil_id: '',
+          first_name_ar: enrollment.mother_first_name_ar || motherNames.firstName,
+          first_name_en: enrollment.mother_first_name_en || '',
+          last_name_ar: enrollment.mother_last_name_ar || motherNames.lastName,
+          last_name_en: enrollment.mother_last_name_en || '',
+          civil_id: enrollment.mother_civil_id || '',
           tribe: enrollment.motherTribe || '',
           workplace: enrollment.motherWorkplace || '',
           workPhone: enrollment.motherWorkPhone || '',
@@ -224,6 +242,11 @@ const loadEnrollmentData = async () => {
         buildingNumber: enrollment.buildingNumber || '',
         housingType: enrollment.housingType || 'house',
       },
+      documents: {
+        parentIdDocuments: enrollment.parentIdDocuments || [],
+        birthCertificate: enrollment.birthCertificate || null,
+        childIdDocument: enrollment.childIdDocument || null,
+      },
     }
   } catch (error) {
     console.error('Failed to load enrollment data:', error)
@@ -234,7 +257,7 @@ const loadEnrollmentData = async () => {
 }
 
 const handleNext = () => {
-  if (currentStep.value === 6 && !selectedPlanId.value) return
+  if (currentStep.value === 7 && !selectedPlanId.value) return
   if (currentStep.value < totalSteps) currentStep.value++
 }
 
@@ -245,7 +268,25 @@ const handleBack = () => {
 const handleSubmit = async () => {
   try {
     isSubmitting.value = true
-    const photo = await fileToDataUrl(formData.value.student.photo)
+    const photo =
+      typeof formData.value.student.photo === 'string' ? formData.value.student.photo : null
+    const parentIdDocuments = (formData.value.documents.parentIdDocuments || []).filter(
+      (f): f is string => typeof f === 'string' && f.startsWith('/api/attachments/'),
+    )
+    const birthCertificate =
+      typeof formData.value.documents.birthCertificate === 'string' &&
+      formData.value.documents.birthCertificate.startsWith('/api/attachments/')
+        ? formData.value.documents.birthCertificate
+        : ''
+    const childIdDocument =
+      typeof formData.value.documents.childIdDocument === 'string' &&
+      formData.value.documents.childIdDocument.startsWith('/api/attachments/')
+        ? formData.value.documents.childIdDocument
+        : ''
+    if (!parentIdDocuments.length || !birthCertificate || !childIdDocument) {
+      feedback.error(t('enrollment.documentsRequired'), t('students.validationErrorTitle'))
+      return
+    }
     const result = await enrollmentService.updateEnrollment(enrollmentId, {
       student: {
         ...formData.value.student,
@@ -256,6 +297,11 @@ const handleSubmit = async () => {
       health: formData.value.health,
       guardian: formData.value.guardian,
       address: formData.value.address,
+      documents: {
+        parentIdDocuments,
+        birthCertificate,
+        childIdDocument,
+      },
       installment_plan_id: selectedPlanId.value,
     })
     router.push({

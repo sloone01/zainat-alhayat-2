@@ -24,6 +24,11 @@
         <button type="button" class="fk-btn fk-btn--pearl w-full text-red-700 ring-red-200" @click="logout">
           {{ $t('dashboard.signOut') }}
         </button>
+        <p class="mt-4 text-center text-xs text-gray-500">
+          <router-link to="/privacy" class="underline">{{ $t('login.privacy') }}</router-link>
+          <span aria-hidden="true"> · </span>
+          <router-link to="/terms" class="underline">{{ $t('login.terms') }}</router-link>
+        </p>
       </div>
     </div>
   </DashboardLayout>

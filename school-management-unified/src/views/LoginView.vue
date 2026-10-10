@@ -168,6 +168,11 @@
         </form>
       </div>
     </div>
+    <p class="mt-6 text-center text-xs text-gray-500">
+      <router-link to="/privacy" class="font-medium text-primary-700 underline">{{ $t('login.privacy') }}</router-link>
+      <span aria-hidden="true"> · </span>
+      <router-link to="/terms" class="font-medium text-primary-700 underline">{{ $t('login.terms') }}</router-link>
+    </p>
   </AuthSplitLayout>
 </template>
 

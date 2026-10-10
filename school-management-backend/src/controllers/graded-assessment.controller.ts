@@ -22,6 +22,7 @@ import {
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 
 @Controller('graded-assessment')
 @RequireClaim('graded_courses', 'view')
@@ -64,8 +65,25 @@ export class GradedAssessmentController {
   async list(
     @Request() req: { user: User },
     @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('level_id') levelId?: string,
+    @Query('aggregation') aggregation?: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (wantsPage(page)) {
+      const data = await this.gradedAssessmentService.findGradedPage(schoolId, {
+        page,
+        limit,
+        q,
+        status: status?.trim() || undefined,
+        level_id: levelId?.trim() || undefined,
+        aggregation: aggregation?.trim() || undefined,
+      });
+      return { success: true, data };
+    }
     const data = await this.gradedAssessmentService.findGradedBySchool(schoolId);
     return {
       success: true,

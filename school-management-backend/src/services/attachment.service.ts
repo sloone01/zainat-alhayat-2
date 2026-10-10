@@ -152,6 +152,21 @@ export class AttachmentService {
     return row;
   }
 
+  /**
+   * Public school mark only. Other attachments stay behind the authenticated download.
+   */
+  async openSchoolLogoStream(id: string): Promise<{ row: Attachment; stream: NodeJS.ReadableStream }> {
+    const row = await this.findOne(id);
+    if (!/^image\/(png|jpe?g|gif|webp)$/i.test(row.mime_type || '')) {
+      throw new NotFoundException('Attachment not found');
+    }
+    const link = await this.links.findOne({
+      where: { attachment_id: id, purpose: 'school_logo' },
+    });
+    if (!link) throw new NotFoundException('Attachment not found');
+    return this.openStream(id);
+  }
+
   /** Row + a readable stream of the binary, for the download endpoint. */
   async openStream(id: string): Promise<{ row: Attachment; stream: NodeJS.ReadableStream }> {
     const row = await this.findOne(id);

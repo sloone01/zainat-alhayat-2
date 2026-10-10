@@ -17,6 +17,7 @@ exports.CourseService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const pagination_1 = require("../common/pagination");
 const course_entity_1 = require("../entities/course.entity");
 const phase_entity_1 = require("../entities/phase.entity");
 const milestone_entity_1 = require("../entities/milestone.entity");
@@ -30,6 +31,21 @@ function splitCourseStatuses(input) {
             isActive = false;
     }
     return { status, is_active: isActive !== false };
+}
+function applySkillCourseStatus(qb, status) {
+    if (!status)
+        return;
+    if (status === 'inactive') {
+        qb.andWhere('course.is_active = false');
+        return;
+    }
+    if (status === 'active') {
+        qb.andWhere('course.is_active = true').andWhere(`course.status NOT IN ('draft', 'published', 'archived')`);
+        return;
+    }
+    if (status === 'draft' || status === 'published' || status === 'archived') {
+        qb.andWhere('course.status = :courseStatus', { courseStatus: status });
+    }
 }
 function uuidOrNull(value) {
     if (value == null || value === '')
@@ -146,6 +162,29 @@ let CourseService = CourseService_1 = class CourseService {
                 throw new Error(`Database error: ${error.message}`);
             }
         }
+    }
+    async findPage(schoolId, query) {
+        const qb = this.courseRepository
+            .createQueryBuilder('course')
+            .leftJoinAndSelect('course.academicYear', 'academicYear')
+            .leftJoinAndSelect('course.level', 'level')
+            .where('course.school_id = :schoolId', { schoolId })
+            .orderBy('course.created_at', 'DESC')
+            .addOrderBy('course.id', 'ASC');
+        if (query.course_kind) {
+            qb.andWhere('course.course_kind = :courseKind', { courseKind: query.course_kind });
+        }
+        if (query.category) {
+            qb.andWhere('course.category = :category', { category: query.category });
+        }
+        applySkillCourseStatus(qb, query.status);
+        const term = (0, pagination_1.likeTerm)(query.q);
+        if (term) {
+            qb.andWhere(`LOWER(CONCAT_WS(' ', course.name, course.title, course.description)) LIKE :term`, { term });
+        }
+        const page = await (0, pagination_1.paginateQueryBuilder)(qb, query);
+        await this.attachCurriculumCounts(page.items);
+        return page;
     }
     async attachCurriculumCounts(courses) {
         if (!courses.length)

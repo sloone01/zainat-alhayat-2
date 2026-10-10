@@ -5,6 +5,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
+import {
+  buildPage,
+  clampPage,
+  likeTerm,
+  parsePageQuery,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import { Course } from '../entities/course.entity';
 import { GradedAssessmentScheme } from '../entities/graded-assessment-scheme.entity';
 import { GradedSemesterConfig } from '../entities/graded-semester-config.entity';
@@ -275,20 +283,95 @@ export class GradedAssessmentService {
       order: { created_at: 'DESC' },
       relations: ['academicYear', 'level'],
     });
-    if (!courses.length) return [];
+    return this.attachSchemes(courses);
+  }
 
+  /**
+   * Paged graded-course list. Scheme semesters are one-to-many, so they are
+   * loaded only after the course ids for this page are known.
+   */
+  async findGradedPage(
+    schoolId: string,
+    query: PageQuery & {
+      q?: string;
+      status?: string;
+      level_id?: string;
+      aggregation?: string;
+    },
+  ): Promise<PageResult<GradedCourseResponse>> {
+    const { page, limit } = parsePageQuery(query);
+    const idQb = this.courseRepository
+      .createQueryBuilder('course')
+      .where('course.school_id = :schoolId', { schoolId })
+      .andWhere(`course.course_kind = 'graded'`);
+
+    if (query.level_id) {
+      idQb.andWhere('course.level_id = :levelId', { levelId: query.level_id });
+    }
+    if (query.status === 'draft') {
+      idQb.andWhere(`course.status = 'draft'`);
+    } else if (query.status === 'active') {
+      idQb.andWhere('course.is_active = true').andWhere(`course.status <> 'draft'`);
+    } else if (query.status === 'inactive') {
+      idQb.andWhere('course.is_active = false').andWhere(`course.status <> 'draft'`);
+    }
+    if (query.aggregation === 'sum' || query.aggregation === 'average') {
+      idQb.innerJoin(
+        GradedAssessmentScheme,
+        'scheme',
+        'scheme.course_id = course.id AND scheme.aggregation_method = :aggregation',
+        { aggregation: query.aggregation },
+      );
+    }
+    const term = likeTerm(query.q);
+    if (term) {
+      idQb.andWhere(
+        `LOWER(CONCAT_WS(' ', course.name, course.title, course.description)) LIKE :term`,
+        { term },
+      );
+    }
+
+    const totalRow = await idQb
+      .clone()
+      .select('COUNT(DISTINCT course.id)', 'cnt')
+      .getRawOne<{ cnt: string }>();
+    const total = Number(totalRow?.cnt || 0);
+    const safePage = clampPage(page, total, limit);
+    const idRows = await idQb
+      .clone()
+      .select('course.id', 'id')
+      .addSelect('MAX(course.created_at)', 'sort_at')
+      .groupBy('course.id')
+      .orderBy('sort_at', 'DESC')
+      .addOrderBy('course.id', 'ASC')
+      .offset((safePage - 1) * limit)
+      .limit(limit)
+      .getRawMany<{ id: string }>();
+    const ids = idRows.map((row) => String(row.id));
+    if (!ids.length) return buildPage([], total, safePage, limit);
+
+    const courses = await this.courseRepository.find({
+      where: { id: In(ids) },
+      relations: ['academicYear', 'level'],
+    });
+    const byId = new Map(courses.map((course) => [course.id, course]));
+    const ordered = ids.map((id) => byId.get(id)).filter((course): course is Course => !!course);
+    const items = await this.attachSchemes(ordered);
+    return buildPage(items, total, safePage, limit);
+  }
+
+  private async attachSchemes(courses: Course[]): Promise<GradedCourseResponse[]> {
+    if (!courses.length) return [];
     const schemes = await this.schemeRepository.find({
       where: { course_id: In(courses.map((c) => c.id)) },
       relations: ['semesters', 'semesters.criteria'],
     });
-
     for (const s of schemes) {
       s.semesters?.sort((a, b) => a.semester_index - b.semester_index);
       s.semesters?.forEach((sem) =>
         sem.criteria?.sort((a, b) => a.sort_order - b.sort_order),
       );
     }
-
     const byCourse = new Map(schemes.map((sch) => [sch.course_id, sch]));
     return courses.map((c) =>
       Object.assign(c, { graded_scheme: byCourse.get(c.id) ?? null }),

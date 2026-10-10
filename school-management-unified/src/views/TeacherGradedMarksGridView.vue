@@ -4,28 +4,15 @@
       <FikrPageHeader
         :title="$t('gradedMarksGrid.title')"
         :subtitle="marksHeaderSubtitle"
-      >
-        <template v-if="selectedGroup" #leading>
-          <button
-            type="button"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('common.back')"
-            @click="goBack"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        </template>
-      </FikrPageHeader>
+      />
 
       <!-- Step 1: groups -->
-      <div v-if="!selectedGroup" class="fk-card">
+      <section v-if="!selectedGroup" class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('progressTracking.selectGroup') }}</h2>
             <p v-if="!loadingGroups" class="fk-card__meta">
-              {{ $t('progressTracking.groupsCount', { count: teacherGroups.length }) }}
+              {{ $t('progressTracking.groupsCount', { count: groupsTotal }) }}
             </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
@@ -37,9 +24,9 @@
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
-          <div v-else-if="teacherGroups.length && isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div v-else-if="groupsTotal && isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <KanbanCard
-              v-for="group in teacherGroups"
+              v-for="group in paginatedGroups"
               :key="group.id"
               as="button"
               :title="group.name"
@@ -54,8 +41,8 @@
               </template>
             </KanbanCard>
           </div>
-          <div v-else-if="teacherGroups.length" class="fk-table-wrap">
-            <table class="fk-table">
+          <div v-else-if="groupsTotal" class="overflow-visible">
+            <table class="fk-feetable min-w-full">
               <thead>
                 <tr>
                   <th>{{ $t('progressTracking.groupName') }}</th>
@@ -66,7 +53,7 @@
               </thead>
               <tbody>
                 <tr
-                  v-for="group in teacherGroups"
+                  v-for="group in paginatedGroups"
                   :key="'list-' + group.id"
                   class="cursor-pointer hover:bg-fikr-pearl"
                   @click="selectGroup(group)"
@@ -80,15 +67,33 @@
             </table>
           </div>
           <div v-else class="py-16 text-center text-sm text-gray-500">{{ $t('progressTracking.noGroups') }}</div>
+          <FikrPagination
+            :page="groupsPage"
+            :pages="groupsTotalPages"
+            :show="!loadingGroups && groupsTotal > 0"
+            @update:page="goToGroupsPage"
+          />
         </div>
-      </div>
+      </section>
 
       <!-- Step 2: graded courses -->
-      <div v-else-if="selectedGroup && !selectedCourse" class="fk-card">
+      <section v-else-if="selectedGroup && !selectedCourse" class="fk-elev p-0">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <div class="min-w-0">
-            <h2 class="fk-card__title truncate">{{ $t('gradedMarksGrid.selectCourse') }}</h2>
-            <p class="fk-card__meta">{{ selectedGroup.name }}</p>
+          <div class="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+              :aria-label="$t('common.back')"
+              @click="goBack"
+            >
+              <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div class="min-w-0">
+              <h2 class="fk-card__title truncate">{{ $t('gradedMarksGrid.selectCourse') }}</h2>
+              <p class="fk-card__meta">{{ selectedGroup.name }}</p>
+            </div>
           </div>
           <button type="button" class="text-sm font-medium text-primary-700 hover:text-primary-900" @click="selectedGroup = null">
             {{ $t('progressTracking.changeGroup') }}
@@ -98,7 +103,7 @@
           <div v-if="loadingCourses" class="flex justify-center py-12">
             <FikrLoader />
           </div>
-          <div v-else-if="!groupGradedCourses.length" class="flex min-h-[12rem] flex-col items-center justify-center px-6 py-12 text-center">
+          <div v-else-if="!coursesTotal" class="flex min-h-[12rem] flex-col items-center justify-center px-6 py-12 text-center">
             <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.26 10.147a60.438 60.438 0 0016.48 0M4.26 10.147l-.955 4.605M4.26 10.147l4.605-.955M19.74 10.147l.955 4.605M19.74 10.147l-4.605-.955M12 4.5v15" />
@@ -108,7 +113,7 @@
           </div>
           <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <KanbanCard
-              v-for="course in groupGradedCourses"
+              v-for="course in paginatedCourses"
               :key="course.id"
               as="button"
               :title="course.title"
@@ -125,14 +130,31 @@
               </template>
             </KanbanCard>
           </div>
+          <FikrPagination
+            :page="coursesPage"
+            :pages="coursesTotalPages"
+            :show="!loadingCourses && coursesTotal > 0"
+            @update:page="goToCoursesPage"
+          />
         </div>
-      </div>
+      </section>
 
       <!-- Step 3: marks grid — students × criteria -->
       <div v-else class="space-y-4 sm:space-y-6">
-        <div class="fk-card">
+        <div class="fk-elev p-0">
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-            <div class="min-w-0">
+            <div class="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+                :aria-label="$t('common.back')"
+                @click="goBack"
+              >
+                <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div class="min-w-0">
               <h2 class="fk-card__title truncate">{{ selectedCourse?.title }}</h2>
               <p class="fk-card__meta">{{ selectedGroup?.name }}</p>
               <p v-if="gridData" class="mt-1 text-xs text-gray-500">
@@ -144,11 +166,9 @@
                 {{ $t('gradedMarksGrid.courseTotalMarks') }}: {{ gridData.total_marks }}
                 · {{ $t('gradedMarksGrid.enterByCriteria') }}
               </p>
+              </div>
             </div>
             <div class="flex shrink-0 flex-wrap items-center gap-2">
-              <button type="button" class="text-sm font-medium text-primary-700 hover:text-primary-900" @click="selectedCourse = null; resetGrid()">
-                {{ $t('gradedMarksGrid.changeCourse') }}
-              </button>
               <button
                 type="button"
                 class="fk-btn fk-btn--primary"
@@ -184,7 +204,7 @@
           <p class="mt-1 text-xs text-gray-500">{{ $t('gradedMarksGrid.noCriteriaForActiveSemesterHint') }}</p>
         </div>
 
-        <div v-else-if="gridData" class="fk-card overflow-visible">
+        <div v-else-if="gridData" class="fk-elev overflow-visible p-0">
           <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
             <div class="min-w-0">
               <h2 class="fk-card__title truncate">
@@ -194,10 +214,11 @@
                 }}
               </h2>
               <p class="fk-card__meta">
-                {{ gridData.students?.length || 0 }} · {{ $t('common.students') }}
+                {{ gradedTotal }} · {{ $t('common.students') }}
               </p>
             </div>
           </header>
+          <div class="p-6">
           <!-- Mobile -->
           <div class="block sm:hidden divide-y divide-gray-100">
             <div v-for="student in paginatedStudents" :key="student.id" class="p-4">
@@ -221,12 +242,13 @@
                         <span class="text-gray-400">({{ c.max_marks }})</span>
                       </label>
                       <input
-                        v-model="marksLocal[markKey(student.id, c.id)]"
+                        :value="marksLocal[markKey(student.id, c.id)] || ''"
                         type="text"
                         inputmode="decimal"
                         class="fk-field fk-field--sm w-20 shrink-0 text-center tabular-nums"
                         :placeholder="`0–${c.max_marks}`"
                         :aria-label="`${student.name} — ${c.label}`"
+                        @input="onMarkInput(student.id, c.id, ($event.target as HTMLInputElement).value)"
                       />
                     </div>
                   </div>
@@ -286,12 +308,13 @@
                     class="border-l border-gray-50 px-2 py-2 text-center"
                   >
                     <input
-                      v-model="marksLocal[markKey(student.id, c.id)]"
+                      :value="marksLocal[markKey(student.id, c.id)] || ''"
                       type="text"
                       inputmode="decimal"
                       class="fk-field fk-field--sm mx-auto max-w-[88px] text-center tabular-nums"
                       :placeholder="'—'"
                       :aria-label="`${student.name} — ${c.label}`"
+                      @input="onMarkInput(student.id, c.id, ($event.target as HTMLInputElement).value)"
                     />
                   </td>
                   <td class="border-l border-emerald-100 bg-emerald-50/40 px-3 py-2 text-center font-semibold tabular-nums text-emerald-900">
@@ -303,7 +326,7 @@
           </div>
 
           <div
-            v-if="!gridData.students.length"
+            v-if="!gradedTotal"
             class="flex min-h-[12rem] flex-col items-center justify-center px-6 py-12 text-center"
           >
             <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
@@ -317,9 +340,10 @@
           <FikrPagination
             :page="gradedPage"
             :pages="gradedTotalPages"
-            :show="gradedStudents.length > 0"
+            :show="gradedTotal > 0"
             @update:page="goToGradedPage"
           />
+          </div>
         </div>
       </div>
     </div>
@@ -327,7 +351,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -337,12 +361,9 @@ import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import ListViewModeToggle from '@/components/ListViewModeToggle.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { useListViewMode } from '@/composables/useListViewMode'
-import { scheduleService } from '@/services/schedule.service'
 import authService from '@/services/auth.service'
-import { groupService } from '@/services/group.service'
-import gradedAssessmentService from '@/services/graded-assessment.service'
 import gradedCriterionMarksService, {
   type CriterionMarksGridData,
 } from '@/services/graded-criterion-marks.service'
@@ -355,8 +376,7 @@ const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
 const currentUser = ref(authService.getStoredUser())
-const schoolId = computed(() => currentUser.value?.school_id ?? 1)
-const loadingGroups = ref(false)
+const schoolId = computed(() => String(currentUser.value?.school_id ?? ''))
 
 type GroupRow = {
   id: string
@@ -366,8 +386,38 @@ type GroupRow = {
   gradedCoursesCount: number
 }
 
-const teacherGroups = ref<GroupRow[]>([])
 const selectedGroup = ref<GroupRow | null>(null)
+const {
+  items: paginatedGroups,
+  total: groupsTotal,
+  loading: loadingGroups,
+  currentPage: groupsPage,
+  totalPages: groupsTotalPages,
+  goToPage: goToGroupsPage,
+} = useServerPagination<GroupRow, { school_id: string }>(
+  async (params) => {
+    const page = await gradedCriterionMarksService.listGroups({
+      schoolId: params.school_id,
+      page: params.page,
+      limit: params.limit,
+    })
+    return {
+      ...page,
+      items: (page.items || []).map((group) => ({
+        id: group.id,
+        name: group.name,
+        ageGroup: formatGroupAgeRangeLabel(
+          group.age_range_min,
+          group.age_range_max,
+          t('groupManagement.years'),
+        ),
+        studentsCount: group.studentsCount,
+        gradedCoursesCount: group.gradedCoursesCount,
+      })),
+    }
+  },
+  { filters: () => ({ school_id: schoolId.value }) },
+)
 
 type CourseRow = {
   id: string
@@ -377,23 +427,95 @@ type CourseRow = {
   criteriaCount: number | null
 }
 
-const groupGradedCourses = ref<CourseRow[]>([])
-const loadingCourses = ref(false)
 const selectedCourse = ref<CourseRow | null>(null)
+const {
+  items: paginatedCourses,
+  total: coursesTotal,
+  loading: loadingCourses,
+  currentPage: coursesPage,
+  totalPages: coursesTotalPages,
+  goToPage: goToCoursesPage,
+} = useServerPagination<CourseRow, { school_id: string; group_id: string }>(
+  (params) =>
+    gradedCriterionMarksService.listGroupCourses({
+      schoolId: params.school_id,
+      groupId: params.group_id,
+      page: params.page,
+      limit: params.limit,
+    }),
+  {
+    filters: () => ({
+      school_id: schoolId.value,
+      group_id: selectedGroup.value?.id || '',
+    }),
+    enabled: () => Boolean(selectedGroup.value?.id),
+  },
+)
 
 const gridData = ref<CriterionMarksGridData | null>(null)
-// Paginate the displayed student rows (same control as /students); totals/marks use the full list.
-const gradedStudents = computed(() => gridData.value?.students ?? [])
-const {
-  currentPage: gradedPage,
-  paginatedItems: paginatedStudents,
-  totalPages: gradedTotalPages,
-  goToPage: goToGradedPage,
-} = useClientPagination(gradedStudents)
 const marksLocal = ref<Record<string, string>>({})
-const loadingGrid = ref(false)
+/** Edits kept across student pages so save does not clear marks off the current page. */
+const dirtyMarks = ref<Record<string, string>>({})
+const serverMarks = ref<Record<string, string | null>>({})
 const gridError = ref('')
 const savingMarks = ref(false)
+let gridRequest = 0
+
+const {
+  items: paginatedStudents,
+  total: gradedTotal,
+  loading: loadingGrid,
+  currentPage: gradedPage,
+  totalPages: gradedTotalPages,
+  goToPage: goToGradedPage,
+  reload: reloadMarksGrid,
+} = useServerPagination<CriterionMarksGridData['students'][number], { school_id: string; group_id: string; course_id: string }>(
+  async (params) => {
+    const seq = ++gridRequest
+    const data = await gradedCriterionMarksService.getGrid({
+      schoolId: params.school_id,
+      groupId: params.group_id,
+      courseId: params.course_id,
+      page: params.page,
+      limit: params.limit,
+    })
+    if (seq !== gridRequest) {
+      return { items: [], total: 0, page: params.page, limit: params.limit, pages: 1 }
+    }
+    gridData.value = data
+    serverMarks.value = { ...serverMarks.value, ...(data.marks || {}) }
+    const next: Record<string, string> = {}
+    for (const student of data.students || []) {
+      for (const criterion of data.criteria || []) {
+        const key = markKey(student.id, criterion.id)
+        const dirty = dirtyMarks.value[key]
+        const saved = data.marks?.[key]
+        next[key] = dirty != null ? dirty : saved == null || saved === '' ? '' : String(saved)
+      }
+    }
+    marksLocal.value = next
+    const students = data.items ?? data.students ?? []
+    return {
+      items: students,
+      total: data.total ?? students.length,
+      page: data.page ?? params.page,
+      limit: data.limit ?? params.limit,
+      pages: data.pages ?? 1,
+    }
+  },
+  {
+    filters: () => ({
+      school_id: schoolId.value,
+      group_id: selectedGroup.value?.id || '',
+      course_id: selectedCourse.value?.id || '',
+    }),
+    enabled: () => Boolean(selectedGroup.value?.id && selectedCourse.value?.id),
+    onError: (err) => {
+      gridData.value = null
+      gridError.value = apiErrorText(err, t('gradedMarksGrid.loadFailed'))
+    },
+  },
+)
 
 const marksHeaderSubtitle = computed(() => {
   if (!selectedGroup.value) return t('gradedMarksGrid.selectGroup')
@@ -451,147 +573,21 @@ function formatDay(day: string) {
 function resetGrid() {
   gridData.value = null
   marksLocal.value = {}
+  dirtyMarks.value = {}
+  serverMarks.value = {}
   gridError.value = ''
 }
 
-const mapGroupToRow = (group: {
-  id: string
-  name: string
-  age_range_min?: number
-  age_range_max?: number
-  students?: unknown[]
-}): GroupRow => ({
-  id: group.id,
-  name: group.name,
-  ageGroup: formatGroupAgeRangeLabel(
-    group.age_range_min,
-    group.age_range_max,
-    t('groupManagement.years'),
-  ),
-  studentsCount: group.students ? group.students.length : 0,
-  gradedCoursesCount: 0,
-})
-
-async function countGradedCoursesForGroup(groupId: string): Promise<number> {
-  const schedules = await scheduleService.getSchedulesByGroup(groupId)
-  let rows = schedules.filter((s) => s.course_id && s.course?.course_kind === 'graded')
-  if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
-    rows = rows.filter((s) => s.teacher_id === currentUser.value!.id)
-  }
-  return new Set(rows.map((s) => s.course_id)).size
-}
-
-async function loadGroups() {
-  currentUser.value = authService.getStoredUser()
-  loadingGroups.value = true
-  try {
-    if (!currentUser.value) {
-      teacherGroups.value = []
-      return
-    }
-    if (currentUser.value.role === 'admin') {
-      const all = await groupService.getAll()
-      teacherGroups.value = all.map(mapGroupToRow)
-    } else if (currentUser.value.role === 'teacher' && currentUser.value.id) {
-      const assigned = await scheduleService.getGroupsForTeacher(currentUser.value.id)
-      teacherGroups.value = assigned.map(mapGroupToRow)
-    } else {
-      teacherGroups.value = []
-    }
-    await Promise.all(
-      teacherGroups.value.map(async (row) => {
-        row.gradedCoursesCount = await countGradedCoursesForGroup(row.id)
-      }),
-    )
-  } catch {
-    teacherGroups.value = []
-  } finally {
-    loadingGroups.value = false
-  }
-}
-
-async function selectGroup(group: GroupRow) {
-  selectedGroup.value = group
-  selectedCourse.value = null
+function selectGroup(group: GroupRow) {
   resetGrid()
-  loadingCourses.value = true
-  try {
-    const schedules = await scheduleService.getSchedulesByGroup(group.id)
-    let rows = schedules.filter((s) => s.course_id && s.course?.course_kind === 'graded')
-    if (currentUser.value?.role === 'teacher' && currentUser.value?.id) {
-      rows = rows.filter((s) => s.teacher_id === currentUser.value!.id)
-    }
-    const map = new Map<string, CourseRow>()
-    for (const s of rows) {
-      const cid = s.course_id as string
-      if (map.has(cid)) continue
-      map.set(cid, {
-        id: cid,
-        title: s.course?.name || s.course?.title || 'Course',
-        time: `${s.start_time} – ${s.end_time}`,
-        day: s.day_of_week,
-        criteriaCount: null,
-      })
-    }
-    groupGradedCourses.value = [...map.values()]
-    await Promise.all(
-      groupGradedCourses.value.map(async (c) => {
-        try {
-          const g = await gradedAssessmentService.getByCourseId(c.id, schoolId.value)
-          c.criteriaCount =
-            g.graded_scheme?.semesters?.reduce(
-              (acc, sem) => acc + (sem.criteria?.length || 0),
-              0,
-            ) ?? 0
-        } catch {
-          c.criteriaCount = 0
-        }
-      }),
-    )
-  } finally {
-    loadingCourses.value = false
-  }
+  selectedCourse.value = null
+  selectedGroup.value = group
 }
 
-async function selectCourse(course: CourseRow) {
+function selectCourse(course: CourseRow) {
+  resetGrid()
   selectedCourse.value = course
-  await loadMarksGrid()
 }
-
-async function loadMarksGrid() {
-  if (!selectedGroup.value || !selectedCourse.value) return
-  loadingGrid.value = true
-  gridError.value = ''
-  try {
-    const data = await gradedCriterionMarksService.getGrid({
-      schoolId: schoolId.value,
-      groupId: selectedGroup.value.id,
-      courseId: selectedCourse.value.id,
-    })
-    gridData.value = data
-    const next: Record<string, string> = {}
-    for (const s of data.students) {
-      for (const c of data.criteria) {
-        const k = markKey(s.id, c.id)
-        const v = data.marks[k]
-        next[k] = v == null || v === '' ? '' : String(v)
-      }
-    }
-    marksLocal.value = next
-  } catch (e: unknown) {
-    gridData.value = null
-    gridError.value = (e as { message?: string })?.message || t('gradedMarksGrid.loadFailed')
-  } finally {
-    loadingGrid.value = false
-  }
-}
-
-watch(
-  () => [selectedCourse.value?.id, selectedGroup.value?.id],
-  () => {
-    if (selectedCourse.value && selectedGroup.value) void loadMarksGrid()
-  },
-)
 
 function goBack() {
   if (selectedCourse.value) {
@@ -601,8 +597,32 @@ function goBack() {
   }
   if (selectedGroup.value) {
     selectedGroup.value = null
-    groupGradedCourses.value = []
   }
+}
+
+function onMarkInput(studentId: string, criterionId: string, value: string) {
+  const key = markKey(studentId, criterionId)
+  marksLocal.value = { ...marksLocal.value, [key]: value }
+  dirtyMarks.value = { ...dirtyMarks.value, [key]: value }
+}
+
+function apiErrorText(error: unknown, fallback: string): string {
+  const ax = error as { response?: { data?: { message?: string | string[] } } }
+  const raw = ax.response?.data?.message
+  if (Array.isArray(raw)) {
+    const text = raw.map((part) => String(part)).filter(Boolean).join(' ')
+    if (text) return text
+  } else if (typeof raw === 'string' && raw.trim()) {
+    return raw.trim()
+  }
+  return fallback
+}
+
+function storedMark(studentId: string, criterionId: string): number | null {
+  const raw = serverMarks.value[markKey(studentId, criterionId)]
+  if (raw == null || raw === '') return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
 }
 
 async function saveMarks() {
@@ -610,29 +630,45 @@ async function saveMarks() {
   savingMarks.value = true
   gridError.value = ''
   try {
-    const entries = []
-    for (const s of gridData.value.students) {
-      for (const c of gridData.value.criteria) {
-        entries.push({
-          student_id: s.id,
-          graded_criterion_id: c.id,
-          mark: parseMarkInput(marksLocal.value[markKey(s.id, c.id)] ?? ''),
-        })
+    const criteriaById = new Map(gridData.value.criteria.map((criterion) => [criterion.id, criterion]))
+    const entries: { student_id: string; graded_criterion_id: string; mark: number | null }[] = []
+    for (const [key, raw] of Object.entries(dirtyMarks.value)) {
+      const splitAt = key.indexOf(':::')
+      if (splitAt < 0) continue
+      const studentId = key.slice(0, splitAt)
+      const criterionId = key.slice(splitAt + 3)
+      const criterion = criteriaById.get(criterionId)
+      const next = parseMarkInput(raw)
+      if (criterion) {
+        const maxMarks = Number(criterion.max_marks)
+        if (next != null && (next < 0 || next > maxMarks + 0.001)) {
+          gridError.value = t('gradedMarksGrid.markOutOfRange', { label: criterion.label, max: criterion.max_marks })
+          return
+        }
       }
+      const prev = storedMark(studentId, criterionId)
+      if (next === prev) continue
+      entries.push({
+        student_id: studentId,
+        graded_criterion_id: criterionId,
+        mark: next,
+      })
     }
-    await gradedCriterionMarksService.saveGrid(schoolId.value, {
-      group_id: selectedGroup.value.id,
-      course_id: selectedCourse.value.id,
-      entries,
-    })
+    if (entries.length) {
+      await gradedCriterionMarksService.saveGrid(schoolId.value, {
+        group_id: selectedGroup.value.id,
+        course_id: selectedCourse.value.id,
+        entries,
+      })
+    }
     feedback.saved(t('gradedMarksGrid.savedOk'))
-    await loadMarksGrid()
+    dirtyMarks.value = {}
+    serverMarks.value = {}
+    await reloadMarksGrid()
   } catch (e: unknown) {
-    gridError.value = (e as { message?: string })?.message || t('gradedMarksGrid.saveFailed')
+    gridError.value = apiErrorText(e, t('gradedMarksGrid.saveFailed'))
   } finally {
     savingMarks.value = false
   }
 }
-
-void loadGroups()
 </script>

@@ -34,14 +34,14 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !loaded && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="rows.length">
+          <template v-else-if="totalRows > 0 || hasActiveFilters">
             <p
-              v-if="filteredRows.length === 0"
+              v-if="paginatedRows.length === 0"
               class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
               {{ $t('paymentSettings.noChargeFilterResults') }}
@@ -134,7 +134,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredRows.length > 0"
+              :show="totalRows > 0"
               @update:page="goToPage"
             />
           </template>
@@ -251,8 +251,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
@@ -265,12 +266,14 @@ import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { authService } from '@/services'
-import paymentConfigService, { type PaymentCatalogRow } from '@/services/payment-config.service'
+import paymentConfigService, { type CatalogListParams, type PaymentCatalogRow } from '@/services/payment-config.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 const schoolId = computed(() => {
@@ -278,8 +281,6 @@ const schoolId = computed(() => {
   return id != null && String(id).trim() !== '' ? String(id) : ''
 })
 
-const rows = ref<PaymentCatalogRow[]>([])
-const loading = ref(true)
 const flashError = ref('')
 const showFilters = ref(false)
 const searchQuery = ref('')
@@ -299,26 +300,28 @@ const hasActiveFilters = computed(() =>
   Boolean(searchQuery.value.trim()) || statusFilter.value !== 'all',
 )
 
-const filteredRows = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return rows.value.filter((row) => {
-    if (statusFilter.value === 'active' && !row.is_active) return false
-    if (statusFilter.value === 'inactive' && row.is_active) return false
-    if (q && !`${row.label} ${row.code}`.toLowerCase().includes(q)) return false
-    return true
-  })
-})
-
 const {
+  items: paginatedRows,
+  total: totalRows,
+  loading,
+  loaded,
   currentPage,
-  paginatedItems: paginatedRows,
   totalPages,
   goToPage,
-} = useClientPagination(filteredRows)
-
-watch([searchQuery, statusFilter], () => {
-  currentPage.value = 1
-})
+  reload,
+} = useServerPagination<PaymentCatalogRow, CatalogListParams>(
+  (params) => paymentConfigService.listChargeTypesPage({ ...params, schoolId: schoolId.value }),
+  {
+    filters: () => ({
+      q: searchQuery.value,
+      status: statusFilter.value,
+    }),
+    debounceKeys: ['q'],
+    onError: (err) => {
+      flashError.value = (err as { message?: string })?.message || t('paymentSettings.loadError')
+    },
+  },
+)
 
 function clearFilters() {
   searchQuery.value = ''
@@ -367,16 +370,9 @@ function closeForm() {
   resetForm()
 }
 
-async function load() {
-  loading.value = true
+function load() {
   flashError.value = ''
-  try {
-    rows.value = await paymentConfigService.listChargeTypes(schoolId.value)
-  } catch (e: unknown) {
-    flashError.value = (e as { message?: string })?.message || t('paymentSettings.loadError')
-  } finally {
-    loading.value = false
-  }
+  return reload()
 }
 
 async function saveForm() {
@@ -388,18 +384,17 @@ async function saveForm() {
       label: form.value.label.trim(),
     }
     if (editingRow.value) {
-      const updated = await paymentConfigService.updateChargeType(editingRow.value.id, payload)
-      const i = rows.value.findIndex((x) => x.id === editingRow.value?.id)
-      if (i !== -1) rows.value[i] = updated
+      await paymentConfigService.updateChargeType(editingRow.value.id, payload)
     } else {
-      const row = await paymentConfigService.createChargeType(schoolId.value, {
+      await paymentConfigService.createChargeType(schoolId.value, {
         ...payload,
         value: null,
       })
-      rows.value = [...rows.value, row]
     }
+    await reload()
     showForm.value = false
     resetForm()
+    feedback.success(t('common.savedSuccessfully'))
   } catch (e: unknown) {
     formError.value = (e as { message?: string })?.message || t('paymentSettings.saveError')
   } finally {
@@ -410,22 +405,48 @@ async function saveForm() {
 async function onSetActive(row: PaymentCatalogRow, is_active: boolean) {
   closeMenu()
   try {
-    const updated = await paymentConfigService.updateChargeType(row.id, { is_active })
-    const i = rows.value.findIndex((x) => x.id === row.id)
-    if (i !== -1) rows.value[i] = updated
+    await paymentConfigService.updateChargeType(row.id, { is_active })
+    await reload()
   } catch {
     await load()
   }
 }
 
+function apiErrorText(error: unknown, fallback: string): string {
+  const ax = error as { response?: { data?: { message?: string | string[] } }; message?: string }
+  const raw = ax.response?.data?.message
+  if (Array.isArray(raw)) {
+    const text = raw.map((part) => String(part)).filter(Boolean).join(' ')
+    if (text) return text
+  } else if (typeof raw === 'string' && raw.trim() && !raw.startsWith('Request failed')) {
+    return raw.trim()
+  }
+  return fallback
+}
+
 async function onDelete(row: PaymentCatalogRow) {
   closeMenu()
-  if (!confirm(t('paymentSettings.confirmDelete'))) return
+  try {
+    const names = await paymentConfigService.packagesUsingChargeType(row.id)
+    if (names.length) {
+      flashError.value = t('paymentSettings.chargeUsedInPackage', { names: names.join(', ') })
+      return
+    }
+  } catch (e: unknown) {
+    flashError.value = apiErrorText(e, t('paymentSettings.saveError'))
+    return
+  }
+  if (!(await feedback.confirm({
+    title: t('common.delete'),
+    message: t('paymentSettings.confirmDelete'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  }))) return
   try {
     await paymentConfigService.deleteChargeType(row.id)
-    rows.value = rows.value.filter((x) => x.id !== row.id)
+    await reload()
   } catch (e: unknown) {
-    flashError.value = (e as { message?: string })?.message || t('paymentSettings.saveError')
+    flashError.value = apiErrorText(e, t('paymentSettings.saveError'))
   }
 }
 

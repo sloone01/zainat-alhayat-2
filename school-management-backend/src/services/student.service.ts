@@ -9,8 +9,12 @@ import { Group } from '../entities/group.entity';
 import { StudentPaymentService } from './student-payment.service';
 import { UserService } from './user.service';
 import { ParentService, type ParentRelationship } from './parent.service';
-import { sanitizeUserDeep, assertSameSchool } from '../common/security/school-access';
-import type { RegisterStudentInAppDto } from '../dto/student-register.dto';
+import { sanitizeUserDeep, assertSameSchool, resolveActorSchoolId } from '../common/security/school-access';
+import type {
+  RegisterStudentInAppDto,
+  SaveStudentRegisterDraftDto,
+  SaveStudentRegisterDraftParentsDto,
+} from '../dto/student-register.dto';
 import { applyBilingualName, hasCompleteBilingualName, normalizeCivilId } from '../common/identity/bilingual-name';
 
 export type StudentListFeeLevel = 'all' | 'with' | 'without';
@@ -25,6 +29,7 @@ export interface StudentListQuery {
   group_id?: string;
   bus_id?: string;
   age_group?: StudentAgeGroup;
+  status?: 'draft' | 'active' | 'inactive';
 }
 
 /** Same bands as the students screen: toddlers 3–4, preschool 4–5, kindergarten 5–6 (inclusive). */
@@ -60,6 +65,8 @@ export interface CreateStudentDto {
   // Additional fields
   secondName?: string;
   thirdName?: string;
+  secondNameEn?: string | null;
+  thirdNameEn?: string | null;
   nationality?: string;
   studentId?: string;
   civil_id?: string | null;
@@ -68,6 +75,8 @@ export interface CreateStudentDto {
   userId?: string;
   school_id?: string;
   payment_level_id?: string | null;
+  status?: 'draft' | 'active' | 'inactive';
+  tribe?: string | null;
 }
 
 export interface UpdateStudentDto {
@@ -88,6 +97,8 @@ export interface UpdateStudentDto {
   // Additional fields
   secondName?: string;
   thirdName?: string;
+  secondNameEn?: string | null;
+  thirdNameEn?: string | null;
   nationality?: string;
   studentId?: string;
   civil_id?: string | null;
@@ -95,6 +106,8 @@ export interface UpdateStudentDto {
   parentIds?: string[];
   userId?: string;
   payment_level_id?: string | null;
+  status?: 'draft' | 'active' | 'inactive';
+  tribe?: string | null;
 }
 
 @Injectable()
@@ -115,13 +128,39 @@ export class StudentService {
     private readonly parentService: ParentService,
   ) {}
 
+  private assertBirthDateNotFuture(dateOfBirth: string | Date | null | undefined): void {
+    if (dateOfBirth == null || dateOfBirth === '') return;
+    const today = new Date();
+    const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+
+    let birthLocal: number;
+    if (typeof dateOfBirth === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateOfBirth.trim())) {
+      const [y, m, day] = dateOfBirth.trim().slice(0, 10).split('-').map(Number);
+      birthLocal = new Date(y, m - 1, day).getTime();
+    } else {
+      const d = dateOfBirth instanceof Date ? dateOfBirth : new Date(dateOfBirth);
+      if (Number.isNaN(d.getTime())) {
+        throw new BadRequestException('Invalid date of birth');
+      }
+      birthLocal = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    }
+
+    if (birthLocal > todayLocal) {
+      throw new BadRequestException('Date of birth cannot be in the future');
+    }
+  }
+
   /**
    * A civil ID identifies one real person. Reject it if it's already used by another
    * student, or by any user (parent/staff/student login) — never let two different
    * people end up sharing one, whether the collision happens on students, parents or
    * users. `excludeStudentId` lets update() ignore the student's own current row.
    */
-  private async assertCivilIdAvailable(civilId: string | null | undefined, excludeStudentId?: string): Promise<void> {
+  private async assertCivilIdAvailable(
+    civilId: string | null | undefined,
+    excludeStudentId?: string,
+    options?: { actorSchoolId?: string | null },
+  ): Promise<void> {
     const civil = normalizeCivilId(civilId);
     if (!civil) return;
 
@@ -133,7 +172,22 @@ export class StudentService {
     }
     const dupStudent = await qb.getOne();
     if (dupStudent) {
-      throw new ConflictException('Another student already has this civil ID');
+      if (dupStudent.status === 'draft') {
+        const sameSchool =
+          options?.actorSchoolId != null &&
+          dupStudent.school_id != null &&
+          String(dupStudent.school_id) === String(options.actorSchoolId);
+        if (!sameSchool) {
+          throw new ConflictException(
+            'Registration for this civil ID is already in progress at another school',
+          );
+        }
+      }
+      throw new ConflictException(
+        dupStudent.status === 'draft'
+          ? 'Another student already has this civil ID'
+          : 'This civil ID is already registered',
+      );
     }
 
     const dupUser = await this.userRepository.findOne({ where: { civil_id: civil } });
@@ -142,8 +196,168 @@ export class StudentService {
     }
   }
 
+  /** Staff / public civil-ID lookup for the register & enrollment forms. */
+  async lookupByCivilId(
+    civilId: string,
+    options?: { schoolId?: string | null; publicMode?: boolean },
+  ): Promise<{
+    exists: boolean;
+    same_school: boolean;
+    status: 'draft' | 'active' | 'inactive' | null;
+    already_registered: boolean;
+    allow_new: boolean;
+    registration_in_progress_elsewhere: boolean;
+    student: null | {
+      id: string;
+      school_id: string | null;
+      status: string;
+      first_name_ar: string | null;
+      first_name_en: string | null;
+      last_name_ar: string | null;
+      last_name_en: string | null;
+      secondName: string | null;
+      thirdName: string | null;
+      secondNameEn: string | null;
+      thirdNameEn: string | null;
+      tribe: string | null;
+      civil_id: string | null;
+      gender: string;
+      nationality: string | null;
+      dateOfBirth: Date;
+      photo: string | null;
+    };
+  }> {
+    const civil = normalizeCivilId(civilId);
+    if (!civil) {
+      return {
+        exists: false,
+        same_school: false,
+        status: null,
+        already_registered: false,
+        allow_new: true,
+        registration_in_progress_elsewhere: false,
+        student: null,
+      };
+    }
+
+    const row = await this.studentRepository
+      .createQueryBuilder('s')
+      .where('s.civil_id = :civil', { civil })
+      .getOne();
+
+    if (!row) {
+      return {
+        exists: false,
+        same_school: false,
+        status: null,
+        already_registered: false,
+        allow_new: true,
+        registration_in_progress_elsewhere: false,
+        student: null,
+      };
+    }
+
+    const sameSchool =
+      options?.schoolId != null &&
+      row.school_id != null &&
+      String(row.school_id) === String(options.schoolId);
+
+    const status = (row.status || 'active') as 'draft' | 'active' | 'inactive';
+    const payload = {
+      id: row.id,
+      school_id: row.school_id,
+      status,
+      first_name_ar: row.first_name_ar,
+      first_name_en: row.first_name_en,
+      last_name_ar: row.last_name_ar,
+      last_name_en: row.last_name_en,
+      secondName: row.secondName ?? null,
+      thirdName: row.thirdName ?? null,
+      secondNameEn: row.secondNameEn ?? null,
+      thirdNameEn: row.thirdNameEn ?? null,
+      tribe: row.tribe ?? null,
+      civil_id: row.civil_id,
+      gender: row.gender,
+      nationality: row.nationality ?? null,
+      dateOfBirth: row.dateOfBirth,
+      photo: row.photo ?? null,
+    };
+
+    if (options?.publicMode) {
+      // Outer form must NOT load staff-register student drafts — only enrollment drafts
+      // (handled separately) or already-registered active students.
+      if (status === 'draft') {
+        return {
+          exists: true,
+          same_school: sameSchool,
+          status,
+          already_registered: false,
+          allow_new: true,
+          registration_in_progress_elsewhere: false,
+          student: null,
+        };
+      }
+      if (sameSchool) {
+        return {
+          exists: true,
+          same_school: true,
+          status,
+          already_registered: status === 'active' || status === 'inactive',
+          allow_new: false,
+          registration_in_progress_elsewhere: false,
+          student: status === 'active' || status === 'inactive' ? null : payload,
+        };
+      }
+      return {
+        exists: true,
+        same_school: false,
+        status,
+        already_registered: false,
+        allow_new: true,
+        registration_in_progress_elsewhere: false,
+        student: null,
+      };
+    }
+
+    // Staff register: only load drafts that belong to this school.
+    if (status === 'draft') {
+      if (sameSchool) {
+        return {
+          exists: true,
+          same_school: true,
+          status,
+          already_registered: false,
+          allow_new: false,
+          registration_in_progress_elsewhere: false,
+          student: payload,
+        };
+      }
+      return {
+        exists: true,
+        same_school: false,
+        status,
+        already_registered: false,
+        allow_new: false,
+        registration_in_progress_elsewhere: true,
+        student: null,
+      };
+    }
+
+    // Active / inactive — already registered (any school). Do not load details.
+    return {
+      exists: true,
+      same_school: sameSchool,
+      status,
+      already_registered: true,
+      allow_new: false,
+      registration_in_progress_elsewhere: false,
+      student: null,
+    };
+  }
+
   async create(createStudentDto: CreateStudentDto, actorSchoolId?: string | null): Promise<Student> {
-    if (!createStudentDto.payment_level_id?.trim()) {
+    const asDraft = createStudentDto.status === 'draft';
+    if (!asDraft && !createStudentDto.payment_level_id?.trim()) {
       throw new BadRequestException(
         'Grade (payment level) is required when registering a student',
       );
@@ -155,13 +369,17 @@ export class StudentService {
       throw new BadRequestException('school_id is required');
     }
 
-    await this.assertCivilIdAvailable(createStudentDto.civil_id);
+    await this.assertCivilIdAvailable(createStudentDto.civil_id, undefined, {
+      actorSchoolId: school_id,
+    });
+    this.assertBirthDateNotFuture(createStudentDto.dateOfBirth);
 
     const names = applyBilingualName(createStudentDto);
     const student = this.studentRepository.create({
       ...createStudentDto,
       ...names,
       school_id,
+      status: createStudentDto.status || 'active',
     });
 
     // Set user if provided
@@ -184,8 +402,153 @@ export class StudentService {
   }
 
   /**
+   * Staff register wizard step 1: persist student identity as `status=draft`
+   * (no group / parent / login yet). Re-saving the same draft updates it.
+   */
+  async saveRegisterDraft(dto: SaveStudentRegisterDraftDto, actor: User): Promise<Student> {
+    const schoolId = resolveActorSchoolId(actor);
+    if (schoolId == null) {
+      throw new BadRequestException('school_id is required');
+    }
+    if (!hasCompleteBilingualName(dto)) {
+      throw new BadRequestException('Student Arabic and English first and last names are required');
+    }
+    if (
+      !dto.secondName?.trim() ||
+      !dto.thirdName?.trim() ||
+      !dto.secondNameEn?.trim() ||
+      !dto.thirdNameEn?.trim()
+    ) {
+      throw new BadRequestException(
+        'Student Arabic and English first, second, third, and family names are required',
+      );
+    }
+
+    const names = applyBilingualName(dto);
+    const civil_id = dto.civil_id?.trim() || undefined;
+    const studentId = dto.studentId?.trim() || civil_id || undefined;
+    this.assertBirthDateNotFuture(dto.dateOfBirth);
+    const payload = {
+      ...names,
+      secondName: dto.secondName?.trim() || undefined,
+      thirdName: dto.thirdName?.trim() || undefined,
+      secondNameEn: dto.secondNameEn?.trim() || null,
+      thirdNameEn: dto.thirdNameEn?.trim() || null,
+      dateOfBirth: new Date(dto.dateOfBirth),
+      gender: dto.gender,
+      nationality: dto.nationality?.trim() || undefined,
+      studentId,
+      civil_id: civil_id || null,
+      photo: dto.photo || undefined,
+      notes: dto.notes?.trim() || undefined,
+      address: dto.address?.trim() || '-',
+      emergencyContact: dto.emergencyContact?.trim() || '—',
+      medicalInfo: dto.medicalInfo?.trim() || undefined,
+      tribe: dto.tribe?.trim() || null,
+    };
+
+    const draftId = dto.draftStudentId?.trim() || '';
+    if (draftId) {
+      const existing = await this.studentRepository.findOne({ where: { id: draftId } });
+      if (!existing) {
+        throw new NotFoundException(`Student with ID ${draftId} not found`);
+      }
+      assertSameSchool(actor, existing.school_id);
+      if (existing.status !== 'draft') {
+        throw new BadRequestException('Only a draft student can be updated from the register wizard');
+      }
+      await this.assertCivilIdAvailable(civil_id, existing.id, { actorSchoolId: schoolId });
+      Object.assign(existing, payload, { status: 'draft' as const });
+      return sanitizeUserDeep(await this.studentRepository.save(existing));
+    }
+
+    return this.create(
+      {
+        ...payload,
+        payment_level_id: null,
+        status: 'draft',
+        school_id: schoolId,
+      },
+      schoolId,
+    );
+  }
+
+  /**
+   * Guardian step: for each parent, link an existing row or create `status=draft`,
+   * then attach to the draft student. Never creates a login here.
+   */
+  async saveRegisterDraftParents(
+    dto: SaveStudentRegisterDraftParentsDto,
+    actor: User,
+  ): Promise<Student> {
+    const schoolId = resolveActorSchoolId(actor);
+    if (schoolId == null) {
+      throw new BadRequestException('school_id is required');
+    }
+    const student = await this.studentRepository.findOne({
+      where: { id: dto.draftStudentId },
+    });
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${dto.draftStudentId} not found`);
+    }
+    assertSameSchool(actor, student.school_id);
+    if (student.status !== 'draft') {
+      throw new BadRequestException('Only a draft student can receive draft parents from the register wizard');
+    }
+    if (!dto.parents?.length) {
+      throw new BadRequestException('A parent is required');
+    }
+
+    for (const item of dto.parents) {
+      if (!hasCompleteBilingualName(item)) {
+        throw new BadRequestException('Parent Arabic and English first and last names are required');
+      }
+      const relationship = item.relationship || 'guardian';
+      const existing = await this.parentService.findExistingParent({
+        civil_id: item.civil_id,
+        email: item.email,
+        phone: item.phone,
+      });
+      if (existing) {
+        // Already in the system — only add the link; do not change their status.
+        await this.parentService.assignToStudent(
+          existing.id,
+          student.id,
+          schoolId,
+          relationship,
+        );
+        continue;
+      }
+      await this.parentService.create(
+        {
+          ...applyBilingualName(item),
+          civil_id: item.civil_id,
+          email: item.email?.trim() || undefined,
+          phone: item.phone?.trim() || undefined,
+          tribe: item.tribe,
+          workplace: item.workplace,
+          workPhone: item.workPhone,
+          maritalStatus: item.maritalStatus,
+          studentIds: [student.id],
+          relationship,
+          status: 'draft',
+        },
+        schoolId,
+      );
+    }
+
+    if (dto.emergencyContact?.trim()) {
+      student.emergencyContact = dto.emergencyContact.trim();
+      await this.studentRepository.save(student);
+    }
+
+    return this.findOne(student.id);
+  }
+
+  /**
    * Staff in-app register: student + parent (new or existing) + optional logins + class group.
    * Uses `students` create — does not require the `users` create claim.
+   * When `draftStudentId` is set, updates that draft and activates it.
    */
   async registerInApp(dto: RegisterStudentInAppDto, actor: User): Promise<Student> {
     const group = await this.groupRepository.findOne({ where: { id: dto.groupId } });
@@ -226,34 +589,88 @@ export class StudentService {
     if (!hasCompleteBilingualName(dto)) {
       throw new BadRequestException('Student Arabic and English first and last names are required');
     }
+    if (
+      !dto.secondName?.trim() ||
+      !dto.thirdName?.trim() ||
+      !dto.secondNameEn?.trim() ||
+      !dto.thirdNameEn?.trim()
+    ) {
+      throw new BadRequestException(
+        'Student Arabic and English first, second, third, and family names are required',
+      );
+    }
 
     const schoolId = String(group.school_id);
     const emergencyContact =
       (dto.emergencyContact || parentInput?.phone || '').trim() || '—';
 
+    this.assertBirthDateNotFuture(dto.dateOfBirth);
+
     const studentNames = applyBilingualName(dto);
-    const student = await this.create(
-      {
+    const draftId = dto.draftStudentId?.trim() || '';
+    let student: Student;
+
+    if (draftId) {
+      const existing = await this.studentRepository.findOne({ where: { id: draftId } });
+      if (!existing) {
+        throw new NotFoundException(`Student with ID ${draftId} not found`);
+      }
+      assertSameSchool(actor, existing.school_id);
+      if (existing.status !== 'draft') {
+        throw new BadRequestException('Only a draft student can be completed from the register wizard');
+      }
+      await this.assertCivilIdAvailable(dto.civil_id, existing.id, { actorSchoolId: schoolId });
+      Object.assign(existing, {
         ...studentNames,
         secondName: dto.secondName?.trim() || undefined,
         thirdName: dto.thirdName?.trim() || undefined,
+        secondNameEn: dto.secondNameEn?.trim() || null,
+        thirdNameEn: dto.thirdNameEn?.trim() || null,
         dateOfBirth: new Date(dto.dateOfBirth),
         gender: dto.gender,
         address: dto.address?.trim() || '-',
         phone: dto.phone?.trim() || undefined,
-        email: studentEmail || undefined,
+        email: studentEmail || existing.email || undefined,
         emergencyContact,
         medicalInfo: dto.medicalInfo?.trim() || undefined,
         notes: dto.notes?.trim() || undefined,
         nationality: dto.nationality?.trim() || undefined,
         studentId: dto.studentId?.trim() || undefined,
-        civil_id: dto.civil_id?.trim() || undefined,
+        civil_id: dto.civil_id?.trim() || null,
         photo: dto.photo || undefined,
+        tribe: dto.tribe?.trim() || null,
         payment_level_id: group.level_id,
-        school_id: schoolId,
-      },
-      schoolId,
-    );
+        status: 'draft' as const,
+      });
+      student = await this.studentRepository.save(existing);
+    } else {
+      student = await this.create(
+        {
+          ...studentNames,
+          secondName: dto.secondName?.trim() || undefined,
+          thirdName: dto.thirdName?.trim() || undefined,
+          secondNameEn: dto.secondNameEn?.trim() || null,
+          thirdNameEn: dto.thirdNameEn?.trim() || null,
+          tribe: dto.tribe?.trim() || null,
+          dateOfBirth: new Date(dto.dateOfBirth),
+          gender: dto.gender,
+          address: dto.address?.trim() || '-',
+          phone: dto.phone?.trim() || undefined,
+          email: studentEmail || undefined,
+          emergencyContact,
+          medicalInfo: dto.medicalInfo?.trim() || undefined,
+          notes: dto.notes?.trim() || undefined,
+          nationality: dto.nationality?.trim() || undefined,
+          studentId: dto.studentId?.trim() || undefined,
+          civil_id: dto.civil_id?.trim() || undefined,
+          photo: dto.photo || undefined,
+          payment_level_id: group.level_id,
+          school_id: schoolId,
+          status: 'active',
+        },
+        schoolId,
+      );
+    }
 
     const relationship: ParentRelationship = parentInput?.relationship || 'guardian';
 
@@ -265,6 +682,7 @@ export class StudentService {
         phone: parentInput.phone,
       });
       if (existing) {
+        // Existing parent (including draft from earlier wizard steps): link only.
         await this.parentService.assignToStudent(
           existing.id,
           student.id,
@@ -272,24 +690,6 @@ export class StudentService {
           relationship,
         );
       } else {
-        let parentUserId: string | undefined;
-        if (parentInput.createUser) {
-          const parentEmail = parentInput.email!.trim();
-          const parentUser = await this.userService.create(
-            {
-              username: await this.userService.uniqueUsernameFromEmail(parentEmail),
-              email: parentEmail,
-              ...parentNames,
-              civil_id: parentInput.civil_id,
-              phone: parentInput.phone?.trim() || undefined,
-              user_type: 'parent',
-              school_id: null,
-            },
-            actor,
-          );
-          parentUserId = parentUser.id;
-        }
-
         await this.parentService.create({
           ...parentNames,
           civil_id: parentInput.civil_id,
@@ -302,9 +702,9 @@ export class StudentService {
           organizationName: parentInput.organizationName,
           responsiblePerson: parentInput.responsiblePerson,
           responsiblePhone: parentInput.responsiblePhone,
-          userId: parentUserId,
           studentIds: [student.id],
           relationship,
+          status: 'active',
         }, schoolId);
       }
     } else if (existingParentId) {
@@ -337,9 +737,55 @@ export class StudentService {
       await this.studentRepository.save(student);
     }
 
-    return this.assignToGroup(student.id, group.id, {
+    // Ensure guardian login when requested and the parent row (new or pre-linked draft) has none yet.
+    if (parentInput?.createUser && parentInput.email?.trim()) {
+      const linkedParent = await this.parentService.findExistingParent({
+        civil_id: parentInput.civil_id,
+        email: parentInput.email,
+        phone: parentInput.phone,
+      });
+      if (linkedParent && !linkedParent.user_id) {
+        const parentNames = applyBilingualName({
+          firstName: linkedParent.firstName,
+          lastName: linkedParent.lastName,
+          first_name_ar: linkedParent.first_name_ar,
+          first_name_en: linkedParent.first_name_en,
+          last_name_ar: linkedParent.last_name_ar,
+          last_name_en: linkedParent.last_name_en,
+        });
+        const parentEmail = parentInput.email.trim();
+        const parentUser = await this.userService.create(
+          {
+            username: await this.userService.uniqueUsernameFromEmail(parentEmail),
+            email: parentEmail,
+            ...parentNames,
+            civil_id: linkedParent.civil_id || parentInput.civil_id,
+            phone: linkedParent.phone || parentInput.phone?.trim() || undefined,
+            user_type: 'parent',
+            school_id: null,
+          },
+          actor,
+        );
+        linkedParent.user_id = parentUser.id;
+        await this.parentRepository.save(linkedParent);
+      }
+    }
+
+    const activated = await this.assignToGroup(student.id, group.id, {
       paymentLevelId: group.level_id,
     });
+    await this.studentRepository.update(activated.id, { status: 'active' });
+    // Promote any draft parents linked during the wizard (existing active parents stay active).
+    await this.studentRepository.query(
+      `UPDATE parents p
+       SET status = 'active'
+       FROM student_parents sp
+       WHERE sp.parent_id = p.id
+         AND sp.student_id = $1
+         AND p.status = 'draft'`,
+      [activated.id],
+    );
+    return this.findOne(activated.id);
   }
 
   async findAll(schoolId?: string | null): Promise<Student[]> {
@@ -392,6 +838,10 @@ export class StudentService {
       );
     }
 
+    if (query.status === 'draft' || query.status === 'active' || query.status === 'inactive') {
+      idQb.andWhere('student.status = :status', { status: query.status });
+    }
+
     const ageBounds = query.age_group ? AGE_GROUP_BOUNDS[query.age_group] : undefined;
     if (ageBounds) {
       idQb.andWhere(
@@ -409,12 +859,14 @@ export class StudentService {
             w.where('LOWER(student.firstName) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.lastName) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.email) LIKE :term', { term: `%${q}%` })
+              .orWhere('LOWER(student.secondName) LIKE :term', { term: `%${q}%` })
+              .orWhere('LOWER(student.secondNameEn) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.first_name_ar) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.first_name_en) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.last_name_ar) LIKE :term', { term: `%${q}%` })
               .orWhere('LOWER(student.last_name_en) LIKE :term', { term: `%${q}%` })
               .orWhere(
-                `LOWER(CONCAT(COALESCE(student.firstName, ''), ' ', COALESCE(student.lastName, ''))) LIKE :term`,
+                `LOWER(CONCAT_WS(' ', NULLIF(TRIM(COALESCE(student.firstName, '')), ''), NULLIF(TRIM(COALESCE(student.secondName, '')), ''), NULLIF(TRIM(COALESCE(student.lastName, '')), ''))) LIKE :term`,
                 { term: `%${q}%` },
               )
               .orWhere('LOWER(parent."firstName") LIKE :term', { term: `%${q}%` })
@@ -599,6 +1051,9 @@ export class StudentService {
     if (updateStudentDto.civil_id !== undefined) {
       await this.assertCivilIdAvailable(updateStudentDto.civil_id, id);
     }
+    if (updateStudentDto.dateOfBirth !== undefined) {
+      this.assertBirthDateNotFuture(updateStudentDto.dateOfBirth);
+    }
 
     // Update basic fields
     Object.assign(student, updateStudentDto);
@@ -629,6 +1084,9 @@ export class StudentService {
 
   async remove(id: string): Promise<void> {
     const student = await this.findOne(id);
+    if (student.status !== 'draft') {
+      throw new BadRequestException('Only draft students can be deleted');
+    }
     await this.studentRepository.remove(student);
   }
 

@@ -1,0 +1,36 @@
+---
+description: Always store user documents via AttachmentStorage (GCS), never base64 in JSON
+alwaysApply: true
+---
+
+# File / document uploads (GCS attachments)
+
+All user-supplied **files and documents** (enrollment IDs, photos, medical reports, support images, payment proofs, message-letter files, etc.) must go through the **global attachment pipeline**:
+
+- Backend: `AttachmentService.register` → `AttachmentStorage` (`STORAGE_DRIVER=local|gcs`, bucket `GCS_BUCKET`)
+- Canonical URL shape: `/api/attachments/:id/download`
+- Optional link: `entity_type` + `entity_id` + `purpose` on `attachment_links`
+
+## Do
+
+- Upload with multipart (`file` field) to an attachments endpoint (authenticated `POST /api/attachments`, or a thin public wrapper that still calls `AttachmentService`)
+- Persist **attachment id / download path** on the domain row (or link via `attachment_links`)
+- Serve downloads only through the attachment controller (auth / signed public where already established)
+
+## Do not
+
+- Embed file bytes as **base64 / data URLs** in JSON request bodies for create/update
+- Write new `diskStorage('./uploads/…')` multer routes for product documents when attachments already cover the case
+- Mount uploads as public static files
+- Invent a second storage stack beside `AttachmentStorage`
+
+## Exceptions (legacy only — do not extend)
+
+- Older `/api/files/…` categories (students/staff photos, subscription-docs, support) until migrated
+- When touching those paths, prefer migrating the call site to attachments rather than adding more base64
+
+## New feature checklist
+
+- [ ] Upload uses `AttachmentService` + `AttachmentStorage`
+- [ ] Domain payload stores URL/id, not raw bytes
+- [ ] `SYSTEM.md` notes the upload path if it is a new public surface

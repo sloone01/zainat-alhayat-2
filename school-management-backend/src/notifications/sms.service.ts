@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { OutboundMessageTransaction } from '../entities/outbound-message-transaction.entity';
 import { InfobipClient } from './infobip.client';
 import { getOutboundContext } from './outbound-message-context';
+import { DemoAccountsService } from '../common/demo/demo-accounts.service';
 
 export type SendSmsOptions = {
   to: string;
@@ -20,6 +21,7 @@ export class SmsService {
     private readonly infobip: InfobipClient,
     @InjectRepository(OutboundMessageTransaction)
     private readonly txRepo: Repository<OutboundMessageTransaction>,
+    private readonly demo: DemoAccountsService,
   ) {}
 
   isConfigured(): boolean {
@@ -40,6 +42,12 @@ export class SmsService {
     if (!to) throw new Error('Recipient phone is required');
     if (!body) throw new Error('SMS body is required');
     const ctx = getOutboundContext();
+
+    if (await this.demo.shouldSuppressOutbound(to, 'phone', ctx)) {
+      this.logger.log(`SMS to ${to} skipped (demo school)`);
+      await this.persistTx({ to, body, status: 'skipped', errorMessage: 'Demo school: not sent', ctx });
+      return;
+    }
 
     const provider = this.provider();
     if (provider === 'infobip') {

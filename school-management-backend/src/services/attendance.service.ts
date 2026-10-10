@@ -5,6 +5,7 @@ import { Attendance } from '../entities/attendance.entity';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
+import { formatStudentDisplayName } from '../common/identity/bilingual-name';
 
 export interface CreateAttendanceDto {
   attendance_date: Date;
@@ -278,7 +279,7 @@ export class AttendanceService {
       acc[groupName].total_students++;
       acc[groupName].students.push({
         student_id: attendance.student_id,
-        student_name: `${attendance.student.firstName} ${attendance.student.lastName}`,
+        student_name: formatStudentDisplayName(attendance.student),
         status: attendance.status,
         check_in_time: attendance.check_in_time,
         is_excused: attendance.is_excused,

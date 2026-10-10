@@ -18,6 +18,7 @@ const group_service_1 = require("../services/group.service");
 const group_dto_1 = require("../dto/group.dto");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
 const school_access_1 = require("../common/security/school-access");
+const pagination_1 = require("../common/pagination");
 let GroupController = class GroupController {
     groupService;
     constructor(groupService) {
@@ -39,11 +40,22 @@ let GroupController = class GroupController {
             message: 'Group created successfully',
         };
     }
-    async findAll(req, schoolId, isActive, paymentLevelId) {
+    async findAll(req, schoolId, isActive, paymentLevelId, page, limit, q, status) {
         const requested = schoolId ? String(schoolId) : undefined;
         const schoolIdNum = this.schoolOf(req, requested);
         const isActiveBool = isActive !== undefined ? isActive === 'true' : undefined;
         try {
+            if ((0, pagination_1.wantsPage)(page)) {
+                const data = await this.groupService.findPage(schoolIdNum, {
+                    page,
+                    limit,
+                    q,
+                    status,
+                    isActive: isActiveBool,
+                    paymentLevelId,
+                });
+                return { success: true, data };
+            }
             const groups = await this.groupService.findAll(schoolIdNum, isActiveBool, paymentLevelId);
             return {
                 success: true,
@@ -155,8 +167,12 @@ __decorate([
     __param(1, (0, common_1.Query)('school_id')),
     __param(2, (0, common_1.Query)('is_active')),
     __param(3, (0, common_1.Query)('payment_level_id')),
+    __param(4, (0, common_1.Query)('page')),
+    __param(5, (0, common_1.Query)('limit')),
+    __param(6, (0, common_1.Query)('q')),
+    __param(7, (0, common_1.Query)('status')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], GroupController.prototype, "findAll", null);
 __decorate([

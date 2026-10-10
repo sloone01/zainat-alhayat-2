@@ -16,7 +16,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
+          <div v-if="loading && !routePageLoading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
             <FikrLoader />
           </div>
           <div v-else-if="!items.length" class="fk-empty">
@@ -171,6 +171,7 @@ import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { useFeedback } from '@/composables/useFeedback'
 import { useClaims } from '@/composables/useClaims'
+import { routePageLoading } from '@/router/route-loading'
 import {
   absenceExcuseService,
   type AbsenceExcuse,

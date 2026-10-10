@@ -1,5 +1,6 @@
 import type { InjectionKey, Ref } from 'vue'
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 /** Parent mailbox refreshes the conversation list after open/send. */
 export const reloadDirectThreadsKey: InjectionKey<() => Promise<void>> = Symbol('reloadDirectThreads')
@@ -169,8 +170,16 @@ class ChatApiService extends BaseApiService {
     return this.get<DirectThreadPeer>(`/chat/direct/threads/${threadId}`)
   }
 
-  async listDirectMessages(threadId: string, limit = 100): Promise<ChatMessage[]> {
-    return this.get<ChatMessage[]>(`/chat/direct/threads/${threadId}/messages`, { limit })
+  async listDirectMessages(
+    threadId: string,
+    limit = 40,
+    before?: { createdAt: string; id?: string },
+  ): Promise<ChatMessage[]> {
+    return this.get<ChatMessage[]>(`/chat/direct/threads/${threadId}/messages`, {
+      limit,
+      before: before?.createdAt,
+      before_id: before?.id,
+    })
   }
 
   async listParentTeacherContacts(): Promise<ParentTeacherContactRow[]> {
@@ -199,6 +208,15 @@ class ChatApiService extends BaseApiService {
   listApprovalInbox(locale?: 'en' | 'ar'): Promise<DirectApprovalInboxRow[]> {
     const q = locale ? `?locale=${locale}` : ''
     return this.get<DirectApprovalInboxRow[]>(`/chat/direct/approval-inbox${q}`)
+  }
+
+  listApprovalInboxPage(params: { page: number; limit: number; locale?: 'en' | 'ar' }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.locale) query.locale = params.locale
+    return this.get<PageResult<DirectApprovalInboxRow> & { pending_total: number }>(
+      '/chat/direct/approval-inbox',
+      query,
+    )
   }
 
   getRenderedMessageLetter(

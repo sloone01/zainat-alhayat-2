@@ -156,6 +156,8 @@
             </div>
           </section>
 
+          <ParentOnlineClassesCard v-if="onlineClasses.length" :classes="onlineClasses" />
+
           <section :aria-label="$t('parent.upcomingActivities')">
             <div class="mb-1 flex items-baseline justify-between gap-3">
               <h2 class="fk-display text-xl font-bold text-navy-800">{{ $t('parent.upcomingActivities') }}</h2>
@@ -211,6 +213,7 @@
         <!-- Desktop: 6c-style board for the parent's kids -->
         <div class="hidden space-y-6 xl:block xl:space-y-8">
           <LiveMeetingJoinCard v-if="liveMeetings.length" :rooms="liveMeetings" />
+          <ParentOnlineClassesCard v-if="onlineClasses.length" :classes="onlineClasses" />
 
           <section class="fk-elev overflow-hidden p-0">
             <div class="grid items-start gap-6 px-4 py-6 sm:gap-8 sm:px-6 sm:py-8 xl:grid-cols-[minmax(0,1fr)_minmax(280px,380px)] xl:items-center xl:px-8">
@@ -481,10 +484,12 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import MapView, { type MapViewMarker } from '@/components/ui/map-view.vue'
 import LiveMeetingJoinCard from '@/components/LiveMeetingJoinCard.vue'
+import ParentOnlineClassesCard from '@/components/ParentOnlineClassesCard.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { parentService } from '../services/parent.service'
 import { authService } from '@/services/auth.service'
 import { meetingRoomService, type MeetingRoomMineRow } from '@/services/meeting-room.service'
+import { onlineSessionService, type ParentOnlineClassRow } from '@/services/online-session.service'
 import {
   chatApiService,
   type DirectApprovalInboxRow,
@@ -516,6 +521,7 @@ const assignedActivities = ref<any[]>([])
 const recentChats = ref<DirectThreadSummary[]>([])
 const pendingApprovals = ref<DirectApprovalInboxRow[]>([])
 const invitedMeetings = ref<MeetingRoomMineRow[]>([])
+const onlineClasses = ref<ParentOnlineClassRow[]>([])
 const feesPendingTotal = ref<number | null>(null)
 const feeHeadline = ref('')
 const selectedChildId = ref<string | null>(null)
@@ -983,11 +989,12 @@ const loadDashboardData = async () => {
     attendanceToday.value = null
 
     const approvalLocale = locale.value === 'ar' ? 'ar' : 'en'
-    const [dashResult, attResult, meetingResult, actResult, chatResult, approvalResult] =
+    const [dashResult, attResult, meetingResult, classResult, actResult, chatResult, approvalResult] =
       await Promise.allSettled([
         parentService.getMyDashboardData(),
         parentService.getMyAttendance(0, 1),
         meetingRoomService.mine(),
+        onlineSessionService.mine(),
         parentService.getMyAssignedActivities(),
         chatApiService.listDirectThreads(),
         chatApiService.listApprovalInbox(approvalLocale),
@@ -1003,6 +1010,7 @@ const loadDashboardData = async () => {
     }
 
     invitedMeetings.value = meetingResult.status === 'fulfilled' ? meetingResult.value : []
+    onlineClasses.value = classResult.status === 'fulfilled' ? classResult.value : []
     assignedActivities.value = actResult.status === 'fulfilled' ? actResult.value ?? [] : []
     recentChats.value = chatResult.status === 'fulfilled' ? (chatResult.value ?? []).slice(0, 6) : []
     pendingApprovals.value =
@@ -1063,6 +1071,9 @@ onMounted(() => {
   meetingPoll = setInterval(() => {
     meetingRoomService.mine().then((rows) => {
       invitedMeetings.value = rows
+    }).catch(() => {})
+    onlineSessionService.mine().then((rows) => {
+      onlineClasses.value = rows
     }).catch(() => {})
   }, 20000)
   busPositionPoll = setInterval(() => {

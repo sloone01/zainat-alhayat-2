@@ -4,21 +4,8 @@
       <FikrPageHeader
         :title="$t('platformSchools.detailsTitle')"
         :subtitle="school?.name || $t('platformSchools.detailsSubtitle')"
-      >
-        <template #leading>
-          <router-link
-            to="/platform/schools"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('platformSchools.backToList')"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </router-link>
-        </template>
-      </FikrPageHeader>
+      />
 
-      <div v-if="flashOk" class="fk-alert fk-alert--ok mb-4">{{ flashOk }}</div>
       <div v-if="flashError" class="fk-alert fk-alert--error mb-4">{{ flashError }}</div>
 
       <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
@@ -73,7 +60,18 @@
           <div class="space-y-3 lg:col-span-8">
             <section class="fk-card rounded-lg">
               <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-                <h2 class="fk-card__title">{{ $t('platformSchools.sectionSchool') }}</h2>
+                <div class="flex min-w-0 items-center gap-3">
+                  <router-link
+                    to="/platform/schools"
+                    class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+                    :aria-label="$t('platformSchools.backToList')"
+                  >
+                    <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </router-link>
+                  <h2 class="fk-card__title truncate">{{ $t('platformSchools.sectionSchool') }}</h2>
+                </div>
                 <div class="flex shrink-0 flex-wrap items-center gap-2">
                   <button
                     v-if="!editing"
@@ -357,6 +355,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import { useClaims } from '@/composables/useClaims'
+import { useFeedback } from '@/composables/useFeedback'
 import { resolveSelectedPlatformSchoolId } from '@/composables/usePlatformSchoolSelection'
 import FikrLoader from '@/components/FikrLoader.vue'
 import {
@@ -366,6 +365,7 @@ import {
 
 const { locale, t, te } = useI18n()
 const { hasClaim } = useClaims()
+const feedback = useFeedback()
 
 const isRTL = computed(() => locale.value === 'ar')
 const canManage = computed(() => hasClaim('platform_schools', 'manage'))
@@ -375,7 +375,6 @@ const saving = ref(false)
 const decisionBusy = ref(false)
 const school = ref<RegisteredSchool | null>(null)
 const flashError = ref('')
-const flashOk = ref('')
 const editing = ref(false)
 const openingDoc = ref<string | null>(null)
 const approveDialogOpen = ref(false)
@@ -478,7 +477,6 @@ async function openDocument(key: string, path: string) {
 
 function startEditing() {
   flashError.value = ''
-  flashOk.value = ''
   for (const field of schoolFields) editForm[field.key] = fieldValue(field.key)
   editForm.name = fieldValue('name') || editForm.name_ar || editForm.name_en
   if (!editForm.name_ar && editForm.name) editForm.name_ar = editForm.name
@@ -509,7 +507,7 @@ async function saveDetails() {
     })
     school.value = updated
     editing.value = false
-    flashOk.value = t('platformSchools.saved')
+    feedback.saved(t('platformSchools.saved'))
   } catch (e: unknown) {
     flashError.value = (e as Error)?.message || t('platformSchools.saveError')
   } finally {
@@ -521,10 +519,9 @@ async function sendOwnerLogin() {
   if (!school.value) return
   decisionBusy.value = true
   flashError.value = ''
-  flashOk.value = ''
   try {
     await platformSchoolService.resendOwnerLogin(school.value.id)
-    flashOk.value = t('platformSchools.sendLoginSuccess')
+    feedback.saved(t('platformSchools.sendLoginSuccess'))
   } catch (e: unknown) {
     flashError.value = (e as Error)?.message || t('platformSchools.sendLoginError')
   } finally {
@@ -551,9 +548,11 @@ async function confirmApprove() {
     const res = await platformSchoolService.approve(school.value.id)
     school.value = res.school
     approveDialogOpen.value = false
-    flashOk.value = res.email_sent === false
-      ? t('platformSchools.approveSuccessNoEmail')
-      : t('platformSchools.approveSuccess')
+    feedback.saved(
+      res.email_sent === false
+        ? t('platformSchools.approveSuccessNoEmail')
+        : t('platformSchools.approveSuccess'),
+    )
   } catch (e: unknown) {
     approveDialogOpen.value = false
     const err = e as { message?: string; code?: string; response?: unknown }
@@ -572,7 +571,7 @@ async function confirmReject() {
   try {
     school.value = await platformSchoolService.reject(school.value.id, rejectNotes.value.trim())
     rejectDialogOpen.value = false
-    flashOk.value = t('platformSchools.rejectSuccess')
+    feedback.saved(t('platformSchools.rejectSuccess'))
   } catch (e: unknown) {
     rejectDialogOpen.value = false
     const err = e as { message?: string; code?: string; response?: unknown }

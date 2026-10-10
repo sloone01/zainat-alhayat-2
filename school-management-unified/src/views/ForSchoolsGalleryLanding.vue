@@ -28,7 +28,7 @@
           </div>
         </figure>
         <figure class="aa-shot aa-shot--phone aa-shot--phone-a">
-          <img src="/landing/features/attendance-phone.webp?v=19" alt="" />
+          <img src="/landing/features/attendance-phone.webp?v=20" alt="" />
         </figure>
         <figure class="aa-shot aa-shot--phone aa-shot--phone-b">
           <img src="/landing/features/fees-phone.webp?v=19" alt="" />

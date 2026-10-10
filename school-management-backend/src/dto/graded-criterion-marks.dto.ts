@@ -1,12 +1,12 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
   IsNumber,
-  IsOptional,
   IsUUID,
   Max,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -17,8 +17,9 @@ export class SaveCriterionMarkEntryDto {
   @IsUUID()
   graded_criterion_id: string;
 
-  /** null / omit clears the mark */
-  @IsOptional()
+  /** null clears the mark. Skip number checks so an empty cell is not a 400. */
+  @Transform(({ value }) => (value === '' || value === undefined ? null : value))
+  @ValidateIf((_, value) => value !== null && value !== undefined)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Max(99999)

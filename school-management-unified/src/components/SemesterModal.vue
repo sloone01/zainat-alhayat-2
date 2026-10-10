@@ -29,7 +29,6 @@
               required
               lang="ar-OM-u-ca-gregory"
               :min="yearStart"
-              :max="yearEnd"
               class="fk-field"
             >
           </div>
@@ -41,8 +40,7 @@
               type="date"
               required
               lang="ar-OM-u-ca-gregory"
-              :min="yearStart"
-              :max="yearEnd"
+              :min="endDateMin"
               class="fk-field"
             >
           </div>
@@ -67,6 +65,7 @@
 import FikrDialog from '@/components/FikrDialog.vue'
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { toCalendarInputDate } from '@/utils/calendar-date'
 
 const { t } = useI18n()
 
@@ -88,15 +87,15 @@ const formData = ref({
 })
 
 const yearLabel = computed(() => props.year?.year || props.year?.name || '')
-const yearStart = computed(() => (props.year?.start_date || props.year?.startDate || '').slice(0, 10))
-const yearEnd = computed(() => (props.year?.end_date || props.year?.endDate || '').slice(0, 10))
+const yearStart = computed(() => toCalendarInputDate(props.year?.start_date || props.year?.startDate))
+const endDateMin = computed(() => formData.value.startDate || yearStart.value)
 
 watch(() => props.semester, (newSemester) => {
   if (newSemester) {
     formData.value = {
       title: newSemester.title || '',
-      startDate: (newSemester.startDate || newSemester.start_date || '').slice(0, 10),
-      endDate: (newSemester.endDate || newSemester.end_date || '').slice(0, 10)
+      startDate: toCalendarInputDate(newSemester.startDate || newSemester.start_date),
+      endDate: toCalendarInputDate(newSemester.endDate || newSemester.end_date)
     }
   } else {
     formData.value = {
@@ -112,8 +111,12 @@ const closeModal = () => {
 }
 
 const saveSemester = () => {
-  if (new Date(formData.value.startDate) >= new Date(formData.value.endDate)) {
+  if (!formData.value.startDate || !formData.value.endDate || formData.value.startDate >= formData.value.endDate) {
     alert(t('settings.invalidDateRange'))
+    return
+  }
+  if (yearStart.value && formData.value.startDate < yearStart.value) {
+    alert(t('settings.semesterOutsideYearRange'))
     return
   }
 

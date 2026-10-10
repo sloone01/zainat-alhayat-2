@@ -1,4 +1,4 @@
-export const DEMO_SCHOOL_SLUG = 'zinat-al-haya'
+export const DEMO_SCHOOL_SLUG = 'fikr-demo'
 export const DEMO_STAFF_EMAIL = 'admin@fikr-demo.com'
 export const DEMO_PARENT_EMAIL = 'parent@fikr-demo.com'
 export const DEMO_PASSWORD = 'DemoPass1'

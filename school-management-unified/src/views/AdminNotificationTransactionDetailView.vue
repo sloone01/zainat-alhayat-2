@@ -22,8 +22,10 @@
       <div v-if="flashOk" class="fk-alert fk-alert--ok">{{ flashOk }}</div>
 
       <div v-if="loading" class="fk-card flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-        <FikrLoader />
-        <span class="text-sm">{{ $t('common.loading') }}</span>
+        <template v-if="!routePageLoading">
+          <FikrLoader />
+          <span class="text-sm">{{ $t('common.loading') }}</span>
+        </template>
       </div>
 
       <template v-else-if="row">
@@ -113,6 +115,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import { useClaims } from '@/composables/useClaims'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import {
   notificationTransactionService,
   type NotificationTransactionRow,

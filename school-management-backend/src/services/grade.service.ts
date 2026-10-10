@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { likeTerm, paginateQueryBuilder, type PageQuery, type PageResult } from '../common/pagination';
 import { Grade } from '../entities/grade.entity';
 import { CreateGradeDto, UpdateGradeDto } from '../dto/grade.dto';
 
@@ -23,6 +24,7 @@ export class GradeService {
       ...createGradeDto,
       code,
       school_id: schoolId,
+      displayOrder: await this.nextDisplayOrder(schoolId),
     });
     return this.gradeRepository.save(grade);
   }
@@ -32,6 +34,36 @@ export class GradeService {
       where: { school_id: schoolId },
       order: { displayOrder: 'ASC', createdAt: 'ASC' },
     });
+  }
+
+  /** Paged grade list. Search matches Arabic name, English name, code, and description. */
+  async findPage(
+    schoolId: string,
+    query: PageQuery & { q?: string; status?: string },
+  ): Promise<PageResult<Grade>> {
+    const qb = this.gradeRepository
+      .createQueryBuilder('g')
+      .where('g.school_id = :schoolId', { schoolId });
+    if (query.status === 'active') qb.andWhere('g."isActive" = true');
+    else if (query.status === 'inactive') qb.andWhere('g."isActive" = false');
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `LOWER(CONCAT_WS(' ', g."nameEn", g."nameAr", g.code, COALESCE(g.description, ''))) LIKE :term`,
+        { term },
+      );
+    }
+    qb.orderBy('g."displayOrder"', 'ASC').addOrderBy('g."createdAt"', 'ASC').addOrderBy('g.id', 'ASC');
+    return paginateQueryBuilder(qb, query);
+  }
+
+  private async nextDisplayOrder(schoolId: string): Promise<number> {
+    const raw = await this.gradeRepository
+      .createQueryBuilder('g')
+      .select('COALESCE(MAX(g."displayOrder"), 0)', 'max')
+      .where('g.school_id = :schoolId', { schoolId })
+      .getRawOne<{ max: string | number }>();
+    return Number(raw?.max ?? 0) + 1;
   }
 
   async findActive(schoolId: string): Promise<Grade[]> {

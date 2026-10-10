@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface CriterionCol {
   id: string
@@ -81,13 +82,60 @@ class GradedCriterionMarksApi extends BaseApiService {
     schoolId: string
     groupId: string
     courseId: string
-  }): Promise<CriterionMarksGridData> {
+    page?: number
+    limit?: number
+  }): Promise<CriterionMarksGridData & Partial<PageResult<{ id: string; name: string }>>> {
     const q = new URLSearchParams({
       school_id: String(params.schoolId),
       group_id: params.groupId,
       course_id: params.courseId,
     })
-    return this.get<CriterionMarksGridData>(`/graded-criterion-marks/grid?${q}`)
+    if (params.page != null) q.set('page', String(params.page))
+    if (params.limit != null) q.set('limit', String(params.limit))
+    return this.get(`/graded-criterion-marks/grid?${q}`)
+  }
+
+  async listGroups(params: {
+    schoolId: string
+    page?: number
+    limit?: number
+  }): Promise<
+    PageResult<{
+      id: string
+      name: string
+      age_range_min?: number
+      age_range_max?: number
+      studentsCount: number
+      gradedCoursesCount: number
+    }>
+  > {
+    return this.get('/graded-criterion-marks/groups', {
+      school_id: params.schoolId,
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    })
+  }
+
+  async listGroupCourses(params: {
+    schoolId: string
+    groupId: string
+    page?: number
+    limit?: number
+  }): Promise<
+    PageResult<{
+      id: string
+      title: string
+      time: string
+      day: string
+      criteriaCount: number
+    }>
+  > {
+    return this.get('/graded-criterion-marks/group-courses', {
+      school_id: params.schoolId,
+      group_id: params.groupId,
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    })
   }
 
   async saveGrid(

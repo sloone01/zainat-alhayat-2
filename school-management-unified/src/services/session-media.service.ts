@@ -5,7 +5,7 @@ export interface SessionMedia {
   session_plan_id: string
   file_name: string
   file_path: string
-  file_type: 'photo' | 'video'
+  file_type: 'photo' | 'video' | 'file'
   file_size: number
   mime_type: string
   uploaded_by: string
@@ -18,7 +18,7 @@ export interface CreateSessionMediaDto {
   session_plan_id: string
   file_name: string
   file_path: string
-  file_type: 'photo' | 'video'
+  file_type: 'photo' | 'video' | 'file'
   file_size: number
   mime_type: string
   uploaded_by: string
@@ -54,47 +54,12 @@ class SessionMediaService extends BaseApiService {
     return response.data
   }
 
-  async uploadMultipleFiles(sessionPlanId: string, files: File[], uploadedBy: string): Promise<SessionMedia[]> {
-    console.log('📁 Uploading', files.length, 'files to session plan:', sessionPlanId)
-
-    try {
-      const formData = new FormData()
-
-      files.forEach(file => {
-        formData.append('files', file)
-      })
-
-      formData.append('session_plan_id', sessionPlanId)
-      formData.append('uploaded_by', uploadedBy)
-
-      const response = await this.upload<{
-        success: boolean
-        data: SessionMedia[]
-        message: string
-      }>(`${this.basePath}/upload-multiple`, formData)
-
-      console.log('📥 Backend response:', response)
-
-      if (!response.success) {
-        console.error('❌ Backend returned success: false')
-        throw new Error(response.message || 'Upload failed')
-      }
-
-      console.log('✅ Successfully uploaded', response.data.length, 'files')
-      return response.data
-
-    } catch (error: any) {
-      console.error('❌ Upload error:', error)
-
-      // Handle HTTP errors from backend
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message)
-      } else if (error.message) {
-        throw new Error(error.message)
-      } else {
-        throw new Error('File upload failed')
-      }
-    }
+  async uploadMultipleFiles(sessionPlanId: string, files: File[], notify = true): Promise<SessionMedia[]> {
+    const formData = new FormData()
+    files.forEach((file) => formData.append('files', file))
+    formData.append('session_plan_id', sessionPlanId)
+    if (!notify) formData.append('notify', 'false')
+    return this.upload<SessionMedia[]>(`${this.basePath}/upload-multiple`, formData)
   }
 
   async getBySessionPlanId(sessionPlanId: string): Promise<SessionMedia[]> {
@@ -105,7 +70,7 @@ class SessionMediaService extends BaseApiService {
     return this.get<SessionMedia>(`${this.basePath}/${id}`)
   }
 
-  async deleteById(id: number): Promise<{ success: boolean; message: string }> {
+  async deleteById(id: string): Promise<{ success: boolean; message: string }> {
     return this.delete<{ success: boolean; message: string }>(`${this.basePath}/${id}`)
   }
 

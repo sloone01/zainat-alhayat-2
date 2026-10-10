@@ -276,6 +276,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import { useRoute } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -286,6 +287,7 @@ import type { CriterionTaskSummary, EligibleGradedCourse, GradedCriterionTaskRow
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { t, locale } = useI18n()
+const feedback = useFeedback()
 const route = useRoute()
 const isRTL = computed(() => locale.value === 'ar')
 
@@ -410,7 +412,12 @@ async function submitFormModal() {
 }
 
 async function removeTask(id: string) {
-  if (!confirm(t('gradedCriterionTasks.confirmDelete'))) return
+  if (!(await feedback.confirm({
+    title: t('common.delete'),
+    message: t('gradedCriterionTasks.confirmDelete'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  }))) return
   try {
     await gradedCriterionTaskService.deleteTask(id)
     await loadSummary()

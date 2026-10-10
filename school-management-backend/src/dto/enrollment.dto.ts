@@ -6,6 +6,8 @@ import {
   IsBoolean,
   IsDateString,
   IsArray,
+  ArrayMinSize,
+  MinLength,
   IsNumber,
   IsUUID,
   ValidateNested,
@@ -13,8 +15,13 @@ import {
   Validate,
   ValidatorConstraint,
   ValidatorConstraintInterface,
+  Matches,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+
+/** Download path from AttachmentService — never a base64 data URL. */
+const ATTACHMENT_DOWNLOAD =
+  /^\/api\/attachments\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/download$/i;
 
 /** Treat blank strings as missing so @IsOptional() skips format validators (e.g. email). */
 const emptyToUndefined = () =>
@@ -113,6 +120,26 @@ export class StudentDetailsDto {
   @IsOptional()
   @emptyToUndefined()
   @IsString()
+  secondName?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  thirdName?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  secondNameEn?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
+  thirdNameEn?: string;
+
+  @IsOptional()
+  @emptyToUndefined()
+  @IsString()
   tribe?: string;
 
   @asString()
@@ -144,6 +171,9 @@ export class StudentDetailsDto {
   @IsOptional()
   @emptyToUndefined()
   @IsString()
+  @Matches(ATTACHMENT_DOWNLOAD, {
+    message: 'Student photo must be uploaded via the attachment service',
+  })
   photo?: string;
 }
 
@@ -435,6 +465,29 @@ export class AddressInfoDto {
   housingType: 'house' | 'apartment';
 }
 
+export class EnrollmentDocumentsDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  @Matches(ATTACHMENT_DOWNLOAD, {
+    each: true,
+    message: 'Documents must be uploaded via the attachment service',
+  })
+  parentIdDocuments: string[];
+
+  @IsString()
+  @Matches(ATTACHMENT_DOWNLOAD, {
+    message: 'Birth certificate must be uploaded via the attachment service',
+  })
+  birthCertificate: string;
+
+  @IsString()
+  @Matches(ATTACHMENT_DOWNLOAD, {
+    message: 'Child ID document must be uploaded via the attachment service',
+  })
+  childIdDocument: string;
+}
+
 export class CreateEnrollmentDto {
   /** Schools use UUID primary keys (legacy numeric school_id is rejected). */
   @asString()
@@ -463,6 +516,10 @@ export class CreateEnrollmentDto {
   @Type(() => AddressInfoDto)
   address: AddressInfoDto;
 
+  @ValidateNested()
+  @Type(() => EnrollmentDocumentsDto)
+  documents: EnrollmentDocumentsDto;
+
   @IsOptional()
   @emptyToUndefined()
   @IsUUID('4')
@@ -486,6 +543,11 @@ export class UpdateEnrollmentDto {
   address?: Partial<AddressInfoDto>;
 
   @IsOptional()
+  @ValidateNested()
+  @Type(() => EnrollmentDocumentsDto)
+  documents?: EnrollmentDocumentsDto;
+
+  @IsOptional()
   @ValidateIf((_o, v) => v !== null && v !== undefined && v !== '')
   @IsUUID('4')
   installment_plan_id?: string | null;
@@ -498,4 +560,23 @@ export class UpdateEnrollmentDto {
   @emptyToUndefined()
   @IsString()
   notes?: string;
+}
+
+/** Public wizard: save progress after each step (upsert by school + civil ID). */
+export class SavePublicEnrollmentDraftDto {
+  @IsUUID('4')
+  school_id: string;
+
+  @asString()
+  @IsString()
+  @MinLength(4)
+  civil_id: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  draftEnrollmentId?: string;
+
+  /** Full wizard snapshot (student / academic / health / …). */
+  @IsOptional()
+  payload?: Record<string, unknown>;
 }

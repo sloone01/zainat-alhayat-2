@@ -20,7 +20,7 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('platformSchools.listHeading') }}</h2>
             <p v-if="!loading" class="fk-card__meta">
-              {{ $t('platformSchools.schoolsCount', { count: filtered.length }) }}
+              {{ $t('platformSchools.schoolsCount', { count: total }) }}
             </p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -43,14 +43,14 @@
           </div>
 
           <div
-            v-else-if="schools.length && !filtered.length"
+            v-else-if="total === 0 && hasActiveFilters"
             class="fk-empty text-sm text-fikr-ink-soft"
           >
             {{ $t('platformSchools.emptyHint') }}
           </div>
 
           <div
-            v-else-if="filtered.length === 0"
+            v-else-if="total === 0"
             class="fk-empty"
           >
             <div class="fk-empty__icon">
@@ -94,6 +94,13 @@
                       @click="onOpenBilling(school)"
                     >
                       {{ $t('platformBilling.manage') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="canManageSchool"
+                      icon="payment"
+                      @click="onRecordPayment(school)"
+                    >
+                      {{ $t('platformBilling.recordPayment') }}
                     </RowActionsItem>
                   </RowActionsMenu>
                 </template>
@@ -177,6 +184,13 @@
                         >
                           {{ $t('platformBilling.manage') }}
                         </RowActionsItem>
+                        <RowActionsItem
+                          v-if="canManageSchool"
+                          icon="payment"
+                          @click="onRecordPayment(school)"
+                        >
+                          {{ $t('platformBilling.recordPayment') }}
+                        </RowActionsItem>
                       </RowActionsMenu>
                     </td>
                   </tr>
@@ -187,7 +201,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filtered.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -507,7 +521,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
@@ -524,8 +538,9 @@ import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import KanbanAvatar from '@/components/ui/kanban-avatar.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { useClaims } from '@/composables/useClaims'
+import { useFeedback } from '@/composables/useFeedback'
 import { setSelectedPlatformSchoolId } from '@/composables/usePlatformSchoolSelection'
 import {
   platformSchoolService,
@@ -544,13 +559,12 @@ const { locale, t, te } = useI18n()
 const router = useRouter()
 const { viewMode, isCards } = useListViewMode()
 const { hasClaim } = useClaims()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const canManageSchool = computed(
   () => hasClaim('platform_schools', 'manage') || hasClaim('platform_schools', 'edit'),
 )
 
-const schools = ref<RegisteredSchool[]>([])
-const loading = ref(true)
 const error = ref('')
 const search = ref('')
 const statusFilter = ref('all')
@@ -597,48 +611,25 @@ const receiptFile = ref<File | null>(null)
 const receiptInputRef = ref<HTMLInputElement | null>(null)
 const openingReceiptId = ref<string | null>(null)
 
-const filtered = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  return schools.value.filter((s) => {
-    // 'draft' is a subscription state, not a school status: drafts saved from
-    // "Register school" stay status=pending with subscriptionStatus=draft.
-    if (statusFilter.value === 'draft') {
-      if (s.subscriptionStatus !== 'draft') return false
-    } else if (statusFilter.value !== 'all' && s.status !== statusFilter.value) {
-      return false
-    }
-    if (!q) return true
-    const hay = [
-      s.name,
-      s.email,
-      s.phone,
-      s.owner?.email,
-      s.owner?.phone,
-      s.owner?.firstName,
-      s.owner?.lastName,
-      s.status,
-      s.planCode,
-      s.membershipFrom,
-      s.membershipTo,
-      String(s.id),
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase()
-    return hay.includes(q)
-  })
-})
-
 const {
+  items: paginatedSchools,
+  total,
+  loading,
   currentPage,
-  paginatedItems: paginatedSchools,
   totalPages,
   goToPage,
-} = useClientPagination(filtered)
-
-watch([search, statusFilter], () => {
-  currentPage.value = 1
-})
+  reload,
+} = useServerPagination(
+  (params) => platformSchoolService.listRegisteredPage(params),
+  {
+    filters: () => ({ q: search.value, status: statusFilter.value }),
+    debounceKeys: ['q'],
+    onError: (e) => {
+      const err = e as { message?: string }
+      error.value = err?.message || t('platformSchools.loadError')
+    },
+  },
+)
 
 function formatDate(value: string) {
   if (!value) return '—'
@@ -706,21 +697,37 @@ function onOpenBilling(school: RegisteredSchool) {
   void openBilling(school)
 }
 
-async function reloadPage() {
-  loading.value = true
-  error.value = ''
+async function onRecordPayment(school: RegisteredSchool) {
+  activeMenuId.value = null
+  actionBusy.value = true
   try {
-    await reloadList()
+    selectedSchool.value = school
+    const detail = await platformBillingService.getSchoolSubscription(school.id)
+    if (!detail.subscription) {
+      feedback.error(t('platformBilling.noSubscription'))
+      return
+    }
+    bundle.value = detail
+    let invoice = (detail.invoices || []).find((row) => row.status === 'issued' || row.status === 'draft')
+    if (!invoice) {
+      invoice = await platformBillingService.issueInvoice(school.id)
+      bundle.value = await platformBillingService.getSchoolSubscription(school.id)
+    }
+    openMarkPaid(invoice)
   } catch (e: unknown) {
-    const err = e as { message?: string }
-    error.value = err?.message || t('platformSchools.loadError')
+    feedback.error((e as Error)?.message || t('platformBilling.saveError'))
   } finally {
-    loading.value = false
+    actionBusy.value = false
   }
 }
 
-async function reloadList() {
-  schools.value = await platformSchoolService.listRegistered()
+function reloadPage() {
+  error.value = ''
+  return reload()
+}
+
+function reloadList() {
+  return reload()
 }
 
 async function openBilling(school: RegisteredSchool) {
@@ -849,7 +856,7 @@ async function confirmMarkPaid() {
     bundle.value = await platformBillingService.getSchoolSubscription(selectedSchool.value.id)
     form.school_status = 'active'
     form.status = 'active'
-    drawerMsg.value = t('platformBilling.invoicePaid')
+    feedback.saved(t('platformBilling.invoicePaid'))
     await reloadList()
   } catch (e: any) {
     markPaidError.value = e?.message || t('platformBilling.saveError')
@@ -881,7 +888,6 @@ async function openReceipt(inv: PlatformInvoice) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  void reloadPage()
 })
 
 onUnmounted(() => {

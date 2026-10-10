@@ -2,7 +2,7 @@
 /**
  * Seed demo module user-groups + sample people across two schools.
  *
- * School A = existing demo (`landing_slug` zinat-al-haya)
+ * School A = existing demo (`landing_slug` fikr-demo)
  * School B = created/updated `fikr-demo-b`
  *
  * - Staff user groups for each product module (+ Driver)
@@ -23,7 +23,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const APPLY = process.argv.includes('--apply');
 const PASSWORD = 'DemoPass123!';
-const DEMO_SLUG = process.env.DEMO_SCHOOL_SLUG || 'zinat-al-haya';
+const DEMO_SLUG = process.env.DEMO_SCHOOL_SLUG || 'fikr-demo';
 const SCHOOL_B_SLUG = 'fikr-demo-b';
 
 /** Logical modules → RBAC page keys (school scope). */
@@ -384,7 +384,7 @@ async function main() {
     log(APPLY ? 'APPLIED' : 'DRY-RUN (pass --apply to write)');
     log(`Password for all new logins: ${PASSWORD}`);
     log('');
-    log('Module users (School A — zinat-al-haya):');
+    log('Module users (School A — fikr-demo):');
     for (const u of moduleUsers) log(`  ${u.email}  →  ${u.group}`);
     log('');
     log('School B admin: admin.b@fikr-demo.com');

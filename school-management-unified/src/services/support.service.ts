@@ -33,13 +33,22 @@ export interface SupportRequest {
   user_id: string
   user?: SupportRequestUser | null
   title: string
-  description_html: string
+  /** Present after the ticket is opened. List rows omit it so screenshots are not downloaded up front. */
+  description_html?: string
   context?: SupportRequestContext | null
   status: SupportRequestStatus
   fixed?: boolean
   fixed_at?: string | null
   created_at: string
   updated_at: string
+}
+
+export interface SupportRequestPage {
+  items: SupportRequest[]
+  total: number
+  page: number
+  limit: number
+  pages: number
 }
 
 class SupportService extends BaseApiService {
@@ -51,13 +60,21 @@ class SupportService extends BaseApiService {
     return this.post<SupportRequest>('/support-requests', payload)
   }
 
-  mine(): Promise<SupportRequest[]> {
-    return this.get<SupportRequest[]>('/support-requests/mine')
+  mine(page = 1, limit = 20): Promise<SupportRequestPage> {
+    return this.get<SupportRequestPage>('/support-requests/mine', { page, limit })
+  }
+
+  getOne(id: string): Promise<SupportRequest> {
+    return this.get<SupportRequest>(`/support-requests/${id}`)
   }
 
   /** Platform admins only. */
-  getAll(status?: SupportRequestStatus): Promise<SupportRequest[]> {
-    return this.get<SupportRequest[]>('/support-requests', status ? { status } : undefined)
+  getAll(status: SupportRequestStatus | undefined, page = 1, limit = 20): Promise<SupportRequestPage> {
+    return this.get<SupportRequestPage>('/support-requests', {
+      ...(status ? { status } : {}),
+      page,
+      limit,
+    })
   }
 
   updateStatus(id: string, status: SupportRequestStatus): Promise<SupportRequest> {

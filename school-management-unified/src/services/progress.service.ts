@@ -94,8 +94,9 @@ class ProgressService extends BaseApiService {
   }
 
   // Get progress by course ID
-  async getProgressByCourse(courseId: string): Promise<StudentProgress[]> {
-    return this.get<StudentProgress[]>(`/student-progress/course/${courseId}`)
+  async getProgressByCourse(courseId: string, studentIds?: string[]): Promise<StudentProgress[]> {
+    const params = studentIds?.length ? { student_ids: studentIds.join(',') } : undefined
+    return this.get<StudentProgress[]>(`/student-progress/course/${courseId}`, params)
   }
 
   // Get progress by milestone ID

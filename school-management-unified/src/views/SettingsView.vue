@@ -29,86 +29,72 @@
         </div>
       </div>
 
-      <section class="fk-card p-4 sm:p-5">
-        <div class="mb-4">
+      <section class="fk-card overflow-hidden">
+        <header class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <h2 class="fk-form__title">{{ $t('systemSettings.schoolInfo') }}</h2>
-        </div>
-        <p v-if="schoolInfoError" class="fk-alert fk-alert--error mb-4">{{ schoolInfoError }}</p>
-        <p v-else-if="schoolInfoOk" class="fk-alert fk-alert--ok mb-4">{{ schoolInfoOk }}</p>
-        <form class="fk-form" @submit.prevent="saveSchoolInfo">
-          <div class="fk-form__section">
-            <div class="fk-form__grid">
-              <div class="fk-form__row">
-                <label class="fk-flabel" for="school-name-ar"><span>{{ $t('systemSettings.schoolNameAr') }}</span></label>
-                <input id="school-name-ar" v-model="schoolInfo.name_ar" type="text" class="fk-field" dir="rtl" lang="ar">
-              </div>
-              <div class="fk-form__row">
-                <label class="fk-flabel" for="school-name-en"><span>{{ $t('systemSettings.schoolNameEn') }}</span></label>
-                <input id="school-name-en" v-model="schoolInfo.name_en" type="text" class="fk-field" dir="ltr" lang="en">
-              </div>
-            </div>
-            <div class="fk-form__row">
-              <label class="fk-flabel" for="school-website"><span>{{ $t('systemSettings.website') }}</span></label>
-              <!-- type="text": native url validation rejects "www.example.om" (no scheme); we normalize on save instead -->
-              <input id="school-website" v-model="schoolInfo.website" type="text" inputmode="url" dir="ltr" class="fk-field">
-            </div>
-            <div class="fk-form__row">
-              <label class="fk-flabel" for="school-address"><span>{{ $t('students.address') }}</span></label>
-              <input id="school-address" v-model="schoolInfo.address" type="text" class="fk-field">
-            </div>
-            <div class="fk-form__row">
-              <label class="fk-flabel" for="school-logo"><span>{{ $t('settings.schoolLogo') }}</span></label>
-              <div class="flex flex-wrap items-center gap-3">
-                <div
-                  class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white"
+        </header>
+        <form class="fk-form p-5 sm:p-6" @submit.prevent="saveSchoolInfo">
+          <p v-if="schoolInfoError" class="fk-alert fk-alert--error" role="alert">{{ schoolInfoError }}</p>
+          <p v-else-if="schoolInfoOk" class="fk-alert fk-alert--ok" role="status">{{ schoolInfoOk }}</p>
+          <div class="grid items-start gap-5 lg:grid-cols-[17.5rem_minmax(0,1fr)]">
+            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p class="fk-flabel mb-3"><span>{{ $t('settings.schoolLogo') }}</span></p>
+              <div class="mx-auto flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <img
+                  v-if="schoolLogoPreview"
+                  :src="schoolLogoPreview"
+                  alt=""
+                  class="h-full w-full object-contain p-2"
                 >
-                  <img
-                    v-if="schoolLogoPreview"
-                    :src="schoolLogoPreview"
-                    alt=""
-                    class="h-full w-full object-contain p-1"
-                  >
-                  <span v-else class="text-[10px] text-gray-400">{{ $t('settings.noLogo') }}</span>
-                </div>
+                <span v-else class="px-2 text-center text-xs text-gray-400">{{ $t('settings.noLogo') }}</span>
+              </div>
+              <div class="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  class="fk-btn fk-btn--pearl fk-btn--sm w-full justify-center"
+                  :disabled="uploadingLogo"
+                  @click="logoFileInput?.click()"
+                >
+                  {{ uploadingLogo ? $t('common.loading') : $t('settings.uploadLogo') }}
+                </button>
+                <button
+                  type="button"
+                  class="fk-btn fk-btn--ghost fk-btn--sm w-full justify-center text-red-600"
+                  :disabled="uploadingLogo || !schoolLogoUrl"
+                  @click="clearSchoolLogo"
+                >
+                  {{ $t('common.remove') }}
+                </button>
                 <input
                   id="school-logo"
-                  v-model="schoolLogoUrl"
-                  type="url"
-                  dir="ltr"
-                  class="fk-field min-w-0 flex-1"
-                  :placeholder="$t('settings.schoolLogoPlaceholder')"
+                  ref="logoFileInput"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  class="sr-only"
+                  @change="onSchoolLogoFile"
                 >
               </div>
-              <p class="mt-1.5 text-xs text-gray-500">{{ $t('settings.schoolLogoHint') }}</p>
-              <div v-if="brandPrimaryColor || brandAccentColor" class="mt-3 flex flex-wrap items-center gap-3">
-                <span class="text-xs font-medium text-gray-600">{{ $t('settings.brandColorsFromLogo') }}</span>
-                <span
-                  v-if="brandPrimaryColor"
-                  class="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
-                >
-                  <span class="h-4 w-4 rounded" :style="{ backgroundColor: brandPrimaryColor }" aria-hidden="true" />
-                  {{ brandPrimaryColor }}
-                </span>
-                <span
-                  v-if="brandAccentColor"
-                  class="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
-                >
-                  <span class="h-4 w-4 rounded" :style="{ backgroundColor: brandAccentColor }" aria-hidden="true" />
-                  {{ brandAccentColor }}
-                </span>
+              <div class="mt-4 space-y-2 border-t border-gray-200 pt-4">
+                <p class="fk-flabel"><span>{{ $t('settings.brandColorsFromLogo') }}</span></p>
+                <div v-if="brandPrimaryColor || brandAccentColor" class="grid grid-cols-2 gap-2">
+                  <div
+                    v-if="brandPrimaryColor"
+                    class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1.5"
+                  >
+                    <span class="h-6 w-6 shrink-0 rounded-md ring-1 ring-black/10" :style="{ backgroundColor: brandPrimaryColor }" aria-hidden="true" />
+                    <span class="truncate font-mono text-[11px] text-gray-700" dir="ltr">{{ brandPrimaryColor }}</span>
+                  </div>
+                  <div
+                    v-if="brandAccentColor"
+                    class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1.5"
+                  >
+                    <span class="h-6 w-6 shrink-0 rounded-md ring-1 ring-black/10" :style="{ backgroundColor: brandAccentColor }" aria-hidden="true" />
+                    <span class="truncate font-mono text-[11px] text-gray-700" dir="ltr">{{ brandAccentColor }}</span>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  class="fk-btn fk-btn--pearl fk-btn--sm"
-                  :disabled="!schoolLogoPreview || detectingBrandColors"
-                  @click="detectBrandColorsFromLogo"
-                >
-                  {{ detectingBrandColors ? $t('common.loading') : $t('settings.detectBrandColors') }}
-                </button>
-              </div>
-              <div v-else class="mt-3">
-                <button
-                  type="button"
-                  class="fk-btn fk-btn--pearl fk-btn--sm"
+                  class="fk-btn fk-btn--pearl fk-btn--sm w-full justify-center"
                   :disabled="!schoolLogoPreview || detectingBrandColors"
                   @click="detectBrandColorsFromLogo"
                 >
@@ -116,18 +102,38 @@
                 </button>
               </div>
             </div>
-            <div class="fk-form__grid">
-              <div class="fk-form__row">
-                <label class="fk-flabel" for="school-phone"><span>{{ $t('students.phone') }}</span></label>
-                <input id="school-phone" v-model="schoolInfo.phone" type="tel" class="fk-field">
-              </div>
-              <div class="fk-form__row">
-                <label class="fk-flabel" for="school-email"><span>{{ $t('students.email') }}</span></label>
-                <input id="school-email" v-model="schoolInfo.email" type="email" dir="ltr" class="fk-field">
+
+            <div class="fk-form__section">
+              <div class="fk-form__grid">
+                <div class="fk-form__row">
+                  <label class="fk-flabel" for="school-name-ar"><span>{{ $t('systemSettings.schoolNameAr') }}</span></label>
+                  <input id="school-name-ar" v-model="schoolInfo.name_ar" type="text" class="fk-field" dir="rtl" lang="ar">
+                </div>
+                <div class="fk-form__row">
+                  <label class="fk-flabel" for="school-name-en"><span>{{ $t('systemSettings.schoolNameEn') }}</span></label>
+                  <input id="school-name-en" v-model="schoolInfo.name_en" type="text" class="fk-field" dir="ltr" lang="en">
+                </div>
+                <div class="fk-form__row">
+                  <label class="fk-flabel" for="school-website"><span>{{ $t('systemSettings.website') }}</span></label>
+                  <!-- type="text": native url validation rejects "www.example.om" (no scheme); we normalize on save instead -->
+                  <input id="school-website" v-model="schoolInfo.website" type="text" inputmode="url" dir="ltr" class="fk-field">
+                </div>
+                <div class="fk-form__row">
+                  <label class="fk-flabel" for="school-address"><span>{{ $t('students.address') }}</span></label>
+                  <input id="school-address" v-model="schoolInfo.address" type="text" class="fk-field">
+                </div>
+                <div class="fk-form__row">
+                  <label class="fk-flabel" for="school-phone"><span>{{ $t('students.phone') }}</span></label>
+                  <input id="school-phone" v-model="schoolInfo.phone" type="tel" class="fk-field" dir="ltr">
+                </div>
+                <div class="fk-form__row">
+                  <label class="fk-flabel" for="school-email"><span>{{ $t('students.email') }}</span></label>
+                  <input id="school-email" v-model="schoolInfo.email" type="email" dir="ltr" class="fk-field">
+                </div>
               </div>
             </div>
           </div>
-          <div class="flex justify-end">
+          <div class="flex justify-end border-t border-fikr-hairline pt-4">
             <button type="submit" class="fk-btn fk-btn--primary" :disabled="savingSchoolInfo">
               {{ savingSchoolInfo ? $t('common.saving') : $t('common.save') }}
             </button>
@@ -173,7 +179,7 @@
           </div>
         </div>
 
-        <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-12 text-sm text-fikr-ink-soft">
+        <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-12 text-sm text-fikr-ink-soft">
           <FikrLoader />
           <span>{{ $t('common.loading') }}</span>
         </div>
@@ -355,7 +361,7 @@
 
       <!-- Class Settings Section -->
       <div class="fk-card overflow-visible p-4 sm:p-5">
-        <div class="relative mb-4 flex items-center gap-2">
+        <div class="class-settings-help relative mb-4 flex items-center gap-2">
           <button
             type="button"
             class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary-200/80 bg-primary-50 text-primary-700 hover:bg-primary-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
@@ -501,7 +507,7 @@
                     :key="bi"
                     class="flex items-center justify-between gap-2 text-sm"
                   >
-                    <span class="truncate font-medium text-fikr-ink">{{ b.name }}</span>
+                    <span class="truncate font-medium text-fikr-ink">{{ b.name || $t('classSettings.timeSlots.breakKind') }}</span>
                     <span class="shrink-0 tabular-nums text-fikr-ink-muted">
                       {{ b.startTime }} · {{ b.duration }} {{ $t('common.minutes') }}
                     </span>
@@ -518,13 +524,10 @@
               </div>
               <button
                 type="button"
-                class="fk-iconbtn"
-                :aria-label="$t('classSettings.timeSlots.regenerate')"
+                class="fk-btn fk-btn--pearl fk-btn--sm"
                 @click="regenerateTimeSlots"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+                {{ $t('classSettings.timeSlots.regenerate') }}
               </button>
             </div>
             <p v-if="timeSlotsError" class="fk-alert fk-alert--error mb-3">{{ timeSlotsError }}</p>
@@ -537,7 +540,6 @@
                   <tr>
                     <th>{{ $t('classSettings.timeSlots.slot') }}</th>
                     <th>{{ $t('common.time') }}</th>
-                    <th>{{ $t('classSettings.timeSlots.kind') }}</th>
                     <th class="text-end">{{ $t('common.minutes') }}</th>
                   </tr>
                 </thead>
@@ -545,14 +547,6 @@
                   <tr v-for="(slot, index) in generatedTimeSlots" :key="slot.id">
                     <td class="tabular-nums text-fikr-ink-soft">{{ index + 1 }}</td>
                     <td class="font-medium tabular-nums text-fikr-ink">{{ slot.startTime }}</td>
-                    <td>
-                      <span
-                        class="fk-chip"
-                        :class="slot.kind === 'break' ? 'fk-chip--amber' : 'fk-chip--outline'"
-                      >
-                        {{ slot.kind === 'break' ? (slot.name || $t('classSettings.timeSlots.breakKind')) : $t('classSettings.timeSlots.classKind') }}
-                      </span>
-                    </td>
                     <td class="text-end tabular-nums text-fikr-ink-muted">{{ slot.duration }}</td>
                   </tr>
                 </tbody>
@@ -615,9 +609,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import IconPlus from '@/components/icons/IconPlus.vue'
 import YearModal from '@/components/YearModal.vue'
 import SemesterModal from '@/components/SemesterModal.vue'
@@ -640,11 +636,14 @@ import {
 } from '@/services'
 import { settingsService } from '@/services/settings.service'
 import { schoolLandingService } from '@/services/school-landing.service'
+import attachmentService from '@/services/attachment.service'
 import { getApiBaseUrl } from '@/config/public-config'
+import { getStoredSchoolId } from '@/utils/auth-token'
 import { resetSchoolBrand, useSchoolBrand } from '@/composables/useSchoolBrand'
 import { extractLogoBrandColors } from '@/utils/extract-logo-brand-colors'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const { load: reloadSchoolBrand } = useSchoolBrand()
 
 const schoolInfo = ref({
@@ -657,6 +656,8 @@ const schoolInfo = ref({
   website: '',
 })
 const schoolLogoUrl = ref('')
+const logoFileInput = ref<HTMLInputElement | null>(null)
+const uploadingLogo = ref(false)
 const brandPrimaryColor = ref('')
 const brandAccentColor = ref('')
 const detectingBrandColors = ref(false)
@@ -674,8 +675,26 @@ function resolveLogoPreview(path: string) {
 
 const schoolLogoPreview = computed(() => resolveLogoPreview(schoolLogoUrl.value))
 
+function publicSchoolLogoPath(attachmentId: string) {
+  return `/api/public/branding/school-logo/${attachmentId}`
+}
+
+/** Load pixels from our stored logo (or any reachable image) so canvas sampling is not blocked. */
+async function imageSrcForSampling(src: string): Promise<{ url: string; revoke: boolean }> {
+  if (/^(blob:|data:)/i.test(src)) return { url: src, revoke: false }
+  try {
+    const res = await fetch(src)
+    if (!res.ok) return { url: src, revoke: false }
+    const blob = await res.blob()
+    return { url: URL.createObjectURL(blob), revoke: true }
+  } catch {
+    return { url: src, revoke: false }
+  }
+}
+
 async function detectBrandColorsFromLogo() {
   detectingBrandColors.value = true
+  let revokeSrc = ''
   try {
     const src = schoolLogoPreview.value
     if (!src) {
@@ -683,7 +702,9 @@ async function detectBrandColorsFromLogo() {
       brandAccentColor.value = ''
       return
     }
-    const colors = await extractLogoBrandColors(src)
+    const sampling = await imageSrcForSampling(src)
+    if (sampling.revoke) revokeSrc = sampling.url
+    const colors = await extractLogoBrandColors(sampling.url)
     if (colors) {
       brandPrimaryColor.value = colors.primary
       brandAccentColor.value = colors.accent
@@ -691,7 +712,81 @@ async function detectBrandColorsFromLogo() {
   } catch (err) {
     console.error('Brand color detection failed:', err)
   } finally {
+    if (revokeSrc) URL.revokeObjectURL(revokeSrc)
     detectingBrandColors.value = false
+  }
+}
+
+function clearSchoolLogo() {
+  schoolLogoUrl.value = ''
+  brandPrimaryColor.value = ''
+  brandAccentColor.value = ''
+}
+
+/** Phone photos are multi-megabyte. Downscale before upload so the request finishes quickly. */
+async function shrinkSchoolLogo(file: File): Promise<File> {
+  const maxEdge = 1024
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(file)
+  } catch {
+    return file
+  }
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height))
+  if (scale === 1 && file.size < 400_000) {
+    bitmap.close()
+    return file
+  }
+  const width = Math.max(1, Math.round(bitmap.width * scale))
+  const height = Math.max(1, Math.round(bitmap.height * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    bitmap.close()
+    return file
+  }
+  ctx.drawImage(bitmap, 0, 0, width, height)
+  bitmap.close()
+  const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, mime, mime === 'image/jpeg' ? 0.85 : undefined)
+  })
+  if (!blob || blob.size >= file.size) return file
+  const name = mime === 'image/png' ? 'logo.png' : 'logo.jpg'
+  return new File([blob], name, { type: mime })
+}
+
+async function onSchoolLogoFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  if (!/^image\/(png|jpe?g|gif|webp)$/i.test(file.type)) {
+    feedback.error(t('settings.logoTypeInvalid'))
+    return
+  }
+  const schoolId = getStoredSchoolId()
+  if (!schoolId) {
+    feedback.error(t('settings.logoUploadFailed'))
+    return
+  }
+  uploadingLogo.value = true
+  try {
+    const prepared = await shrinkSchoolLogo(file)
+    const row = await attachmentService.uploadFile(prepared, {
+      entity_type: 'school',
+      entity_id: schoolId,
+      purpose: 'school_logo',
+    })
+    schoolLogoUrl.value = publicSchoolLogoPath(row.id)
+    void detectBrandColorsFromLogo()
+  } catch (err) {
+    console.error('Error uploading school logo:', err)
+    feedback.error(t('settings.logoUploadFailed'))
+  } finally {
+    uploadingLogo.value = false
   }
 }
 
@@ -776,9 +871,11 @@ async function saveSchoolInfo() {
     resetSchoolBrand()
     await reloadSchoolBrand(true)
     schoolInfoOk.value = t('common.savedSuccessfully')
+    feedback.saved(schoolInfoOk.value)
   } catch (err) {
     console.error('Error saving school info:', err)
     schoolInfoError.value = t('systemSettings.paymentFlagsSaveError')
+    feedback.error(schoolInfoError.value)
   } finally {
     savingSchoolInfo.value = false
   }
@@ -993,11 +1090,6 @@ function hydrateSchoolDayFromStorage() {
       const span = timeToMinutes(saved.schoolEndTime) - timeToMinutes(saved.firstClassTime)
       if (span > 0) periodsPerDay.value = Math.max(1, Math.round(span / dur))
     }
-    if (Array.isArray(saved.breakTimes)) {
-      breakTimes.value = saved.breakTimes.filter(
-        (b: BreakTimeRow) => b?.name && b?.startTime && Number(b.duration) > 0,
-      )
-    }
     if (Array.isArray(saved.timeSlots) && saved.timeSlots.length) {
       generatedTimeSlots.value = saved.timeSlots.map((slot: any, i: number) => ({
         id: String(slot.id || i + 1),
@@ -1007,6 +1099,10 @@ function hydrateSchoolDayFromStorage() {
         name: slot.name,
       }))
     }
+    const savedBreaks = Array.isArray(saved.breakTimes)
+      ? saved.breakTimes.map(normalizeBreakRow).filter((row): row is BreakTimeRow => row != null)
+      : []
+    breakTimes.value = savedBreaks.length ? savedBreaks : breaksFromSlots(generatedTimeSlots.value)
   } catch (err) {
     console.warn('Failed to hydrate class settings from localStorage:', err)
   }
@@ -1029,6 +1125,25 @@ function persistClassSettingsLocal() {
   } catch (error) {
     console.warn('Failed to save class settings to localStorage:', error)
   }
+}
+
+function normalizeBreakRow(raw: any): BreakTimeRow | null {
+  if (!raw || typeof raw !== 'object') return null
+  const startTime = String(raw.startTime || raw.time || raw.start || '').slice(0, 5)
+  const duration = Number(raw.duration ?? raw.duration_minutes ?? raw.minutes)
+  if (!/^\d{1,2}:\d{2}$/.test(startTime) || !Number.isFinite(duration) || duration <= 0) return null
+  return {
+    name: String(raw.name || raw.title || '').trim(),
+    startTime,
+    duration,
+  }
+}
+
+function breaksFromSlots(slots: GeneratedSlot[]): BreakTimeRow[] {
+  return slots
+    .filter((slot) => slot.kind === 'break')
+    .map((slot) => normalizeBreakRow(slot))
+    .filter((row): row is BreakTimeRow => row != null)
 }
 
 function timeToMinutes(hhmm: string): number {
@@ -1127,14 +1242,22 @@ const editSemester = (semester: any, year?: AcademicYear) => {
 }
 
 const deleteSemester = async (semester: any) => {
-  if (confirm('هل أنت متأكد من حذف هذا الفصل الدراسي؟')) {
-    try {
-      await semesterService.remove(semester.id)
-      await loadAcademicYears() // Reload data
-    } catch (err: any) {
-      error.value = err.message || 'Failed to delete semester'
-      console.error('Error deleting semester:', err)
-    }
+  const ok = await feedback.confirm({
+    title: t('settings.deleteSemester'),
+    message: t('settings.confirmDeleteSemester'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  })
+  if (!ok) {
+    activeSemesterDropdown.value = null
+    return
+  }
+  try {
+    await semesterService.remove(semester.id)
+    await loadAcademicYears()
+  } catch (err: any) {
+    error.value = err.message || 'Failed to delete semester'
+    console.error('Error deleting semester:', err)
   }
   activeSemesterDropdown.value = null
 }
@@ -1202,6 +1325,15 @@ const saveYear = async (yearData: any) => {
   }
 }
 
+function semesterSaveError(err: { message?: string; response?: { data?: { message?: string | string[] } } }): string {
+  const body = err?.response?.data?.message
+  const raw = (Array.isArray(body) ? body.join(' ') : body || err?.message || '').trim()
+  if (raw.includes('Semester dates overlap with existing semester')) {
+    return t('settings.semesterDatesOverlap')
+  }
+  return raw || t('common.error')
+}
+
 const saveSemester = async (semesterData: any) => {
   showProgressDialog.value = true
   progressState.value = 'loading'
@@ -1245,7 +1377,7 @@ const saveSemester = async (semesterData: any) => {
   } catch (err: any) {
     console.error('Error saving semester:', err)
     progressState.value = 'error'
-    errorMessage.value = err.message || 'حدث خطأ أثناء العملية'
+    errorMessage.value = semesterSaveError(err)
     progressMessage.value = 'فشل في العملية'
 
     setTimeout(() => {
@@ -1309,14 +1441,20 @@ const saveDuration = async (durationData: any) => {
   editingDuration.value = null
 }
 
-const confirmDeleteDuration = (duration: any) => {
+const confirmDeleteDuration = async (duration: any) => {
   activeDurationDropdown.value = null
   if (duration.inUse) return
   if (duration.isDefault && classDurations.value.length === 1) {
     error.value = t('classSettings.durations.cannotDeleteOnlyDefault')
     return
   }
-  if (!confirm(t('classSettings.durations.confirmDelete'))) return
+  const ok = await feedback.confirm({
+    title: t('common.delete'),
+    message: t('classSettings.durations.confirmDelete'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  })
+  if (!ok) return
   void deleteDuration(duration)
 }
 
@@ -1350,9 +1488,9 @@ const saveStartTimes = (startTimesData: any) => {
     periodsPerDay.value = Number(startTimesData.periodsPerDay)
   }
   // schoolEndTime is derived from firstClass + periods + breaks, not entered.
-  breakTimes.value = (startTimesData.breakTimes || []).filter(
-    (row: BreakTimeRow) => row?.name && row?.startTime && Number(row.duration) > 0,
-  )
+  breakTimes.value = (startTimesData.breakTimes || [])
+    .map(normalizeBreakRow)
+    .filter((row: BreakTimeRow | null): row is BreakTimeRow => row != null)
 
   showStartTimesModal.value = false
   void regenerateTimeSlots()
@@ -1432,19 +1570,23 @@ const regenerateTimeSlots = async () => {
   const defaultDuration = defaultDurationMinutes.value
   if (!defaultDuration) {
     timeSlotsError.value = t('classSettings.durations.defaultRequired')
-    generatedTimeSlots.value = []
-    persistClassSettingsLocal()
     return
   }
 
   try {
-    generatedTimeSlots.value = buildSlotsFromDay(
+    const next = buildSlotsFromDay(
       defaultDuration,
       firstClassTime.value,
       schoolEndTime.value,
       breakTimes.value,
     )
+    if (!next.length) {
+      timeSlotsError.value = t('classSettings.timeSlots.empty')
+      return
+    }
+    generatedTimeSlots.value = next
     persistClassSettingsLocal()
+    feedback.success(t('common.savedSuccessfully'))
   } catch (err: any) {
     console.error('Error regenerating time slots:', err)
     generatedTimeSlots.value = buildSlotsFromDay(
@@ -1459,10 +1601,14 @@ const regenerateTimeSlots = async () => {
 
 // Close dropdowns when clicking outside
 const handleClickOutside = (event: Event) => {
-  if (!(event.target as Element).closest('.relative')) {
+  const target = event.target as Element
+  if (!target.closest('.relative')) {
     activeYearDropdown.value = null
     activeSemesterDropdown.value = null
     activeDurationDropdown.value = null
+  }
+  if (!target.closest('.class-settings-help')) {
+    showClassSettingsHelp.value = false
   }
 }
 

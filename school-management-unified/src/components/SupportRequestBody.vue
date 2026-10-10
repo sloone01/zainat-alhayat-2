@@ -2,7 +2,7 @@
   <div class="support-body text-sm text-fikr-ink">
     <p v-if="loading" class="text-fikr-ink-muted">…</p>
     <!-- HTML is sanitized on the server and again by DOMPurify in resolveSupportHtml -->
-    <div v-else v-html="displayHtml" />
+    <div v-else @click="openImage" v-html="displayHtml" />
   </div>
 </template>
 
@@ -31,14 +31,26 @@ watch(
 )
 
 onBeforeUnmount(() => revokeObjectUrls(objectUrls))
+
+function openImage(event: MouseEvent) {
+  const target = event.target
+  if (!(target instanceof HTMLImageElement) || !target.src) return
+  window.open(target.src, '_blank', 'noopener')
+}
 </script>
 
 <style scoped>
 .support-body :deep(img) {
+  display: block;
+  width: auto;
   max-width: 100%;
-  height: auto;
+  max-height: min(70vh, 36rem);
+  height: auto !important;
+  object-fit: contain;
+  background: #f4f4f5;
   border-radius: 0.5rem;
   margin: 0.5rem 0;
+  cursor: zoom-in;
 }
 .support-body :deep(ul) {
   list-style: disc;

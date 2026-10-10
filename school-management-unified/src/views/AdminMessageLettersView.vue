@@ -14,7 +14,7 @@
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('messageLetters.listHeading') }}</h2>
             <p v-if="!pageLoading" class="fk-card__meta">
-              {{ $t('messageLetters.lettersCount', { count: letters.length }) }}
+              {{ $t('messageLetters.lettersCount', { count: total }) }}
             </p>
           </div>
           <div class="flex shrink-0 flex-nowrap items-center gap-2">
@@ -32,11 +32,13 @@
 
         <div class="p-6">
           <div v-if="pageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
-            <FikrLoader />
-            <span class="text-sm">{{ $t('common.loading') }}</span>
+            <template v-if="!routePageLoading">
+              <FikrLoader />
+              <span class="text-sm">{{ $t('common.loading') }}</span>
+            </template>
           </div>
 
-          <template v-else-if="letters.length">
+          <template v-else-if="total > 0">
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <KanbanCard
                 v-for="row in paginatedLetters"
@@ -89,40 +91,42 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('messageLetters.colTitle') }}</th>
-                    <th class="px-4 py-3 text-start whitespace-nowrap">{{ $t('messageLetters.colType') }}</th>
-                    <th class="px-4 py-3 text-start whitespace-nowrap">{{ $t('messageLetters.colSource') }}</th>
-                    <th class="px-4 py-3 text-start whitespace-nowrap">{{ $t('messageLetters.colRecipients') }}</th>
-                    <th class="px-4 py-3 text-start whitespace-nowrap">{{ $t('messageLetters.colUpdated') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('messageLetters.colTitle') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('messageLetters.colType') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('messageLetters.colSource') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('messageLetters.colRecipients') }}</th>
+                    <th class="whitespace-nowrap">{{ $t('messageLetters.colUpdated') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="row in paginatedLetters" :key="'list-' + row.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ row.title }}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">
+                <tbody>
+                  <tr v-for="row in paginatedLetters" :key="'list-' + row.id">
+                    <td>
+                      <div class="font-medium">{{ row.title }}</div>
+                    </td>
+                    <td class="whitespace-nowrap">
                       <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                        class="fk-pill"
                         :class="letterTypeBadgeClass(row)"
                       >
                         {{ letterTypeLabel(row) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap">
+                    <td class="whitespace-nowrap">
                       <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                        :class="row.source === 'activity' ? 'bg-violet-100 text-violet-800' : 'bg-gray-100 text-gray-600'"
+                        class="fk-pill"
+                        :class="row.source === 'activity' ? 'fk-pill--outline' : 'fk-pill--mist'"
                       >
                         {{ row.source === 'activity' ? $t('messageLetters.sourceActivity') : $t('messageLetters.sourceCustom') }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 tabular-nums text-gray-700">{{ row.recipient_count }}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ formatDate(row.updated_at) }}</td>
-                    <td class="px-4 py-3">
+                    <td class="tabular-nums">{{ row.recipient_count }}</td>
+                    <td class="whitespace-nowrap">{{ formatDate(row.updated_at) }}</td>
+                    <td>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === row.id"
@@ -161,7 +165,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="letters.length > 0"
+              :show="total > 0"
               @update:page="goToPage"
             />
           </template>
@@ -738,7 +742,7 @@ import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { useFeedback } from '@/composables/useFeedback'
 import NotificationEmailContentFrame from '@/components/NotificationEmailContentFrame.vue'
 import NotificationTemplateEmailEditor from '@/components/NotificationTemplateEmailEditor.vue'
@@ -770,6 +774,7 @@ import DOMPurify from 'dompurify'
 import { applyNotificationTemplateVariablesHtml } from '@/utils/notification-template-variables'
 import { wrapMessageLetterPrintSrcdoc } from '@/utils/message-letter-print'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t, te } = useI18n()
 const feedback = useFeedback()
@@ -798,14 +803,23 @@ function onDocumentClick(event: MouseEvent) {
 
 const schoolId = computed(() => Number((authService.getStoredUser() as { school_id?: string } | null)?.school_id ?? 1))
 
-const pageLoading = ref(true)
-const letters = ref<SchoolMessageLetterRow[]>([])
 const {
+  items: paginatedLetters,
+  total,
+  loading: pageLoading,
   currentPage,
-  paginatedItems: paginatedLetters,
   totalPages,
   goToPage,
-} = useClientPagination(letters)
+  reload: loadLetters,
+} = useServerPagination(
+  (params) => messageLetterService.listPage(params),
+  {
+    onError: (e) => {
+      const err = e as { message?: string }
+      flashError.value = err?.message || t('messageLetters.loadListError')
+    },
+  },
+)
 
 const approvalSheetOpen = ref(false)
 const approvalSheetLetterId = ref<string | null>(null)
@@ -1363,7 +1377,7 @@ function letterTypeLabel(row: SchoolMessageLetterRow): string {
 }
 
 function letterTypeBadgeClass(row: SchoolMessageLetterRow): string {
-  return row.requires_approval ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-700'
+  return row.requires_approval ? 'fk-pill--outline' : 'fk-pill--mist'
 }
 
 function formatDate(iso: string) {
@@ -1373,10 +1387,6 @@ function formatDate(iso: string) {
   } catch {
     return iso
   }
-}
-
-async function loadLetters() {
-  letters.value = await messageLetterService.list(schoolId.value)
 }
 
 const runPreview = useDebounceFn(async () => {
@@ -1422,7 +1432,6 @@ watch(
 )
 
 async function boot() {
-  pageLoading.value = true
   flashError.value = ''
   try {
     const [g, u, hints, samples] = await Promise.all([
@@ -1437,12 +1446,9 @@ async function boot() {
     Object.keys(sampleVars).forEach((k) => delete sampleVars[k])
     Object.assign(sampleVars, samples)
     mergeSampleKeysFromHints(hints, samples)
-    await loadLetters()
   } catch (e: unknown) {
     const err = e as { message?: string }
     flashError.value = err?.message || t('messageLetters.loadListError')
-  } finally {
-    pageLoading.value = false
   }
 }
 
@@ -1529,7 +1535,7 @@ async function dispatchLetter() {
     if (dispatchChannel.value === 'chat_approval') {
       await loadLetters()
       if (editingId.value) {
-        const current = letters.value.find((l) => l.id === editingId.value)
+        const current = paginatedLetters.value.find((l) => l.id === editingId.value)
         if (current?.requires_approval) {
           openApprovalTracking(current)
         }

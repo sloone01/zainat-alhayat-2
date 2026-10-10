@@ -21,6 +21,7 @@ const attendance_entity_1 = require("../entities/attendance.entity");
 const notification_dispatcher_service_1 = require("../notifications/notification-dispatcher.service");
 const notification_audience_service_1 = require("../notifications/notification-audience.service");
 const notification_template_keys_1 = require("../constants/notification-template-keys");
+const bilingual_name_1 = require("../common/identity/bilingual-name");
 let AttendanceService = AttendanceService_1 = class AttendanceService {
     attendanceRepository;
     notifications;
@@ -107,7 +108,7 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
         return await this.attendanceRepository.find({
             where: whereCondition,
             relations: ['student', 'recorder'],
-            order: { attendance_date: 'DESC', session_number: 'ASC', student: { first_name: 'ASC' } },
+            order: { attendance_date: 'DESC', session_number: 'ASC', student: { firstName: 'ASC' } },
         });
     }
     async findByStudent(studentId, startDate, endDate) {
@@ -125,7 +126,7 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
         return await this.attendanceRepository.find({
             where: { attendance_date: date },
             relations: ['student', 'group', 'recorder'],
-            order: { group: { name: 'ASC' }, student: { first_name: 'ASC' } },
+            order: { group: { name: 'ASC' }, student: { firstName: 'ASC' } },
         });
     }
     async findOne(id, schoolId) {
@@ -211,7 +212,7 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             acc[groupName].total_students++;
             acc[groupName].students.push({
                 student_id: attendance.student_id,
-                student_name: `${attendance.student.first_name} ${attendance.student.family_name}`,
+                student_name: (0, bilingual_name_1.formatStudentDisplayName)(attendance.student),
                 status: attendance.status,
                 check_in_time: attendance.check_in_time,
                 is_excused: attendance.is_excused,

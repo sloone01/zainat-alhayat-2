@@ -143,11 +143,23 @@ const SupportImage = Image.extend({
   },
 })
 
+/** TipTap `useEditor` is async — wait so auto-inserted report screenshots are not dropped. */
+async function waitForEditor(timeoutMs = 4000): Promise<boolean> {
+  if (editor.value) return true
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    await new Promise((r) => setTimeout(r, 40))
+    if (editor.value) return true
+  }
+  return !!editor.value
+}
+
 /** Uploads and inserts images; resolves to the `/api/files/support/...` URL of each one inserted. */
 async function insertImages(files: File[]): Promise<string[]> {
   const inserted: string[] = []
   const images = files.filter((f) => IMAGE_TYPE.test(f.type))
-  if (!images.length || !editor.value) return inserted
+  if (!images.length) return inserted
+  if (!(await waitForEditor())) return inserted
   uploadError.value = ''
   uploading.value = true
   try {
@@ -253,7 +265,7 @@ function clear() {
   uploadError.value = ''
 }
 
-defineExpose({ getStorableHtml, isEmpty, clear, uploading, insertImages })
+defineExpose({ getStorableHtml, isEmpty, clear, uploading, insertImages, waitForEditor })
 
 onBeforeUnmount(() => {
   for (const url of objectUrls) URL.revokeObjectURL(url)
@@ -284,8 +296,12 @@ onBeforeUnmount(() => {
   min-height: 14rem;
 }
 .support-editor :deep(.ProseMirror img) {
+  display: block;
+  width: auto;
   max-width: 100%;
-  height: auto;
+  max-height: min(70vh, 36rem);
+  height: auto !important;
+  object-fit: contain;
   border-radius: 0.5rem;
   margin: 0.5rem 0;
 }

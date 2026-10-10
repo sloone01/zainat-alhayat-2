@@ -1,8 +1,44 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository, type ObjectLiteral, type SelectQueryBuilder } from 'typeorm';
 import { Group } from '../entities/group.entity';
 import { CreateGroupDto, UpdateGroupDto } from '../dto/group.dto';
+import {
+  buildPage,
+  clampPage,
+  likeTerm,
+  parsePageQuery,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
+
+/**
+ * Students are a many-to-many, so counting the joined query multiplies rows.
+ * Count distinct ids, page those ids, then load relations for that page only.
+ */
+async function pageDistinctIds(
+  qb: SelectQueryBuilder<ObjectLiteral>,
+  alias: string,
+  query: PageQuery,
+  orderExpr: string,
+  orderDir: 'ASC' | 'DESC',
+): Promise<{ ids: string[]; total: number; page: number; limit: number }> {
+  const { page, limit } = parsePageQuery(query);
+  const totalRow = await qb.clone().select(`COUNT(DISTINCT ${alias}.id)`, 'cnt').getRawOne<{ cnt: string }>();
+  const total = Number(totalRow?.cnt ?? 0);
+  const safePage = clampPage(page, total, limit);
+  const idRows = await qb
+    .clone()
+    .select(`${alias}.id`, 'id')
+    .addSelect(`MAX(${orderExpr})`, 'sort_key')
+    .groupBy(`${alias}.id`)
+    .orderBy('sort_key', orderDir)
+    .addOrderBy(`${alias}.id`, 'ASC')
+    .offset((safePage - 1) * limit)
+    .limit(limit)
+    .getRawMany<{ id: string }>();
+  return { ids: idRows.map((row) => String(row.id)), total, page: safePage, limit };
+}
 
 function uuidOrNull(value: unknown): string | null {
   if (value == null || value === '') return null;
@@ -95,7 +131,6 @@ export class GroupService {
         order: { created_at: 'DESC' },
       });
 
-      console.log(`Found ${groups.length} groups for school_id: ${schoolId}, is_active: ${isActive}`);
       return groups;
     } catch (error) {
       console.error(`Database error finding groups: ${error.message}`, error.stack);
@@ -109,6 +144,37 @@ export class GroupService {
         throw new Error(`Database error: ${error.message}`);
       }
     }
+  }
+
+  async findPage(
+    schoolId: string,
+    query: PageQuery & { q?: string; status?: string; isActive?: boolean; paymentLevelId?: string },
+  ): Promise<PageResult<Group>> {
+    const qb = this.groupRepository.createQueryBuilder('g').where('g.school_id = :schoolId', { schoolId });
+    if (query.paymentLevelId) {
+      qb.andWhere('g.level_id = :paymentLevelId', { paymentLevelId: query.paymentLevelId });
+    }
+    if (query.status === 'active' || query.status === 'inactive') {
+      qb.andWhere('g.is_active = :isActive', { isActive: query.status === 'active' });
+    } else if (query.isActive !== undefined) {
+      qb.andWhere('g.is_active = :isActive', { isActive: query.isActive });
+    }
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `LOWER(CONCAT_WS(' ', g.name, COALESCE(g.description, ''))) LIKE :term`,
+        { term },
+      );
+    }
+    const { ids, total, page, limit } = await pageDistinctIds(qb, 'g', query, 'g.created_at', 'DESC');
+    if (!ids.length) return buildPage([], total, page, limit);
+    const rows = await this.groupRepository.find({
+      where: { id: In(ids) },
+      relations: ['students', 'school', 'academicYear', 'level', 'supervisor'],
+    });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const items = ids.map((id) => byId.get(id)).filter((row): row is Group => !!row);
+    return buildPage(items, total, page, limit);
   }
 
   async findOne(id: string): Promise<Group> {

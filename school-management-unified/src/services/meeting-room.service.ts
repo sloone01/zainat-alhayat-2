@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface CreateMeetingRoomInvite {
   allParents?: boolean
@@ -97,11 +98,27 @@ class MeetingRoomApiService extends BaseApiService {
     return this.get<MeetingRoomListRow[]>('/meeting-rooms', { school_id: schoolId })
   }
 
+  async listPage(params: { page: number; limit: number; q?: string; status?: string; school_id?: string }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status && params.status !== 'all') query.status = params.status
+    if (params.school_id) query.school_id = params.school_id
+    return this.get<PageResult<MeetingRoomListRow>>('/meeting-rooms', query)
+  }
+
   async mine(schoolId?: string | null): Promise<MeetingRoomMineRow[]> {
     return this.get<MeetingRoomMineRow[]>(
       '/meeting-rooms/mine',
       schoolId ? { school_id: schoolId } : undefined,
     )
+  }
+
+  async minePage(params: { page: number; limit: number; q?: string; status?: string; school_id?: string }) {
+    const query: Record<string, string | number> = { page: params.page, limit: params.limit }
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.status && params.status !== 'all') query.status = params.status
+    if (params.school_id) query.school_id = params.school_id
+    return this.get<PageResult<MeetingRoomMineRow>>('/meeting-rooms/mine', query)
   }
 
   async getOne(meetingId: string): Promise<MeetingRoomDetail> {

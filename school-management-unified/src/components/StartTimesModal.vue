@@ -110,16 +110,11 @@ const emit = defineEmits<{
   save: [startTimesData: any]
 }>()
 
-const defaultBreakTimes = () => [
-  { name: t('classSettings.durations.examples.break'), startTime: '10:00', duration: 15 },
-  { name: t('classSettings.startTimes.lunchTime'), startTime: '12:00', duration: 45 }
-]
-
 const formData = ref({
   schoolStartTime: '07:30',
   firstClassTime: '08:00',
   periodsPerDay: 6,
-  breakTimes: defaultBreakTimes(),
+  breakTimes: [] as { name: string; startTime: string; duration: number }[],
 })
 
 function timeToMinutes(hhmm: string): number {
@@ -200,7 +195,7 @@ const mergeLunchIntoBreaks = (breakTimes: any[], lunchTime?: string, lunchDurati
     })
   }
 
-  return rows.length ? rows : defaultBreakTimes()
+  return rows
 }
 
 const saveStartTimes = () => {
@@ -213,7 +208,7 @@ const saveStartTimes = () => {
     schoolStartTime: formData.value.schoolStartTime,
     firstClassTime: formData.value.firstClassTime,
     periodsPerDay: Number(formData.value.periodsPerDay) || 1,
-    breakTimes: formData.value.breakTimes.filter((row) => row.name && row.startTime),
+    breakTimes: formData.value.breakTimes.filter((row) => row.startTime && Number(row.duration) > 0),
     lunchTime: lunchRow?.startTime || '',
     lunchDuration: lunchRow?.duration || 0,
     schoolEndTime: computedEndTime.value,

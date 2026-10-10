@@ -15,7 +15,15 @@
               :key="step.key"
               class="flex min-w-0 flex-1 items-center"
             >
-              <div class="flex flex-col items-center gap-2 text-center">
+              <component
+                :is="jumpable ? 'button' : 'div'"
+                :type="jumpable ? 'button' : undefined"
+                class="flex flex-col items-center gap-2 text-center"
+                :class="jumpable ? 'group cursor-pointer rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40' : ''"
+                :aria-current="jumpable && currentStep === index + 1 ? 'step' : undefined"
+                :aria-label="jumpable ? step.title : undefined"
+                @click="onStepClick(index + 1)"
+              >
                 <div
                   class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition"
                   :class="stepCircleClass(index + 1)"
@@ -34,11 +42,11 @@
                 </div>
                 <span
                   class="hidden max-w-[4.5rem] truncate text-[11px] font-semibold sm:block"
-                  :class="currentStep === index + 1 ? 'text-primary-800' : 'text-gray-500'"
+                  :class="currentStep === index + 1 ? 'text-primary-800' : 'text-gray-500 group-hover:text-primary-700'"
                 >
                   {{ step.shortTitle }}
                 </span>
-              </div>
+              </component>
               <div
                 v-if="index < steps.length - 1"
                 class="mx-1 h-1 flex-1 rounded-full sm:mx-2"
@@ -95,7 +103,18 @@ const props = defineProps<{
   subtitle: string
   steps: EnrollmentWizardStep[]
   currentStep: number
+  /** Edit only: each step opens directly. Register stays sequential. */
+  jumpable?: boolean
 }>()
+
+const emit = defineEmits<{
+  jump: [step: number]
+}>()
+
+function onStepClick(step: number) {
+  if (!props.jumpable || step === props.currentStep) return
+  emit('jump', step)
+}
 
 const { locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
@@ -117,8 +136,11 @@ const currentIcon = computed(
 )
 
 const stepCircleClass = (stepNumber: number) => {
-  if (props.currentStep > stepNumber) return 'bg-primary-600 text-white shadow-sm'
+  const hover = props.jumpable ? ' group-hover:ring-primary-300' : ''
+  if (props.currentStep > stepNumber) {
+    return `bg-primary-600 text-white shadow-sm${props.jumpable ? ' group-hover:bg-primary-700' : ''}`
+  }
   if (props.currentStep === stepNumber) return 'bg-primary-600 text-white shadow-md ring-4 ring-primary-100'
-  return 'bg-white text-gray-400 ring-2 ring-gray-200'
+  return `bg-white text-gray-400 ring-2 ring-gray-200${hover}`
 }
 </script>

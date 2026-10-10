@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface CourseEnrollmentRow {
   id: string
@@ -9,7 +10,17 @@ export interface CourseEnrollmentRow {
   student_payment_id: string | null
   enrolled_at: string
   dropped_at: string | null
-  student?: { id: string; firstName: string; lastName: string }
+  student?: {
+    id: string
+    firstName: string
+    secondName?: string | null
+    secondNameEn?: string | null
+    lastName: string
+    first_name_ar?: string | null
+    first_name_en?: string | null
+    last_name_ar?: string | null
+    last_name_en?: string | null
+  }
   course?: { id: string; name: string; title?: string }
   payment?: { id: string; base_total_amount: string; currency: string } | null
 }
@@ -43,11 +54,45 @@ class CourseEnrollmentService extends BaseApiService {
     return this.get<CourseEnrollmentRow[]>('/course-enrollments', params)
   }
 
+  listPage(params: {
+    school_id?: string
+    course_id?: string
+    student_id?: string
+    status?: string
+    page?: number
+    limit?: number
+  }): Promise<PageResult<CourseEnrollmentRow>> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.school_id) query.school_id = params.school_id
+    if (params.course_id) query.course_id = params.course_id
+    if (params.student_id) query.student_id = params.student_id
+    if (params.status) query.status = params.status
+    return this.get('/course-enrollments', query)
+  }
+
   listEnrollableCourses(schoolId?: string, studentId?: string) {
     return this.get<EnrollableCourseRow[]>('/course-enrollments/enrollable-courses', {
       ...(schoolId ? { school_id: schoolId } : {}),
       ...(studentId ? { student_id: studentId } : {}),
     })
+  }
+
+  listEnrollableCoursesPage(params: {
+    schoolId?: string
+    studentId?: string
+    page?: number
+    limit?: number
+  }): Promise<PageResult<EnrollableCourseRow>> {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.schoolId) query.school_id = params.schoolId
+    if (params.studentId) query.student_id = params.studentId
+    return this.get('/course-enrollments/enrollable-courses', query)
   }
 
   listAvailableStudents() {

@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsDateString, IsIn, IsOptional, IsUUID } from 'class-validator';
+import { IsDateString, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateOnlineSessionDto {
   @IsUUID()
@@ -37,4 +37,12 @@ export class ListSessionAttendanceRecordsQueryDto {
   @IsOptional()
   @IsDateString()
   to_date?: string;
+
+  @IsOptional()
+  @IsString()
+  page?: string;
+
+  @IsOptional()
+  @IsString()
+  limit?: string;
 }

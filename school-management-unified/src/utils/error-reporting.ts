@@ -10,6 +10,26 @@ export type ClientErrorReport = {
   extra?: Record<string, unknown>
 }
 
+/**
+ * No HTTP response: client timeout, offline, or the connection dropped.
+ * A user cancel (`ERR_CANCELED`) is not a failure to recover.
+ */
+export function isDroppedRequest(error: unknown): boolean {
+  const anyErr = error as { response?: unknown; code?: string; message?: string } | null
+  if (!anyErr || anyErr.response) return false
+  const code = String(anyErr.code || '')
+  if (code === 'ERR_CANCELED') return false
+  if (
+    code === 'ECONNABORTED' ||
+    code === 'ERR_NETWORK' ||
+    code === 'ETIMEDOUT' ||
+    code === 'ECONNRESET'
+  ) {
+    return true
+  }
+  return /timeout|Network Error|Failed to fetch/i.test(String(anyErr.message || ''))
+}
+
 /** Extract a user-facing message from Axios / Error / unknown. */
 export function getErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   if (!error) return fallback

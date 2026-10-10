@@ -62,6 +62,7 @@ export async function applyNativeChrome() {
 /** Marketing / school CMS landings — native shell opens login instead. */
 export function isNativePublicLandingPath(path: string): boolean {
   if (path === '/' || path === '/for-schools' || path === '/brochure') return true
+  if (path === '/s/login') return false
   return /^\/s\/[^/]+$/.test(path)
 }
 

@@ -42,7 +42,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     >();
 
     const status = this.resolveStatus(exception);
-    const { message, errorName, details, code } = this.resolveBody(exception);
+    const { message, errorName, details, code, fields } = this.resolveBody(exception);
     const stack = exception instanceof Error ? exception.stack : undefined;
     const requestId =
       request.requestId ||
@@ -92,13 +92,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error: errorName,
       statusCode: status,
       ...(code ? { code } : {}),
+      ...(fields || {}),
       ...(requestId ? { requestId } : {}),
       ...(ticket ? { ticket } : {}),
       ...(process.env.NODE_ENV !== 'production' && details ? { details } : {}),
     });
   }
 
+  private isPayloadTooLarge(exception: unknown): boolean {
+    if (!exception || typeof exception !== 'object') return false;
+    const err = exception as { type?: string; status?: number; statusCode?: number; message?: string };
+    if (err.type === 'entity.too.large') return true;
+    if (err.status === 413 || err.statusCode === 413) return true;
+    const msg = String(err.message || '').toLowerCase();
+    return msg.includes('request entity too large') || msg.includes('payload too large');
+  }
+
   private resolveStatus(exception: unknown): number {
+    if (this.isPayloadTooLarge(exception)) return HttpStatus.PAYLOAD_TOO_LARGE;
     if (exception instanceof HttpException) {
       return exception.getStatus();
     }
@@ -110,7 +121,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
     errorName: string;
     code?: string;
     details?: unknown;
+    fields?: Record<string, string | number | boolean>;
   } {
+    if (this.isPayloadTooLarge(exception)) {
+      return {
+        message:
+          'Uploaded files are too large. Use smaller photos or PDFs (about 2 MB each) and try again.',
+        errorName: 'PAYLOAD_TOO_LARGE',
+        code: 'PAYLOAD_TOO_LARGE',
+      };
+    }
+
     if (exception instanceof HttpException) {
       const res = exception.getResponse();
       if (typeof res === 'string') {
@@ -136,11 +157,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
         const codeRaw = obj.code ?? (rawMessage as { code?: unknown } | undefined)?.['code'];
         const code =
           typeof codeRaw === 'string' && codeRaw.trim() ? codeRaw.trim() : undefined;
+        const fields: Record<string, string | number | boolean> = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (key === 'message' || key === 'error' || key === 'statusCode' || key === 'code' || key === 'success') {
+            continue;
+          }
+          if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+            fields[key] = value;
+          }
+        }
         return {
           message,
           errorName: String(obj.error || exception.name),
           code,
           details: Array.isArray(rawMessage) ? rawMessage : undefined,
+          ...(Object.keys(fields).length ? { fields } : {}),
         };
       }
       return { message: exception.message, errorName: exception.name };

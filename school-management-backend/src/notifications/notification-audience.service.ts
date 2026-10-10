@@ -7,6 +7,7 @@ import { StudentCourseEnrollment } from '../entities/student-course-enrollment.e
 import { Schedule } from '../entities/schedule.entity';
 import { Course } from '../entities/course.entity';
 import type { NotifyRecipient } from './notification.types';
+import { formatStudentDisplayName } from '../common/identity/bilingual-name';
 
 @Injectable()
 export class NotificationAudienceService {
@@ -55,9 +56,41 @@ export class NotificationAudienceService {
     }
     return {
       schoolId: student.school_id ?? null,
-      studentName: `${student.firstName} ${student.lastName}`.trim(),
+      studentName: formatStudentDisplayName(student),
       recipients: this.recipientsFromParents(student.parents ?? []),
     };
+  }
+
+  async studentsOfGroup(groupId: string): Promise<NotifyRecipient[]> {
+    const students = await this.studentRepo
+      .createQueryBuilder('s')
+      .innerJoin('s.groups', 'g', 'g.id = :groupId', { groupId })
+      .leftJoinAndSelect('s.user', 'u')
+      .getMany();
+    return this.recipientsFromUsers(students.map((s) => s.user));
+  }
+
+  /** Parents and student accounts for every student in the school. */
+  async peopleOfSchool(schoolId: string): Promise<NotifyRecipient[]> {
+    const students = await this.studentRepo.find({
+      where: { school_id: schoolId },
+      relations: ['user', 'parents', 'parents.user'],
+    });
+    const recipients: NotifyRecipient[] = [];
+    const seen = new Set<string>();
+    const push = (list: NotifyRecipient[]) => {
+      for (const recipient of list) {
+        const key = `${recipient.userId ?? ''}|${recipient.email ?? ''}|${recipient.phone ?? ''}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        recipients.push(recipient);
+      }
+    };
+    for (const student of students) {
+      push(this.recipientsFromUsers([student.user]));
+      push(this.recipientsFromParents(student.parents ?? []));
+    }
+    return recipients;
   }
 
   async parentsOfGroup(groupId: string): Promise<{
@@ -81,6 +114,24 @@ export class NotificationAudienceService {
         seen.add(key);
         recipients.push(r);
       }
+    }
+    return { schoolId, recipients };
+  }
+
+  /** Parents and student accounts for one class. */
+  async parentsAndStudentsOfGroup(groupId: string): Promise<{
+    schoolId: string | null;
+    recipients: NotifyRecipient[];
+  }> {
+    const { schoolId, recipients } = await this.parentsOfGroup(groupId);
+    const seen = new Set(
+      recipients.map((r) => `${r.userId ?? ''}|${r.email ?? ''}|${r.phone ?? ''}`),
+    );
+    for (const student of await this.studentsOfGroup(groupId)) {
+      const key = `${student.userId ?? ''}|${student.email ?? ''}|${student.phone ?? ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      recipients.push(student);
     }
     return { schoolId, recipients };
   }

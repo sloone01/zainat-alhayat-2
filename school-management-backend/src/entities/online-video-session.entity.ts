@@ -45,6 +45,14 @@ export class OnlineVideoSession {
   @Column({ name: 'created_by' })
   created_by: string;
 
+  /** Set when the teacher sends the join link to parents. */
+  @Column({ name: 'invited_at', type: 'timestamptz', nullable: true })
+  invited_at: Date | null;
+
+  /** Set the first time the teacher starts the live class. */
+  @Column({ name: 'started_at', type: 'timestamptz', nullable: true })
+  started_at: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   created_at: Date;
 

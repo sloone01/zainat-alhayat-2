@@ -117,6 +117,23 @@ let ClassSettingsController = class ClassSettingsController {
             };
         }
     }
+    async setDefaultDuration(req, body) {
+        try {
+            const classSettings = await this.classSettingsService.setDefaultDuration(body.duration, this.schoolOf(req));
+            return {
+                success: true,
+                data: classSettings,
+                message: 'Default duration set successfully',
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                message: error.message,
+                error: error.name,
+            };
+        }
+    }
     async findOne(req, id) {
         try {
             const classSettings = await this.assertSettingsAccess(req, id);
@@ -250,23 +267,6 @@ let ClassSettingsController = class ClassSettingsController {
             };
         }
     }
-    async setDefaultDuration(req, body) {
-        try {
-            const classSettings = await this.classSettingsService.setDefaultDuration(body.duration, this.schoolOf(req));
-            return {
-                success: true,
-                data: classSettings,
-                message: 'Default duration set successfully',
-            };
-        }
-        catch (error) {
-            return {
-                success: false,
-                message: error.message,
-                error: error.name,
-            };
-        }
-    }
     async validateTimeSlot(req, body) {
         try {
             const isValid = await this.classSettingsService.validateTimeSlot(body.startTime, body.duration, this.schoolOf(req));
@@ -341,6 +341,15 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ClassSettingsController.prototype, "getAvailableTimeSlots", null);
 __decorate([
+    (0, common_1.Patch)('default-duration'),
+    (0, require_claim_decorator_1.RequireClaim)('settings', 'edit'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], ClassSettingsController.prototype, "setDefaultDuration", null);
+__decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id')),
@@ -413,15 +422,6 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], ClassSettingsController.prototype, "removeStartTime", null);
-__decorate([
-    (0, common_1.Patch)('default-duration'),
-    (0, require_claim_decorator_1.RequireClaim)('settings', 'edit'),
-    __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
-    __metadata("design:returntype", Promise)
-], ClassSettingsController.prototype, "setDefaultDuration", null);
 __decorate([
     (0, common_1.Post)('validate-time-slot'),
     __param(0, (0, common_1.Request)()),

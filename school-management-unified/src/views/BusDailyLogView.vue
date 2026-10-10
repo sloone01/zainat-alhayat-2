@@ -3,7 +3,7 @@
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader :title="$t('busDailyLog.title')" :subtitle="$t('busDailyLog.subtitle')" />
 
-      <div v-if="loading && !selectedBusId" class="fk-elev flex flex-col items-center justify-center gap-3 py-20 text-fikr-ink-muted">
+      <div v-if="loading && !selectedBusId && !routePageLoading" class="fk-elev flex flex-col items-center justify-center gap-3 py-20 text-fikr-ink-muted">
         <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
@@ -287,6 +287,7 @@ import {
   type BusStudentWithPickup,
 } from '@/services/bus.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import FikrDialog from '@/components/FikrDialog.vue'
 import LocationPickerDialog from '@/components/LocationPickerDialog.vue'
 import { watchDevicePosition } from '@/utils/device-location'

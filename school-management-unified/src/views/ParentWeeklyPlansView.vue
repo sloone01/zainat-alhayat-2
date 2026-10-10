@@ -6,15 +6,15 @@
         :subtitle="$t('parent.weeklyPlan')"
       />
 
-      <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
+      <div v-if="loading && !loaded" class="flex items-center justify-center gap-3 py-12">
         <FikrLoader />
         <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
 
-      <div v-else-if="error" class="fk-alert fk-alert--error">
+      <div v-else-if="error && !loaded" class="fk-alert fk-alert--error">
         <h3 class="mb-2 text-lg font-semibold">{{ $t('parent.error') }}</h3>
         <p>{{ error }}</p>
-        <button type="button" class="fk-btn fk-btn--primary mt-4" @click="loadWeeklyPlansData">
+        <button type="button" class="fk-btn fk-btn--primary mt-4" @click="reload">
           {{ $t('common.retry') }}
         </button>
       </div>
@@ -37,7 +37,7 @@
                   ? 'border border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
                   : 'border border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200',
               ]"
-              @click="selectedChildId = child.id"
+              @click="selectChild(child.id)"
             >
               {{ child.firstName }} {{ child.lastName }}
             </button>
@@ -107,7 +107,7 @@
             </div>
           </header>
 
-          <div v-if="filteredWeeklyPlans.length > 0" class="divide-y divide-gray-100">
+          <div v-if="plansTotal > 0" class="divide-y divide-gray-100">
             <div v-for="plan in paginatedWeeklyPlans" :key="plan.id" class="p-5 transition-colors hover:bg-gray-50/80 sm:p-6">
               <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0 flex-1">
@@ -166,11 +166,11 @@
             </div>
           </div>
 
-          <div v-if="filteredWeeklyPlans.length > 0" class="px-5 pb-5 sm:px-6">
+          <div v-if="plansTotal > 0" class="px-5 pb-5 sm:px-6">
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredWeeklyPlans.length > 0"
+              :show="plansTotal > 0"
               @update:page="goToPage"
             />
           </div>
@@ -191,11 +191,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
-import { parentService } from '../services/parent.service'
+import { parentService, type ParentListChild } from '../services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { getErrorMessage } from '@/utils/error-reporting'
 import { personFullName } from '@/utils/person-name'
@@ -204,7 +204,7 @@ import FikrDialog from '@/components/FikrDialog.vue'
 import { normalizeScheduleDayKey } from '@/utils/schedule-display'
 import FikrLoader from '@/components/FikrLoader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import {
   dateForWeekdayInWeek,
   groupDatedEvents,
@@ -220,25 +220,27 @@ function formatGroupNames(names?: string | null) {
 }
 const isRTL = computed(() => locale.value === 'ar')
 
-const loading = ref(true)
 const error = ref('')
-const dashboardData = ref<any>({})
+const children = ref<ParentListChild[]>([])
 const selectedChildId = ref<string | null>(null)
-const currentWeekStart = ref(new Date())
+const pinnedChildId = ref('')
 const showCalendar = ref(false)
 
-const children = computed(() => dashboardData.value.children || [])
-const weeklyPlans = computed(() => dashboardData.value.weeklyPlans || [])
+const currentWeekStart = ref(startOfWeek(new Date()))
+
+function ymd(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function selectChild(id: string) {
+  selectedChildId.value = id
+  pinnedChildId.value = id
+}
 
 const selectedChild = computed(() => {
   if (!selectedChildId.value) return children.value[0]
-  return children.value.find(child => child.id === selectedChildId.value) || children.value[0]
+  return children.value.find((child) => child.id === selectedChildId.value) || children.value[0]
 })
-
-function planGroupId(plan: any): string {
-  const raw = plan?.group_id ?? plan?.schedule?.group_id ?? plan?.schedule?.group?.id
-  return raw != null ? String(raw) : ''
-}
 
 function planTeacherName(plan: any): string {
   return personFullName(plan?.schedule?.teacher, locale.value)
@@ -255,62 +257,52 @@ function parseLocalDate(val: string | Date | undefined | null): Date | null {
   return new Date(parts[0], parts[1] - 1, parts[2])
 }
 
-function planOverlapsWeek(plan: any, weekStart: Date): boolean {
-  const ws = parseLocalDate(plan.week_start_date)
-  const we = parseLocalDate(plan.week_end_date) ?? ws
-  if (!ws || !we) return true
-  const rangeStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate())
-  const rangeEnd = new Date(rangeStart)
-  rangeEnd.setDate(rangeEnd.getDate() + 6)
-  return ws <= rangeEnd && we >= rangeStart
-}
-
 function planDisplayStatus(plan: any): string {
   if (plan.is_completed === true || plan.status === 'completed') return 'completed'
   if (plan.status === 'in_progress') return 'in_progress'
   return 'not_started'
 }
 
-const filteredWeeklyPlans = computed(() => {
-  if (!selectedChild.value) return []
-
-  const childGroupIds = (selectedChild.value.groups?.map((g: { id: string }) => String(g.id)) || [])
-  const weekStart = currentWeekStart.value
-
-  return weeklyPlans.value.filter((plan: any) => {
-    const gid = planGroupId(plan)
-    if (childGroupIds.length && gid && !childGroupIds.includes(gid)) return false
-    return planOverlapsWeek(plan, weekStart)
-  })
-})
-
-const childWeeklyPlans = computed(() => {
-  if (!selectedChild.value) return []
-  const childGroupIds = (selectedChild.value.groups?.map((g: { id: string }) => String(g.id)) || [])
-  return weeklyPlans.value.filter((plan: any) => {
-    const gid = planGroupId(plan)
-    if (childGroupIds.length && gid && !childGroupIds.includes(gid)) return false
-    return true
-  })
-})
-
 const {
+  items: paginatedWeeklyPlans,
+  total: plansTotal,
+  loading,
+  loaded,
   currentPage,
-  paginatedItems: paginatedWeeklyPlans,
   totalPages,
   goToPage,
-} = useClientPagination(filteredWeeklyPlans)
-
-watch([selectedChildId, currentWeekStart], () => {
-  currentPage.value = 1
-})
+  load,
+  reload,
+} = useServerPagination<any, { childId: string; weekStart: string }>(
+  async (params) => {
+    error.value = ''
+    const data = await parentService.getMyWeeklyPlansPage({
+      page: params.page,
+      limit: params.limit,
+      childId: params.childId || undefined,
+      weekStart: params.weekStart,
+    })
+    children.value = data.children || []
+    if (!params.childId && data.childId) selectedChildId.value = data.childId
+    return data
+  },
+  {
+    filters: () => ({
+      childId: pinnedChildId.value,
+      weekStart: ymd(currentWeekStart.value),
+    }),
+    onError: (err) => {
+      error.value = getErrorMessage(err, t('parent.error'))
+    },
+  },
+)
 
 const calendarMonth = computed(() => currentWeekStart.value)
 const calendarSelected = computed(() => currentWeekStart.value)
 
 const calendarData = computed(() =>
   groupDatedEvents(
-    childWeeklyPlans.value.flatMap((plan: any) => {
+    paginatedWeeklyPlans.value.flatMap((plan: any) => {
       const dayKey = normalizeScheduleDayKey(plan.schedule?.day_of_week)
       const planWeekStart = parseLocalDate(plan.week_start_date)
       const day = dayKey && planWeekStart
@@ -338,24 +330,6 @@ function onCalendarSelectDay(day: Date) {
 function onCalendarMonthChange(month: Date) {
   const today = startOfToday()
   currentWeekStart.value = isSameMonth(today, month) ? startOfWeek(today) : startOfWeek(month)
-}
-
-const loadWeeklyPlansData = async () => {
-  try {
-    loading.value = true
-    error.value = ''
-
-    const data = await parentService.getMyWeeklyPlans()
-    dashboardData.value = data
-
-    if (data.children && data.children.length > 0) {
-      selectedChildId.value = data.children[0].id
-    }
-  } catch (err: unknown) {
-    error.value = getErrorMessage(err, t('parent.error'))
-  } finally {
-    loading.value = false
-  }
 }
 
 const formatDate = (dateString: string) => {
@@ -413,13 +387,5 @@ const getStatusText = (status: string) => {
   }
 }
 
-onMounted(() => {
-  const today = new Date()
-  const dayOfWeek = today.getDay()
-  const startOfWeek = new Date(today)
-  startOfWeek.setDate(today.getDate() - dayOfWeek)
-  currentWeekStart.value = startOfWeek
-
-  loadWeeklyPlansData()
-})
+void load()
 </script>

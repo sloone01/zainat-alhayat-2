@@ -4,11 +4,14 @@ import {
   IsArray,
   IsBoolean,
   IsIn,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { SUPPORT_REQUEST_STATUSES, type SupportRequestStatus } from '../entities/support-request.entity';
@@ -89,4 +92,17 @@ export class SupportRequestQueryDto {
   @IsOptional()
   @IsIn([...SUPPORT_REQUEST_STATUSES])
   status?: SupportRequestStatus;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit?: number;
 }

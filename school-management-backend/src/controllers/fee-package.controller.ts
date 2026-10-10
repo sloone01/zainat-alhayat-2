@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { FeePackageService } from '../services/fee-package.service';
 import { UpsertFeePackageDto } from '../dto/fee-package.dto';
@@ -33,8 +34,19 @@ export class FeePackageController {
   }
 
   @Get()
-  async list(@Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string, @Request() req: { user: User }) {
+  async list(
+    @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Query('q') q: string | undefined,
+    @Query('status') status: string | undefined,
+    @Request() req: { user: User },
+  ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (wantsPage(page)) {
+      const data = await this.feePackageService.listPage(req.user, schoolId, { page, limit, q, status });
+      return { success: true, data };
+    }
     const data = await this.feePackageService.list(req.user, schoolId);
     return { success: true, data, count: data.length };
   }

@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { likeTerm, paginateQueryBuilder, type PageResult } from '../common/pagination';
+import { User } from '../entities/user.entity';
 import { Activity } from '../entities/activity.entity';
 import { SchoolMessageLetter } from '../entities/school-message-letter.entity';
 import {
@@ -241,6 +243,66 @@ export class ActivityService {
     return this.attachLetters(activities);
   }
 
+  /**
+   * One page of activities. Group and creator are many-to-one, so the count
+   * matches the rows. Letters are attached only for this page.
+   */
+  async findPage(query: ActivityQueryDto, actor?: User): Promise<PageResult<ActivityWithLetter>> {
+    const qb = this.activityRepository
+      .createQueryBuilder('activity')
+      .leftJoinAndSelect('activity.group', 'group')
+      .leftJoinAndSelect('activity.createdByUser', 'createdByUser')
+      .orderBy('activity.activity_date', 'DESC')
+      .addOrderBy('activity.created_at', 'DESC')
+      .addOrderBy('activity.id', 'ASC');
+
+    if (query.school_id !== undefined) {
+      qb.andWhere('activity.school_id = :schoolId', { schoolId: query.school_id });
+    }
+    if (query.group_id) {
+      qb.andWhere('activity.group_id = :groupId', { groupId: query.group_id });
+    }
+    if (query.is_active !== undefined) {
+      qb.andWhere('activity.is_active = :isActive', { isActive: query.is_active });
+    }
+    if (query.activity_type) {
+      qb.andWhere('activity.activity_type = :activityType', { activityType: query.activity_type });
+    }
+    if (query.from_date) {
+      qb.andWhere('activity.activity_date >= :fromDate', { fromDate: query.from_date });
+    }
+    if (query.to_date) {
+      qb.andWhere('activity.activity_date <= :toDate', { toDate: query.to_date });
+    }
+    if (query.status === 'completed') {
+      qb.andWhere('activity.is_active = false');
+    } else if (query.status === 'pending') {
+      qb.andWhere('activity.is_active = true').andWhere('activity.activity_date > CURRENT_DATE');
+    } else if (query.status === 'active') {
+      qb.andWhere('activity.is_active = true').andWhere('activity.activity_date <= CURRENT_DATE');
+    }
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `LOWER(CONCAT_WS(' ', activity.title, activity.description, activity.location)) LIKE :term`,
+        { term },
+      );
+    }
+    if (actor?.role === 'teacher' && actor.id) {
+      qb.andWhere(
+        `activity.group_id IN (
+          SELECT sch.group_id FROM schedules sch
+          WHERE sch.teacher_id = :teacherId AND sch.group_id IS NOT NULL
+        )`,
+        { teacherId: actor.id },
+      );
+    }
+
+    const page = await paginateQueryBuilder(qb, query);
+    const items = await this.attachLetters(page.items);
+    return { ...page, items };
+  }
+
   async findOne(id: string): Promise<ActivityWithLetter> {
     return this.attachLetter(await this.findOneEntity(id));
   }
@@ -312,18 +374,17 @@ export class ActivityService {
 
   async remove(id: string): Promise<void> {
     const activity = await this.findOneEntity(id);
-    await this.activityRepository.remove(activity);
+    if (!activity.is_active) return;
+    activity.is_active = false;
+    await this.activityRepository.save(activity);
+    void this.notifyActivityWithdrawn(activity);
   }
 
   private async notifyActivityScheduled(activity: Activity): Promise<void> {
     if (!activity.group_id) return;
     const { schoolId, recipients } = await this.audience.parentsOfGroup(activity.group_id);
     if (!recipients.length) return;
-    const date =
-      activity.activity_date instanceof Date
-        ? activity.activity_date.toISOString().slice(0, 10)
-        : String(activity.activity_date).slice(0, 10);
-    const location = activity.location ? ` — ${activity.location}` : '';
+    const { date, location } = activityWhen(activity);
     await this.notifications.notifySafe({
       schoolId: schoolId ?? activity.school_id ?? null,
       templateKey: NOTIFICATION_TEMPLATE_KEYS.ACTIVITY_SCHEDULED,
@@ -338,15 +399,53 @@ export class ActivityService {
     });
   }
 
+  private async notifyActivityWithdrawn(activity: Activity): Promise<void> {
+    const recipients = await this.withdrawRecipients(activity);
+    if (!recipients.length) return;
+    const { date, location } = activityWhen(activity);
+    await this.notifications.notifySafe({
+      schoolId: activity.school_id ?? null,
+      templateKey: NOTIFICATION_TEMPLATE_KEYS.ACTIVITY_WITHDRAWN,
+      locale: 'ar',
+      variables: {
+        title: activity.title,
+        date,
+        location,
+        recipientName: recipients[0]?.name || 'ولي الأمر',
+      },
+      recipients,
+    });
+  }
+
+  private async withdrawRecipients(activity: Activity) {
+    if (activity.group_id) {
+      const { recipients: parents } = await this.audience.parentsOfGroup(activity.group_id);
+      const students = await this.audience.studentsOfGroup(activity.group_id);
+      return this.dedupeRecipients([...parents, ...students]);
+    }
+    if (!activity.school_id) return [];
+    return this.audience.peopleOfSchool(activity.school_id);
+  }
+
+  private dedupeRecipients(
+    recipients: Array<{ email?: string | null; phone?: string | null; userId?: string | null; name?: string | null }>,
+  ) {
+    const seen = new Set<string>();
+    const out: typeof recipients = [];
+    for (const recipient of recipients) {
+      const key = `${recipient.userId ?? ''}|${recipient.email ?? ''}|${recipient.phone ?? ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(recipient);
+    }
+    return out;
+  }
+
   private async notifyActivityUpdated(activity: Activity): Promise<void> {
     if (!activity.group_id) return;
     const { schoolId, recipients } = await this.audience.parentsOfGroup(activity.group_id);
     if (!recipients.length) return;
-    const date =
-      activity.activity_date instanceof Date
-        ? activity.activity_date.toISOString().slice(0, 10)
-        : String(activity.activity_date).slice(0, 10);
-    const location = activity.location ? ` — ${activity.location}` : '';
+    const { date, location } = activityWhen(activity);
     await this.notifications.notifySafe({
       schoolId: schoolId ?? activity.school_id ?? null,
       templateKey: NOTIFICATION_TEMPLATE_KEYS.ACTIVITY_UPDATED,
@@ -360,4 +459,24 @@ export class ActivityService {
       recipients,
     });
   }
+}
+
+function shortClock(value: string | null | undefined): string {
+  const raw = (value || '').trim();
+  const match = raw.match(/^(\d{1,2}):(\d{2})/);
+  return match ? `${match[1].padStart(2, '0')}:${match[2]}` : '';
+}
+
+function activityWhen(activity: Activity): { date: string; location: string } {
+  const day =
+    activity.activity_date instanceof Date
+      ? activity.activity_date.toISOString().slice(0, 10)
+      : String(activity.activity_date || '').slice(0, 10);
+  const start = shortClock(activity.start_time);
+  const end = shortClock(activity.end_time);
+  const time = start && end ? `${start}–${end}` : start || end;
+  return {
+    date: time ? `${day} (${time})` : day,
+    location: activity.location?.trim() ? ` — ${activity.location.trim()}` : '',
+  };
 }

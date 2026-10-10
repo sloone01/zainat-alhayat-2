@@ -1,4 +1,5 @@
 import { BaseApiService } from './api'
+import type { PageResult } from '@/composables/useServerPagination'
 
 export interface ParentApprovalLetterLocale {
   subject: string
@@ -82,11 +83,31 @@ export interface ActivityQueryParams {
   activity_type?: string
   from_date?: string
   to_date?: string
+  page?: number
+  limit?: number
+  q?: string
+  status?: string
 }
 
 class ActivityService extends BaseApiService {
   async getAll(params?: ActivityQueryParams): Promise<Activity[]> {
     return this.get<Activity[]>('/activities', params)
+  }
+
+  async listPage(params: ActivityQueryParams): Promise<PageResult<Activity>> {
+    const query: Record<string, string | number | boolean> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    }
+    if (params.school_id) query.school_id = params.school_id
+    if (params.group_id) query.group_id = params.group_id
+    if (params.activity_type) query.activity_type = params.activity_type
+    if (params.status && params.status !== 'all') query.status = params.status
+    if (params.q?.trim()) query.q = params.q.trim()
+    if (params.is_active !== undefined) query.is_active = params.is_active
+    if (params.from_date) query.from_date = params.from_date
+    if (params.to_date) query.to_date = params.to_date
+    return this.get('/activities', query)
   }
 
   async getById(id: string): Promise<Activity> {

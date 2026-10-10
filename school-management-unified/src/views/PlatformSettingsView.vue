@@ -59,6 +59,25 @@
           </p>
         </div>
       </section>
+
+      <section class="fk-elev p-0 mt-6">
+        <header class="border-b border-fikr-hairline px-5 py-4 sm:px-6">
+          <h2 class="fk-card__title">{{ $t('platformSettings.reportHeading') }}</h2>
+        </header>
+        <form class="fk-form p-6" @submit.prevent="uploadTemplate">
+          <div class="fk-form__section space-y-4">
+            <h3 class="text-base font-semibold text-fikr-ink">{{ $t('platformSettings.dueTemplate') }}</h3>
+            <div>
+              <label class="fk-flabel" for="due-report-template"><span>{{ $t('platformSettings.wordTemplate') }}</span></label>
+              <input id="due-report-template" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="fk-field" @change="onTemplateFile" />
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="fk-btn fk-btn--pearl fk-btn--sm" @click="downloadTemplate">{{ $t('platformSettings.downloadTemplate') }}</button>
+              <button type="submit" class="fk-btn fk-btn--navy fk-btn--sm" :disabled="uploading || !templateFile">{{ uploading ? $t('common.loading') : $t('platformSettings.uploadTemplate') }}</button>
+            </div>
+          </div>
+        </form>
+      </section>
     </div>
   </DashboardLayout>
 </template>
@@ -79,7 +98,44 @@ const isRTL = computed(() => locale.value === 'ar')
 
 const loading = ref(true)
 const saving = ref(false)
+const uploading = ref(false)
 const setting = ref<ThawaniSetting | null>(null)
+const templateFile = ref<File | null>(null)
+
+function onTemplateFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  templateFile.value = input.files?.[0] || null
+}
+
+async function downloadTemplate() {
+  try {
+    const blob = await platformSettingsService.downloadDueTemplate()
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'due-installments.docx'
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    feedback.error(t('platformSettings.saveFailed'))
+  }
+}
+
+async function uploadTemplate() {
+  if (!templateFile.value || uploading.value) return
+  try {
+    uploading.value = true
+    await platformSettingsService.uploadDueTemplate(templateFile.value)
+    templateFile.value = null
+    feedback.success(t('common.savedSuccessfully'))
+  } catch (error: unknown) {
+    const ax = error as { response?: { data?: { message?: string | string[] } } }
+    const raw = ax.response?.data?.message
+    feedback.error(Array.isArray(raw) ? raw.join(', ') : raw || t('platformSettings.templateInvalid'))
+  } finally {
+    uploading.value = false
+  }
+}
 
 async function load() {
   try {

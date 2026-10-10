@@ -24,12 +24,12 @@ async function bootstrap() {
   // (Sep 22: 12 "IPs" for 457k requests). Trust the first hop's X-Forwarded-For.
   app.set('trust proxy', 1);
 
-  // Enrollment save (and public signup) currently send the student photo inline as a base64
-  // data URL in the JSON body, which blows past body-parser's 100 KB default and fails with
-  // PayloadTooLargeError (FIKR-260920-547566). Stop-gap: raise the limit until attachments
-  // move to separate multipart uploads.
-  app.useBodyParser('json', { limit: '15mb' });
-  app.useBodyParser('urlencoded', { limit: '15mb', extended: true });
+  // Enrollment save (and public signup) currently send photos/docs inline as base64
+  // data URLs in the JSON body (FIKR-260920-547566 / FIKR-260925-114650). Stop-gap:
+  // raise the limit until attachments move to separate multipart uploads. PayloadTooLarge
+  // is mapped to HTTP 413 in AllExceptionsFilter.
+  app.useBodyParser('json', { limit: '30mb' });
+  app.useBodyParser('urlencoded', { limit: '30mb', extended: true });
 
   app.use(
     helmet({

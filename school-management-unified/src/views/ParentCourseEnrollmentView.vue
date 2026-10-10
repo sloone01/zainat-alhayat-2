@@ -91,7 +91,7 @@
             <button type="button" class="fk-btn fk-btn--primary mt-4" @click="loadCourses">{{ $t('common.retry') }}</button>
           </div>
 
-          <div v-else-if="!courses.length" class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center">
+          <div v-else-if="!courseTotal" class="flex min-h-[16rem] flex-col items-center justify-center px-6 py-16 text-center">
             <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
@@ -146,11 +146,11 @@
               </div>
             </button>
           </div>
-          <div v-if="courses.length" class="px-5 pb-5 sm:px-6">
+          <div v-if="courseTotal" class="px-5 pb-5 sm:px-6">
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="courses.length > 0"
+              :show="courseTotal > 0"
               @update:page="goToPage"
             />
           </div>
@@ -166,7 +166,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { useFeedback } from '@/composables/useFeedback'
 import { parentService } from '@/services/parent.service'
 import courseEnrollmentService, { type EnrollableCourseRow } from '@/services/course-enrollment.service'
@@ -184,16 +184,31 @@ interface ChildRow {
 
 const children = ref<ChildRow[]>([])
 const selectedChildId = ref<string | null>(null)
-const courses = ref<EnrollableCourseRow[]>([])
 const {
+  items: paginatedItems,
+  total: courseTotal,
+  loading: loadingCourses,
   currentPage,
-  paginatedItems,
   totalPages,
   goToPage,
-} = useClientPagination(courses)
+  reload: reloadCourses,
+} = useServerPagination<EnrollableCourseRow, { studentId: string }>(
+  (params) =>
+    courseEnrollmentService.listEnrollableCoursesPage({
+      studentId: params.studentId,
+      page: params.page,
+      limit: params.limit,
+    }),
+  {
+    filters: () => ({ studentId: selectedChildId.value || '' }),
+    enabled: () => Boolean(selectedChildId.value),
+    onError: (err) => {
+      coursesError.value = localizedLoadError(err, 'courseEnrollment.loadFailed')
+    },
+  },
+)
 const selectedCourseIds = ref<string[]>([])
 const loadingChildren = ref(true)
-const loadingCourses = ref(false)
 const enrolling = ref(false)
 const childrenError = ref('')
 const coursesError = ref('')
@@ -274,22 +289,14 @@ async function loadChildren() {
 
 async function loadCourses() {
   if (!selectedChildId.value) return
-  loadingCourses.value = true
   coursesError.value = ''
   selectedCourseIds.value = []
-  try {
-    courses.value = await courseEnrollmentService.listEnrollableCourses(undefined, selectedChildId.value)
-  } catch (e) {
-    courses.value = []
-    coursesError.value = localizedLoadError(e, 'courseEnrollment.loadFailed')
-  } finally {
-    loadingCourses.value = false
-  }
+  await reloadCourses()
 }
 
 function selectChild(id: string) {
   selectedChildId.value = id
-  currentPage.value = 1
+  selectedCourseIds.value = []
 }
 
 function toggleCourse(row: EnrollableCourseRow) {
@@ -318,10 +325,6 @@ async function submitEnroll() {
     enrolling.value = false
   }
 }
-
-watch(selectedChildId, (id) => {
-  if (id) loadCourses()
-})
 
 onMounted(() => {
   loadChildren()

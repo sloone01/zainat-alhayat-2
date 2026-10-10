@@ -26,6 +26,7 @@ import { isParentOrStudentActor, resolveActorSchoolId } from '../common/security
 import { ensureStaffMembership, hasStaffMembership } from '../common/identity/staff-membership';
 import { isLetterApprovalPayload, publicAppOrigin } from '../common/security/letter-approval-token';
 import { loginIdentifierParts } from './login-identifier';
+import { DemoAccountsService } from '../common/demo/demo-accounts.service';
 
 export interface JwtPayload {
   sub: string;
@@ -93,6 +94,7 @@ export class AuthService {
     @Inject(forwardRef(() => RbacPermissionService))
     private readonly permissionService: RbacPermissionService,
     private readonly notifications: NotificationDispatcherService,
+    private readonly demo: DemoAccountsService,
   ) {}
 
   async register(registerDto: RegisterDto, actor: User): Promise<any> {
@@ -523,7 +525,7 @@ export class AuthService {
   }
 
   async issueDemoSession(audience: 'staff' | 'parents'): Promise<any> {
-    const slug = (process.env.DEMO_SCHOOL_SLUG || 'zinat-al-haya').trim().toLowerCase();
+    const slug = (process.env.DEMO_SCHOOL_SLUG || 'fikr-demo').trim().toLowerCase();
     const school = await this.schoolRepository.findOne({ where: { landing_slug: slug } });
     if (!school) {
       throw new ServiceUnavailableException('Demo school is not configured');
@@ -721,6 +723,7 @@ export class AuthService {
   }
 
   async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<any> {
+    await this.demo.assertNotPublicDemoUser(userId);
     const user = await this.userRepository
       .createQueryBuilder('user')
       .addSelect('user.password')
@@ -768,7 +771,7 @@ export class AuthService {
     const qb = this.userRepository.createQueryBuilder('user');
     this.applyLoginIdentifier(qb, raw);
     const user = await qb.getOne();
-    if (!user || !user.isActive || !user.email) {
+    if (!user || !user.isActive || !user.email || this.demo.isPublicDemoEmail(user.email)) {
       return { message: RESET_SENT };
     }
 
@@ -845,6 +848,7 @@ export class AuthService {
   }
 
   async deactivateUser(userId: string): Promise<any> {
+    await this.demo.assertNotPublicDemoUser(userId);
     const user = await this.userRepository.findOne({
       where: { id: userId },
     });

@@ -25,6 +25,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { MessageLetterService } from '../services/message-letter.service';
 import {
@@ -81,8 +82,14 @@ export class MessageLetterController {
   async list(
     @Request() req: { user: User },
     @Query('school_id', RequestedSchoolIdPipe) requestedSchoolId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    if (wantsPage(page)) {
+      const data = await this.messageLetters.listPage(req.user, schoolId, { page, limit });
+      return { success: true, data };
+    }
     const data = await this.messageLetters.list(req.user, schoolId);
     return { success: true, data, count: data.length };
   }
@@ -97,17 +104,26 @@ export class MessageLetterController {
     @Query('activity_id') activityId?: string,
     @Query('approval_status') approvalStatus?: 'not_sent' | 'pending' | 'approved' | 'rejected',
     @Query('locale') locale?: 'en' | 'ar',
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
-    const data = await this.messageLetters.listApprovalRecipients(req.user, schoolId, {
+    const filters = {
       letter_id: letterId,
       recipient_user_id: recipientUserId,
       student_id: studentId,
       activity_id: activityId,
       approval_status: approvalStatus,
-      locale: locale === 'en' ? 'en' : 'ar',
-    });
-    return { success: true, data, count: data.length };
+      locale: locale === 'en' ? 'en' as const : 'ar' as const,
+      page,
+      limit,
+    };
+    const data = await this.messageLetters.listApprovalRecipients(req.user, schoolId, filters);
+    if (wantsPage(page) && !letterId) {
+      return { success: true, data };
+    }
+    const rows = data as { length: number };
+    return { success: true, data, count: rows.length };
   }
 
   @Post(':id/remind')

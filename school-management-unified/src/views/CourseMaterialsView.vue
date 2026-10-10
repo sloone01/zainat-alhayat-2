@@ -10,7 +10,7 @@
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('courseMaterials.coursesHeading') }}</h2>
-            <p class="fk-card__meta">{{ $t('courseMaterials.coursesCount', { count: filteredCourses.length }) }}</p>
+            <p class="fk-card__meta">{{ $t('courseMaterials.coursesCount', { count: courseTotal }) }}</p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <FikrFilterButton
@@ -27,7 +27,7 @@
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
           <div v-else-if="loadError" class="fk-alert fk-alert--error">{{ loadError }}</div>
-          <div v-else-if="!filteredCourses.length" class="fk-empty">
+          <div v-else-if="!courseTotal" class="fk-empty">
             <div class="fk-empty__icon">
               <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m-6 4h6m-6 4h4M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
@@ -78,7 +78,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredCourses.length > 0"
+              :show="courseTotal > 0"
               @update:page="goToPage"
             />
           </template>
@@ -365,7 +365,7 @@ import { useRoute } from 'vue-router'
 import { getErrorMessage } from '@/utils/error-reporting'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { useListViewMode } from '@/composables/useListViewMode'
 import { useFeedback } from '@/composables/useFeedback'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
@@ -425,15 +425,40 @@ const canManage = computed(
 )
 const accept = COURSE_MATERIAL_ACCEPT
 
-const courses = ref<CourseMaterialCourseRow[]>([])
 const kindFilter = ref('')
 const showFilters = ref(false)
-const loadingCourses = ref(false)
 const loadError = ref('')
 const hasActiveFilters = computed(() => kindFilter.value !== '')
 function clearFilters() {
   kindFilter.value = ''
 }
+
+const {
+  items: paginatedCourses,
+  total: courseTotal,
+  loading: loadingCourses,
+  currentPage,
+  totalPages,
+  goToPage,
+  reload: reloadCourses,
+} = useServerPagination<CourseMaterialCourseRow, { kind: string; schoolId?: string }>(
+  (params) =>
+    courseMaterialService.listCoursesPage({
+      schoolId: params.schoolId,
+      page: params.page,
+      limit: params.limit,
+      kind: params.kind || undefined,
+    }),
+  {
+    filters: () => ({
+      kind: kindFilter.value,
+      schoolId: schoolId.value,
+    }),
+    onError: (err) => {
+      loadError.value = getErrorMessage(err, t('courseMaterials.loadError'))
+    },
+  },
+)
 
 const selectedCourse = ref<CourseMaterialCourseRow | null>(null)
 const materials = ref<CourseMaterialRow[]>([])
@@ -445,22 +470,6 @@ const savingTopic = ref(false)
 const drafts = reactive<Record<string, UploadDraft>>({})
 
 const hasPhases = computed(() => phases.value.length > 0)
-
-const filteredCourses = computed(() => {
-  if (!kindFilter.value) return courses.value
-  return courses.value.filter((c) => c.course_kind === kindFilter.value)
-})
-
-const {
-  currentPage,
-  paginatedItems: paginatedCourses,
-  totalPages,
-  goToPage,
-} = useClientPagination(filteredCourses)
-
-watch(kindFilter, () => {
-  currentPage.value = 1
-})
 
 const unassignedFiles = computed(() =>
   materials.value.filter((m) => !m.phase_id && !m.topic_id),
@@ -563,7 +572,7 @@ async function openQueryCourse() {
   const q = String(route.query.course || '').trim()
   if (!q) return
   if (selectedCourse.value?.id === q) return
-  const match = courses.value.find((c) => c.id === q)
+  const match = paginatedCourses.value.find((c) => c.id === q)
   if (match) {
     await openCourse(match)
     return
@@ -577,16 +586,8 @@ async function openQueryCourse() {
 }
 
 async function loadCourses() {
-  loadingCourses.value = true
   loadError.value = ''
-  try {
-    courses.value = await courseMaterialService.listCourses(schoolId.value)
-  } catch (e: unknown) {
-    courses.value = []
-    loadError.value = getErrorMessage(e, t('courseMaterials.loadError'))
-  } finally {
-    loadingCourses.value = false
-  }
+  await reloadCourses()
   await openQueryCourse()
 }
 
@@ -724,11 +725,10 @@ async function deleteTopic(id: string | null) {
 }
 
 async function refreshCourseCounts() {
-  const refreshed = await courseMaterialService.listCourses(schoolId.value)
-  courses.value = refreshed
+  await reloadCourses()
   if (selectedCourse.value) {
     selectedCourse.value =
-      refreshed.find((c) => c.id === selectedCourse.value!.id) || selectedCourse.value
+      paginatedCourses.value.find((c) => c.id === selectedCourse.value!.id) || selectedCourse.value
   }
 }
 

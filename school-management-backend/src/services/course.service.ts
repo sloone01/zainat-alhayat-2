@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { FindOptionsWhere, Repository, SelectQueryBuilder } from 'typeorm';
+import { likeTerm, paginateQueryBuilder, type PageQuery, type PageResult } from '../common/pagination';
 import { Course } from '../entities/course.entity';
 import { Phase } from '../entities/phase.entity';
 import { Milestone } from '../entities/milestone.entity';
@@ -68,6 +69,31 @@ function splitCourseStatuses(input: { status?: string; is_active?: boolean }): {
     if (isActive === undefined) isActive = false;
   }
   return { status, is_active: isActive !== false };
+}
+
+/** Matches CourseManagementView: inactive = not active; active = submitted and active. */
+function applySkillCourseStatus(qb: SelectQueryBuilder<Course>, status?: string): void {
+  if (!status) return;
+  if (status === 'inactive') {
+    qb.andWhere('course.is_active = false');
+    return;
+  }
+  if (status === 'active') {
+    qb.andWhere('course.is_active = true').andWhere(
+      `course.status NOT IN ('draft', 'published', 'archived')`,
+    );
+    return;
+  }
+  if (status === 'draft' || status === 'published' || status === 'archived') {
+    qb.andWhere('course.status = :courseStatus', { courseStatus: status });
+  }
+}
+
+export interface CourseListQuery extends PageQuery {
+  q?: string;
+  status?: string;
+  category?: string;
+  course_kind?: string;
 }
 
 function uuidOrNull(value: unknown): string | null {
@@ -193,6 +219,39 @@ export class CourseService {
         throw new Error(`Database error: ${error.message}`);
       }
     }
+  }
+
+  /**
+   * Paged skill/standalone list. Academic year and level are many-to-one, so the
+   * count is not inflated. Phase/milestone counts are attached only for this page.
+   */
+  async findPage(schoolId: string, query: CourseListQuery): Promise<PageResult<Course>> {
+    const qb = this.courseRepository
+      .createQueryBuilder('course')
+      .leftJoinAndSelect('course.academicYear', 'academicYear')
+      .leftJoinAndSelect('course.level', 'level')
+      .where('course.school_id = :schoolId', { schoolId })
+      .orderBy('course.created_at', 'DESC')
+      .addOrderBy('course.id', 'ASC');
+
+    if (query.course_kind) {
+      qb.andWhere('course.course_kind = :courseKind', { courseKind: query.course_kind });
+    }
+    if (query.category) {
+      qb.andWhere('course.category = :category', { category: query.category });
+    }
+    applySkillCourseStatus(qb, query.status);
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `LOWER(CONCAT_WS(' ', course.name, course.title, course.description)) LIKE :term`,
+        { term },
+      );
+    }
+
+    const page = await paginateQueryBuilder(qb, query);
+    await this.attachCurriculumCounts(page.items);
+    return page;
   }
 
   /** List payload does not embed phases; cards still need stage and skill counts. */

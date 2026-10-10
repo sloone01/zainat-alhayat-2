@@ -9,7 +9,7 @@
         {{ flashError }}
       </div>
 
-      <div class="fk-card">
+      <section class="fk-elev p-0">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <div class="min-w-0">
             <h2 class="fk-card__title truncate">{{ $t('paymentSettings.inclusionItemsListHeading') }}</h2>
@@ -33,14 +33,14 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !loaded && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
-          <template v-else-if="rows.length">
+          <template v-else-if="totalRows > 0 || hasActiveFilters">
             <p
-              v-if="filteredRows.length === 0"
+              v-if="paginatedRows.length === 0"
               class="rounded-md border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
             >
               {{ $t('paymentSettings.noInclusionFilterResults') }}
@@ -56,6 +56,9 @@
                 <template #tags>
                   <KanbanTag :dot="row.is_active ? 'emerald' : 'gray'">
                     {{ row.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
+                  </KanbanTag>
+                  <KanbanTag :dot="inclusionIsUsed(row) ? 'amber' : 'gray'">
+                    {{ inclusionUsageLabel(row) }}
                   </KanbanTag>
                 </template>
                 <template #actions>
@@ -81,29 +84,31 @@
               </KanbanCard>
             </div>
 
-            <div v-else class="fk-table-wrap overflow-visible">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <div v-else class="overflow-visible">
+              <table class="fk-feetable min-w-full">
+                <thead>
                   <tr>
-                    <th class="px-4 py-3 text-start">{{ $t('paymentSettings.label') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('paymentSettings.code') }}</th>
-                    <th class="px-4 py-3 text-start">{{ $t('common.status') }}</th>
-                    <th class="px-4 py-3 text-end">{{ $t('common.actions') }}</th>
+                    <th>{{ $t('paymentSettings.label') }}</th>
+                    <th>{{ $t('paymentSettings.code') }}</th>
+                    <th>{{ $t('common.status') }}</th>
+                    <th>{{ $t('paymentSettings.discountUsage') }}</th>
+                    <th class="!text-end">{{ $t('common.actions') }}</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                  <tr v-for="row in paginatedRows" :key="'list-' + row.id" class="hover:bg-primary-50/20">
-                    <td class="px-4 py-3 font-medium text-gray-900">{{ row.label }}</td>
-                    <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ row.code }}</td>
-                    <td class="px-4 py-3">
+                <tbody>
+                  <tr v-for="row in paginatedRows" :key="'list-' + row.id">
+                    <td class="font-medium">{{ row.label }}</td>
+                    <td class="font-mono text-xs">{{ row.code }}</td>
+                    <td>
                       <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        :class="row.is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-100 text-gray-500'"
+                        class="fk-pill"
+                        :class="row.is_active ? 'fk-pill--teal' : 'fk-pill--mist'"
                       >
                         {{ row.is_active ? $t('paymentSettings.active') : $t('paymentSettings.inactive') }}
                       </span>
                     </td>
-                    <td class="px-4 py-3">
+                    <td>{{ inclusionUsageLabel(row) }}</td>
+                    <td>
                       <div class="flex justify-end">
                         <RowActionsMenu
                           :open="activeMenuId === row.id"
@@ -133,7 +138,7 @@
             <FikrPagination
               :page="currentPage"
               :pages="totalPages"
-              :show="filteredRows.length > 0"
+              :show="totalRows > 0"
               @update:page="goToPage"
             />
           </template>
@@ -147,7 +152,7 @@
             <p class="text-sm font-medium text-gray-600">{{ $t('paymentSettings.emptyInclusions') }}</p>
           </div>
         </div>
-      </div>
+      </section>
     </div>
 
     <div
@@ -250,8 +255,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFeedback } from '@/composables/useFeedback'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
@@ -264,12 +270,14 @@ import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useListViewMode } from '@/composables/useListViewMode'
 import FikrPagination from '@/components/FikrPagination.vue'
-import { useClientPagination } from '@/composables/useClientPagination'
+import { useServerPagination } from '@/composables/useServerPagination'
 import { authService } from '@/services'
-import paymentConfigService, { type PaymentCatalogRow } from '@/services/payment-config.service'
+import paymentConfigService, { type CatalogListParams, type PaymentCatalogRow } from '@/services/payment-config.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 const schoolId = computed(() => {
@@ -277,8 +285,6 @@ const schoolId = computed(() => {
   return id != null && String(id).trim() !== '' ? String(id) : ''
 })
 
-const rows = ref<PaymentCatalogRow[]>([])
-const loading = ref(true)
 const flashError = ref('')
 const showFilters = ref(false)
 const searchQuery = ref('')
@@ -295,30 +301,55 @@ const hasActiveFilters = computed(() =>
   Boolean(searchQuery.value.trim()) || statusFilter.value !== 'all',
 )
 
-const filteredRows = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  return rows.value.filter((row) => {
-    if (statusFilter.value === 'active' && !row.is_active) return false
-    if (statusFilter.value === 'inactive' && row.is_active) return false
-    if (q && !`${row.label} ${row.code}`.toLowerCase().includes(q)) return false
-    return true
-  })
-})
-
 const {
+  items: paginatedRows,
+  total: totalRows,
+  loading,
+  loaded,
   currentPage,
-  paginatedItems: paginatedRows,
   totalPages,
   goToPage,
-} = useClientPagination(filteredRows)
-
-watch([searchQuery, statusFilter], () => {
-  currentPage.value = 1
-})
+  reload,
+} = useServerPagination<PaymentCatalogRow, CatalogListParams>(
+  (params) => paymentConfigService.listInclusionTypesPage({ ...params, schoolId: schoolId.value }),
+  {
+    filters: () => ({
+      q: searchQuery.value,
+      status: statusFilter.value,
+    }),
+    debounceKeys: ['q'],
+    onError: (err) => {
+      flashError.value = (err as { message?: string })?.message || t('paymentSettings.loadError')
+    },
+  },
+)
 
 function clearFilters() {
   searchQuery.value = ''
   statusFilter.value = 'all'
+}
+
+function inclusionIsUsed(row: PaymentCatalogRow) {
+  return Boolean(row.package_names?.length || row.used_on_charges)
+}
+
+function inclusionUsageLabel(row: PaymentCatalogRow) {
+  const names = row.package_names ?? []
+  if (names.length) return t('paymentSettings.discountUsedIn', { names: names.join(', ') })
+  if (row.used_on_charges) return t('paymentSettings.discountUsedOnCharges')
+  return t('paymentSettings.discountNotUsed')
+}
+
+function apiErrorText(error: unknown, fallback: string): string {
+  const ax = error as { response?: { data?: { message?: string | string[] } }; message?: string }
+  const raw = ax.response?.data?.message
+  if (Array.isArray(raw)) {
+    const text = raw.map((part) => String(part)).filter(Boolean).join(' ')
+    if (text) return text
+  } else if (typeof raw === 'string' && raw.trim() && !raw.startsWith('Request failed')) {
+    return raw.trim()
+  }
+  return fallback
 }
 
 function toggleMenu(id: string) {
@@ -363,21 +394,13 @@ function closeForm() {
   resetForm()
 }
 
-async function load() {
-  loading.value = true
+function load() {
   flashError.value = ''
   if (!schoolId.value) {
     flashError.value = t('paymentSettings.loadError')
-    loading.value = false
     return
   }
-  try {
-    rows.value = await paymentConfigService.listInclusionTypes(schoolId.value)
-  } catch (e: unknown) {
-    flashError.value = (e as { message?: string })?.message || t('paymentSettings.loadError')
-  } finally {
-    loading.value = false
-  }
+  return reload()
 }
 
 async function saveForm() {
@@ -389,15 +412,14 @@ async function saveForm() {
       label: form.value.label.trim(),
     }
     if (editingRow.value) {
-      const updated = await paymentConfigService.updateInclusionType(editingRow.value.id, payload)
-      const i = rows.value.findIndex((x) => x.id === editingRow.value?.id)
-      if (i !== -1) rows.value[i] = updated
+      await paymentConfigService.updateInclusionType(editingRow.value.id, payload)
     } else {
-      const row = await paymentConfigService.createInclusionType(schoolId.value, payload)
-      rows.value = [...rows.value, row]
+      await paymentConfigService.createInclusionType(schoolId.value, payload)
     }
+    await reload()
     showForm.value = false
     resetForm()
+    feedback.success(t('common.savedSuccessfully'))
   } catch (e: unknown) {
     formError.value = (e as { message?: string })?.message || t('paymentSettings.saveError')
   } finally {
@@ -408,9 +430,8 @@ async function saveForm() {
 async function onSetActive(row: PaymentCatalogRow, is_active: boolean) {
   closeMenu()
   try {
-    const updated = await paymentConfigService.updateInclusionType(row.id, { is_active })
-    const i = rows.value.findIndex((x) => x.id === row.id)
-    if (i !== -1) rows.value[i] = updated
+    await paymentConfigService.updateInclusionType(row.id, { is_active })
+    await reload()
   } catch {
     await load()
   }
@@ -418,12 +439,27 @@ async function onSetActive(row: PaymentCatalogRow, is_active: boolean) {
 
 async function onDelete(row: PaymentCatalogRow) {
   closeMenu()
-  if (!confirm(t('paymentSettings.confirmDelete'))) return
+  flashError.value = ''
+  const names = row.package_names ?? []
+  if (names.length) {
+    flashError.value = t('paymentSettings.inclusionUsedInPackage', { names: names.join(', ') })
+    return
+  }
+  if (row.used_on_charges) {
+    flashError.value = t('paymentSettings.discountUsedOnCharges')
+    return
+  }
+  if (!(await feedback.confirm({
+    title: t('common.delete'),
+    message: t('paymentSettings.confirmDelete'),
+    confirmLabel: t('common.delete'),
+    danger: true,
+  }))) return
   try {
     await paymentConfigService.deleteInclusionType(row.id)
-    rows.value = rows.value.filter((x) => x.id !== row.id)
+    await reload()
   } catch (e: unknown) {
-    flashError.value = (e as { message?: string })?.message || t('paymentSettings.saveError')
+    flashError.value = apiErrorText(e, t('paymentSettings.saveError'))
   }
 }
 

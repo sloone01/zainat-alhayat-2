@@ -17,6 +17,24 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const group_entity_1 = require("../entities/group.entity");
+const pagination_1 = require("../common/pagination");
+async function pageDistinctIds(qb, alias, query, orderExpr, orderDir) {
+    const { page, limit } = (0, pagination_1.parsePageQuery)(query);
+    const totalRow = await qb.clone().select(`COUNT(DISTINCT ${alias}.id)`, 'cnt').getRawOne();
+    const total = Number(totalRow?.cnt ?? 0);
+    const safePage = (0, pagination_1.clampPage)(page, total, limit);
+    const idRows = await qb
+        .clone()
+        .select(`${alias}.id`, 'id')
+        .addSelect(`MAX(${orderExpr})`, 'sort_key')
+        .groupBy(`${alias}.id`)
+        .orderBy('sort_key', orderDir)
+        .addOrderBy(`${alias}.id`, 'ASC')
+        .offset((safePage - 1) * limit)
+        .limit(limit)
+        .getRawMany();
+    return { ids: idRows.map((row) => String(row.id)), total, page: safePage, limit };
+}
 function uuidOrNull(value) {
     if (value == null || value === '')
         return null;
@@ -96,7 +114,6 @@ let GroupService = class GroupService {
                 relations: ['students', 'school', 'academicYear', 'level', 'supervisor'],
                 order: { created_at: 'DESC' },
             });
-            console.log(`Found ${groups.length} groups for school_id: ${schoolId}, is_active: ${isActive}`);
             return groups;
         }
         catch (error) {
@@ -111,6 +128,32 @@ let GroupService = class GroupService {
                 throw new Error(`Database error: ${error.message}`);
             }
         }
+    }
+    async findPage(schoolId, query) {
+        const qb = this.groupRepository.createQueryBuilder('g').where('g.school_id = :schoolId', { schoolId });
+        if (query.paymentLevelId) {
+            qb.andWhere('g.level_id = :paymentLevelId', { paymentLevelId: query.paymentLevelId });
+        }
+        if (query.status === 'active' || query.status === 'inactive') {
+            qb.andWhere('g.is_active = :isActive', { isActive: query.status === 'active' });
+        }
+        else if (query.isActive !== undefined) {
+            qb.andWhere('g.is_active = :isActive', { isActive: query.isActive });
+        }
+        const term = (0, pagination_1.likeTerm)(query.q);
+        if (term) {
+            qb.andWhere(`LOWER(CONCAT_WS(' ', g.name, COALESCE(g.description, ''))) LIKE :term`, { term });
+        }
+        const { ids, total, page, limit } = await pageDistinctIds(qb, 'g', query, 'g.created_at', 'DESC');
+        if (!ids.length)
+            return (0, pagination_1.buildPage)([], total, page, limit);
+        const rows = await this.groupRepository.find({
+            where: { id: (0, typeorm_2.In)(ids) },
+            relations: ['students', 'school', 'academicYear', 'level', 'supervisor'],
+        });
+        const byId = new Map(rows.map((row) => [row.id, row]));
+        const items = ids.map((id) => byId.get(id)).filter((row) => !!row);
+        return (0, pagination_1.buildPage)(items, total, page, limit);
     }
     async findOne(id) {
         const group = await this.groupRepository.findOne({

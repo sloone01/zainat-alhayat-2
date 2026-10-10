@@ -6,6 +6,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import {
+  likeTerm,
+  paginateQueryBuilder,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { MeetingRoom } from '../entities/meeting-room.entity';
@@ -354,6 +360,54 @@ export class MeetingRoomService {
     }));
   }
 
+  async listForAdminPage(
+    user: User,
+    schoolId: string,
+    query: PageQuery & { q?: string; status?: string },
+  ) {
+    this.assertAdmin(user);
+    this.assertSchoolScope(user, schoolId);
+    const qb = this.roomRepo.createQueryBuilder('mr').where('mr.school_id = :sid', { sid: schoolId });
+    if (query.status === 'draft' || query.status === 'scheduled') {
+      qb.andWhere('mr.status = :status', { status: query.status });
+    }
+    const term = likeTerm(query.q);
+    if (term) qb.andWhere('LOWER(mr.title) LIKE :term', { term });
+    qb.orderBy('mr.scheduled_at', 'DESC', 'NULLS LAST')
+      .addOrderBy('mr.created_at', 'DESC')
+      .addOrderBy('mr.id', 'ASC');
+    const page = await paginateQueryBuilder(qb, query);
+    const ids = page.items.map((r) => r.id);
+    const countMap = new Map<string, number>();
+    if (ids.length) {
+      const counts = await this.inviteeRepo
+        .createQueryBuilder('i')
+        .select('i.meeting_room_id', 'roomId')
+        .addSelect('COUNT(*)', 'cnt')
+        .where('i.meeting_room_id IN (:...ids)', { ids })
+        .groupBy('i.meeting_room_id')
+        .getRawMany<{ roomId: string; cnt: string }>();
+      for (const c of counts) countMap.set(c.roomId, parseInt(c.cnt, 10) || 0);
+    }
+    return {
+      ...page,
+      items: page.items.map((r) => ({
+        id: r.id,
+        school_id: r.school_id,
+        title: r.title,
+        status: r.status || 'scheduled',
+        invite_spec: r.invite_spec ?? null,
+        room_url: r.room_url,
+        room_name: r.room_name,
+        created_at: r.created_at,
+        scheduled_at: r.scheduled_at,
+        ...this.liveState(r),
+        created_by: r.created_by,
+        invitee_count: countMap.get(r.id) ?? 0,
+      })),
+    };
+  }
+
   async listMine(user: User, schoolId: string | null) {
     if (schoolId != null) {
       this.assertSchoolScope(user, schoolId);
@@ -391,6 +445,49 @@ export class MeetingRoomService {
       scheduled_at: r.scheduled_at,
       ...this.liveState(r),
     }));
+  }
+
+  async listMinePage(
+    user: User,
+    schoolId: string | null,
+    query: PageQuery & { q?: string; status?: string },
+  ): Promise<PageResult<Record<string, unknown>>> {
+    if (schoolId != null) this.assertSchoolScope(user, schoolId);
+    const presence = `CASE
+      WHEN mr.status = 'draft' THEN 'draft'
+      WHEN COALESCE(mr.scheduled_at, mr.created_at) < NOW() THEN 'expired'
+      WHEN mr.opened_at IS NOT NULL AND mr.ended_at IS NULL THEN 'live'
+      ELSE 'waiting'
+    END`;
+    const qb = this.roomRepo
+      .createQueryBuilder('mr')
+      .where(
+        `mr.id IN (SELECT i.meeting_room_id FROM meeting_room_invitees i WHERE i.user_id = :uid)`,
+        { uid: user.id },
+      )
+      .andWhere(`mr.status <> 'draft'`);
+    if (schoolId != null) qb.andWhere('mr.school_id = :sid', { sid: schoolId });
+    if (query.status === 'live' || query.status === 'waiting' || query.status === 'expired') {
+      qb.andWhere(`${presence} = :presence`, { presence: query.status });
+    }
+    const term = likeTerm(query.q);
+    if (term) qb.andWhere('LOWER(mr.title) LIKE :term', { term });
+    qb.orderBy('mr.scheduled_at', 'DESC', 'NULLS LAST')
+      .addOrderBy('mr.created_at', 'DESC')
+      .addOrderBy('mr.id', 'ASC');
+    const page = await paginateQueryBuilder(qb, query);
+    return {
+      ...page,
+      items: page.items.map((r) => ({
+        id: r.id,
+        school_id: r.school_id,
+        title: r.title,
+        status: r.status || 'scheduled',
+        created_at: r.created_at,
+        scheduled_at: r.scheduled_at,
+        ...this.liveState(r),
+      })),
+    };
   }
 
   private async assertCanJoin(user: User, meeting: MeetingRoom): Promise<void> {

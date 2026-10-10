@@ -11,6 +11,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, ILike, Repository } from 'typeorm';
+import {
+  likeTerm,
+  paginateQueryBuilder,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
@@ -226,11 +232,53 @@ export class PlatformSchoolService {
 
   async listRegisteredSchools(actor: User): Promise<RegisteredSchoolRow[]> {
     this.assertPlatformAccess(actor);
-
     const schools = await this.schoolRepo.find({
       order: { created_at: 'DESC' },
     });
+    return this.enrichRegisteredSchools(schools);
+  }
 
+  async listRegisteredSchoolsPage(
+    actor: User,
+    query: PageQuery & { q?: string; status?: string },
+  ): Promise<PageResult<RegisteredSchoolRow>> {
+    this.assertPlatformAccess(actor);
+    const qb = this.schoolRepo.createQueryBuilder('s');
+    if (query.status === 'draft') {
+      qb.andWhere(
+        `EXISTS (SELECT 1 FROM school_platform_subscriptions sub WHERE sub.school_id = s.id AND sub.status = 'draft')`,
+      );
+    } else if (query.status && query.status !== 'all') {
+      qb.andWhere('s.status = :status', { status: query.status });
+    }
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `(
+          LOWER(CONCAT_WS(' ', s.name, COALESCE(s.name_ar, ''), COALESCE(s.name_en, ''), COALESCE(s.email, ''), COALESCE(s.phone, ''), COALESCE(s.status, ''), s.id::text)) LIKE :term
+          OR EXISTS (
+            SELECT 1 FROM users u
+            WHERE u.school_id = s.id AND u.role = 'admin'
+              AND LOWER(CONCAT_WS(' ', u.email, COALESCE(u.phone, ''), u."firstName", u."lastName")) LIKE :term
+          )
+          OR EXISTS (
+            SELECT 1 FROM school_platform_subscriptions sub
+            INNER JOIN platform_plans plan ON plan.id = sub.plan_id
+            WHERE sub.school_id = s.id
+              AND LOWER(CONCAT_WS(' ', plan.code, COALESCE(sub.period_start::text, ''), COALESCE(sub.period_end::text, ''))) LIKE :term
+          )
+        )`,
+        { term },
+      );
+    }
+    qb.orderBy('s.created_at', 'DESC').addOrderBy('s.id', 'ASC');
+    const page = await paginateQueryBuilder(qb, query);
+    const items = await this.enrichRegisteredSchools(page.items);
+    return { ...page, items };
+  }
+
+  private async enrichRegisteredSchools(schools: School[]): Promise<RegisteredSchoolRow[]> {
+    if (!schools.length) return [];
     const billingMap = await this.platformBilling.getSubscriptionSummaryBySchoolIds(
       schools.map((s) => s.id),
     );

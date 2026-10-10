@@ -16,6 +16,7 @@ export const BIZ_LOG_CATALOG: Record<string, string> = {
   "ActivityController.update": "start updating activities",
   "ActivityLogController.list": "start listing activity logs",
   "ActivityLogController.methods": "start fetching methods (activity logs)",
+  "AttentionController.list": "start listing pending actions",
   "AttendanceController.bulkCreate": "start taking attendance for the class",
   "AttendanceController.checkExisting": "start checking if attendance already exists",
   "AttendanceController.create": "start taking attendance",

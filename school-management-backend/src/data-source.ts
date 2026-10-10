@@ -41,6 +41,7 @@ import { MeetingRoomInvitee } from './entities/meeting-room-invitee.entity';
 import { NotificationTemplateDefinition } from './entities/notification-template-definition.entity';
 import { SchoolNotificationTemplate } from './entities/school-notification-template.entity';
 import { NotificationSendLog } from './entities/notification-send-log.entity';
+import { NotificationOutboxJob } from './entities/notification-outbox.entity';
 import { OutboundMessageTransaction } from './entities/outbound-message-transaction.entity';
 import { UserPushToken } from './entities/user-push-token.entity';
 import { SchoolPaymentLevel } from './entities/school-payment-level.entity';
@@ -151,6 +152,7 @@ const entityList = [
   NotificationTemplateDefinition,
   SchoolNotificationTemplate,
   NotificationSendLog,
+  NotificationOutboxJob,
   OutboundMessageTransaction,
   UserPushToken,
   SchoolPaymentLevel,

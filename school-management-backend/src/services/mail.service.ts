@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { OutboundMessageTransaction } from '../entities/outbound-message-transaction.entity';
 import { InfobipClient } from '../notifications/infobip.client';
 import { getOutboundContext, runWithOutboundContext } from '../notifications/outbound-message-context';
+import { DemoAccountsService } from '../common/demo/demo-accounts.service';
 
 export type SendMailOptions = {
   to: string;
@@ -48,6 +49,7 @@ export class MailService implements OnModuleInit {
     private readonly infobip: InfobipClient,
     @InjectRepository(OutboundMessageTransaction)
     private readonly txRepo: Repository<OutboundMessageTransaction>,
+    private readonly demo: DemoAccountsService,
   ) {}
 
   onModuleInit(): void {
@@ -182,6 +184,20 @@ export class MailService implements OnModuleInit {
     if (!to) throw new Error('Recipient email is required');
     const ctx = getOutboundContext();
     const text = options.text ?? this.stripHtml(options.html);
+    if (await this.demo.shouldSuppressOutbound(to, 'email', ctx)) {
+      this.logger.log(`Email to ${to} skipped (demo school)`);
+      await this.persistTx({
+        to,
+        subject: options.subject,
+        html: options.html,
+        text,
+        status: 'skipped',
+        providerMessageId: null,
+        errorMessage: 'Demo school: not sent',
+        ctx,
+      });
+      return;
+    }
     try {
       const started = Date.now();
       const messageId = this.infobip.isConfigured()
@@ -292,7 +308,7 @@ export class MailService implements OnModuleInit {
     subject: string;
     html: string;
     text: string;
-    status: 'sent' | 'failed';
+    status: 'sent' | 'failed' | 'skipped';
     providerMessageId: string | null;
     errorMessage: string | null;
     ctx: ReturnType<typeof getOutboundContext>;

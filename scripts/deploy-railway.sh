@@ -17,9 +17,9 @@ API_HOST_DEFAULT="https://divine-clarity-production-d359.up.railway.app"
 PUBLIC_SITE="https://www.fikr.om"
 CORS_ORIGIN_VALUE="${PUBLIC_SITE},https://fikr.om,https://zinat-frontend-production.up.railway.app,https://localhost,http://localhost,capacitor://localhost,ionic://localhost"
 
-# IMPORTANT: never `railway up` from the monorepo root — Railpack sees the whole tree
-# (backend + frontend + docs) and fails with "could not determine how to build the app".
-# Always upload from school-management-backend/ or school-management-unified/.
+# Each service has rootDirectory set to its app folder. Upload from the repo root
+# so that folder exists in the archive. Uploading from inside the app folder makes
+# the build fail with "lstat .../school-management-backend: no such file".
 
 echo ""
 echo "=== Push git branch (triggers Railway GitHub deploy if linked) ==="
@@ -27,18 +27,18 @@ cd "$ROOT"
 git push -u origin HEAD || echo "WARN: git push failed — continuing with railway up"
 
 echo ""
-echo "=== Deploy backend (from school-management-backend/) ==="
-cd "$ROOT/school-management-backend"
-[[ -f Dockerfile ]] || { echo "ERROR: Dockerfile missing in backend dir"; exit 1; }
+echo "=== Deploy backend (repo root; service root is /school-management-backend) ==="
+cd "$ROOT"
+[[ -f school-management-backend/Dockerfile ]] || { echo "ERROR: Dockerfile missing in backend dir"; exit 1; }
 railway up --detach --service "$BACKEND_SERVICE" --ci || {
   echo "WARN: railway up --ci log stream failed; checking deployment status..."
   railway deployment list --service "$BACKEND_SERVICE" | head -3
 }
 
 echo ""
-echo "=== Deploy frontend (from school-management-unified/) ==="
-cd "$ROOT/school-management-unified"
-[[ -f Dockerfile ]] || { echo "ERROR: Dockerfile missing in frontend dir"; exit 1; }
+echo "=== Deploy frontend (repo root; service root is /school-management-unified) ==="
+cd "$ROOT"
+[[ -f school-management-unified/Dockerfile ]] || { echo "ERROR: Dockerfile missing in frontend dir"; exit 1; }
 railway up --detach --service "$FRONTEND_SERVICE" --ci || {
   echo "WARN: railway up --ci log stream failed; checking deployment status..."
   railway deployment list --service "$FRONTEND_SERVICE" | head -3
@@ -74,4 +74,4 @@ curl -sS -X POST "$API_HOST_DEFAULT/api/public/school-subscription/email-otp/sen
 echo ""
 
 echo "=== DONE — log: $LOG ==="
-echo "Tip: do NOT run \`railway up\` from the repo root. Use scripts/deploy-railway.sh or cd into backend/frontend first."
+echo "Tip: run scripts/deploy-railway.sh from anywhere. It uploads the repo root so each service rootDirectory resolves."

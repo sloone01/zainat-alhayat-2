@@ -7,6 +7,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, IsNull, Repository } from 'typeorm';
+import {
+  buildPage,
+  clampPage,
+  likeTerm,
+  parsePageQuery,
+  type PageQuery,
+  type PageResult,
+} from '../common/pagination';
 import { User } from '../entities/user.entity';
 import { Student } from '../entities/student.entity';
 import { Parent } from '../entities/parent.entity';
@@ -17,6 +25,7 @@ import { FeeTransfer } from '../entities/fee-transfer.entity';
 import { FeeTransferLine } from '../entities/fee-transfer-line.entity';
 import { StudentChargeSheetService } from './student-charge-sheet.service';
 import { ThawaniService } from './thawani.service';
+import { formatStudentDisplayName } from '../common/identity/bilingual-name';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { NOTIFICATION_TEMPLATE_KEYS } from '../constants/notification-template-keys';
 import { moneyStr, num } from '../utils/fees-v2.util';
@@ -146,6 +155,64 @@ export class FeePaymentService {
     });
   }
 
+  async listPendingPage(
+    user: User,
+    query: PageQuery & { q?: string },
+  ): Promise<PageResult<StudentFeePayment> & { amount_total: string }> {
+    if (!isPlatformOperator(user) && user.role !== 'admin') {
+      throw new ForbiddenException('Not allowed');
+    }
+    const { page, limit } = parsePageQuery(query);
+    if (!isPlatformOperator(user) && user.school_id == null) {
+      return { ...buildPage([], 0, 1, limit), amount_total: '0' };
+    }
+    const qb = this.paymentRepo.createQueryBuilder('p');
+    if (isPlatformOperator(user)) {
+      qb.where(`p.status = 'pending_approval'`);
+    } else {
+      qb.where('p.school_id = :schoolId', { schoolId: String(user.school_id) })
+        .andWhere('p.status IN (:...statuses)', { statuses: [...SCHOOL_INBOX_STATUSES] })
+        .andWhere(`p.method IN ('offline', 'admin')`);
+    }
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `(
+          LOWER(COALESCE(p.remarks, '')) LIKE :term
+          OR CAST(p.amount AS text) LIKE :term
+          OR EXISTS (
+            SELECT 1 FROM students st
+            WHERE st.id = p.student_id
+              AND LOWER(CONCAT_WS(' ', st."firstName", st."secondName", st."secondNameEn", st."lastName", st.first_name_ar, st.first_name_en, st.last_name_ar, st.last_name_en)) LIKE :term
+          )
+        )`,
+        { term },
+      );
+    }
+    const total = await qb.clone().getCount();
+    const sumRow = await qb.clone().select('COALESCE(SUM(p.amount), 0)', 'amount_total').getRawOne<{ amount_total: string }>();
+    const safePage = clampPage(page, total, limit);
+    const idRows = await qb
+      .clone()
+      .select('p.id', 'id')
+      .orderBy('p.created_at', 'ASC')
+      .addOrderBy('p.id', 'ASC')
+      .offset((safePage - 1) * limit)
+      .limit(limit)
+      .getRawMany<{ id: string }>();
+    const ids = idRows.map((r) => r.id);
+    if (!ids.length) {
+      return { ...buildPage([], total, safePage, limit), amount_total: String(sumRow?.amount_total ?? '0') };
+    }
+    const loaded = await this.paymentRepo.find({
+      where: { id: In(ids) },
+      relations: ['student', 'submittedByUser', 'school', 'payment'],
+    });
+    const byId = new Map(loaded.map((row) => [row.id, row]));
+    const items = ids.map((id) => byId.get(id)).filter((row): row is StudentFeePayment => !!row);
+    return { ...buildPage(items, total, safePage, limit), amount_total: String(sumRow?.amount_total ?? '0') };
+  }
+
   async listReadyToTransfer(user: User): Promise<StudentFeePayment[]> {
     if (!isPlatformOperator(user)) {
       throw new ForbiddenException('Only system administrators can build transfers');
@@ -174,6 +241,99 @@ export class FeePaymentService {
     });
   }
 
+  /**
+   * Paged transfers. Lines are one-to-many, so the page is distinct transfer ids,
+   * then those rows are loaded with lines. School staff are forced to their JWT school.
+   */
+  async listTransfersPage(
+    user: User,
+    query: PageQuery & { q?: string; status?: string; school_id?: string },
+  ): Promise<PageResult<FeeTransfer> & { schools: Array<{ id: string; name: string }>; amount_total: string }> {
+    if (!isPlatformOperator(user) && user.role !== 'admin') {
+      throw new ForbiddenException('Not allowed');
+    }
+    const { page, limit } = parsePageQuery(query);
+    const emptySchools: Array<{ id: string; name: string }> = [];
+    if (!isPlatformOperator(user) && user.school_id == null) {
+      return { ...buildPage([], 0, 1, limit), schools: emptySchools, amount_total: '0' };
+    }
+
+    const qb = this.transferRepo.createQueryBuilder('t');
+    if (isPlatformOperator(user)) {
+      const requested = (query.school_id || '').trim();
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requested)) {
+        qb.where('t.school_id = :schoolId', { schoolId: requested });
+      }
+    } else {
+      qb.where('t.school_id = :schoolId', { schoolId: String(user.school_id) });
+    }
+    if (query.status && query.status !== 'all') {
+      qb.andWhere('t.status = :status', { status: query.status });
+    }
+    const term = likeTerm(query.q);
+    if (term) {
+      qb.andWhere(
+        `(
+          LOWER(COALESCE(t.reference, '')) LIKE :term
+          OR CAST(t.total_amount AS text) LIKE :term
+          OR EXISTS (
+            SELECT 1 FROM schools sch
+            WHERE sch.id = t.school_id AND LOWER(COALESCE(sch.name, '')) LIKE :term
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM fee_transfer_lines l
+            INNER JOIN student_fee_payments pay ON pay.id = l.payment_id
+            INNER JOIN students st ON st.id = pay.student_id
+            WHERE l.transfer_id = t.id
+              AND LOWER(CONCAT_WS(' ', st."firstName", st."secondName", st."lastName")) LIKE :term
+          )
+        )`,
+        { term },
+      );
+    }
+
+    const total = await qb.clone().getCount();
+    const sumRow = await qb
+      .clone()
+      .select('COALESCE(SUM(t.total_amount), 0)', 'amount_total')
+      .getRawOne<{ amount_total: string }>();
+    const safePage = clampPage(page, total, limit);
+    const idRows = await qb
+      .clone()
+      .select('t.id', 'id')
+      .orderBy('t.created_at', 'DESC')
+      .addOrderBy('t.id', 'ASC')
+      .offset((safePage - 1) * limit)
+      .limit(limit)
+      .getRawMany<{ id: string }>();
+    const ids = idRows.map((r) => r.id);
+    let items: FeeTransfer[] = [];
+    if (ids.length) {
+      const loaded = await this.transferRepo.find({
+        where: { id: In(ids) },
+        relations: ['school', 'createdByUser', 'reviewedByUser', 'lines', 'lines.payment', 'lines.payment.student'],
+      });
+      const byId = new Map(loaded.map((row) => [row.id, row]));
+      items = ids.map((id) => byId.get(id)).filter((row): row is FeeTransfer => !!row);
+    }
+
+    let schools = emptySchools;
+    if (isPlatformOperator(user)) {
+      schools = await this.transferRepo.manager.query(
+        `SELECT DISTINCT s.id, s.name
+         FROM fee_transfers t
+         INNER JOIN schools s ON s.id = t.school_id
+         ORDER BY s.name ASC`,
+      );
+    }
+    return {
+      ...buildPage(items, total, safePage, limit),
+      schools,
+      amount_total: String(sumRow?.amount_total ?? '0'),
+    };
+  }
+
   async submitOffline(
     user: User,
     studentId: string,
@@ -198,10 +358,20 @@ export class FeePaymentService {
     if (remaining <= 0) throw new BadRequestException('Nothing is due for this item');
     await this.assertNoOpenPayment(sheet.id, input.targetType, input.installmentId);
 
-    // Attachment receipts wait for the school (not platform). Thawani is paid on confirm.
-    const schoolReceipt = user.role === 'admin' && !isPlatformOperator(user);
-    const method = schoolReceipt ? 'admin' : 'offline';
-    const status = 'pending_reconcile';
+    // Parent receipts wait for the school. An office receipt is money already in hand.
+    const office = user.role === 'admin' && !isPlatformOperator(user);
+    const method = office ? 'admin' : 'offline';
+    const status = office ? 'paid' : 'pending_reconcile';
+    if (office) {
+      await this.chargeSheets.applyConfirmedPayment({
+        studentId,
+        sheetId: sheet.id,
+        targetType: input.targetType,
+        installmentId: input.installmentId,
+        amount: remaining,
+      });
+    }
+    const now = new Date();
     const header = await this.createPaymentHeader({
       school_id: sheet.school_id,
       student_id: studentId,
@@ -228,9 +398,11 @@ export class FeePaymentService {
       remarks: input.remarks?.trim() || null,
       receipt_locale: input.locale === 'en' ? 'en' : 'ar',
       submitted_by: user.id,
+      ...(office ? { paid_at: now, reviewed_by: user.id, reviewed_at: now } : {}),
     });
     const saved = await this.paymentRepo.save(row);
-    void this.notifyOfflineSubmitted(saved);
+    if (office) void this.sendReceipt(saved);
+    else void this.notifyOfflineSubmitted(saved);
     return saved;
   }
 
@@ -286,12 +458,23 @@ export class FeePaymentService {
       await this.assertNoOpenPayment(sheet.id, 'installment', row.inst.id);
     }
 
-    const schoolReceipt = !isPlatformOperator(user);
-    const method = schoolReceipt ? 'admin' : 'offline';
-    const status = schoolReceipt ? 'pending_reconcile' : 'pending_approval';
-    const totalAmount = moneyStr(
-      cleaned.reduce((sum, a) => sum + a.amount, 0),
-    );
+    const office = !isPlatformOperator(user);
+    const method = office ? 'admin' : 'offline';
+    const status = office ? 'paid' : 'pending_approval';
+    const total = cleaned.reduce((sum, a) => sum + a.amount, 0);
+    if (office) {
+      await this.chargeSheets.applyManualAllocation({
+        studentId,
+        sheetId: sheet.id,
+        totalAmount: total,
+        allocations: cleaned.map((a) => ({
+          installmentId: a.installmentId,
+          amount: a.amount,
+        })),
+      });
+    }
+    const totalAmount = moneyStr(total);
+    const now = new Date();
     const created: StudentFeePayment[] = [];
     await this.paymentRepo.manager.transaction(async (em) => {
       const header = await this.createPaymentHeader(
@@ -328,12 +511,14 @@ export class FeePaymentService {
             remarks: input.remarks?.trim() || null,
             receipt_locale: input.locale === 'en' ? 'en' : 'ar',
             submitted_by: user.id,
+            ...(office ? { paid_at: now, reviewed_by: user.id, reviewed_at: now } : {}),
           }),
         );
         created.push(saved);
       }
     });
-    if (created[0]) void this.notifyOfflineSubmitted(created[0]);
+    if (office && created[0]) void this.sendReceipt(created[0], totalAmount);
+    else if (created[0]) void this.notifyOfflineSubmitted(created[0]);
     return created;
   }
 
@@ -723,7 +908,7 @@ export class FeePaymentService {
     await this.assertNoOpenPayment(sheet.id, input.targetType, input.installmentId);
 
     const student = await this.studentRepo.findOne({ where: { id: studentId } });
-    const studentName = student ? `${student.firstName} ${student.lastName}`.trim() : 'Student';
+    const studentName = student ? formatStudentDisplayName(student) : 'Student';
 
     const header = await this.createPaymentHeader({
       school_id: sheet.school_id,
@@ -856,7 +1041,7 @@ export class FeePaymentService {
     return { payment, sheet };
   }
 
-  private async sendReceipt(payment: StudentFeePayment): Promise<void> {
+  private async sendReceipt(payment: StudentFeePayment, displayAmount?: string): Promise<void> {
     try {
       const [student, school] = await Promise.all([
         this.studentRepo.findOne({
@@ -874,9 +1059,9 @@ export class FeePaymentService {
         locale,
         variables: {
           schoolName: school?.name ?? 'School',
-          studentName: `${student.firstName} ${student.lastName}`.trim(),
+          studentName: formatStudentDisplayName(student),
           recipientName: locale === 'ar' ? 'ولي الأمر' : 'Parent',
-          amount: Number(payment.amount).toFixed(3),
+          amount: Number(displayAmount ?? payment.amount).toFixed(3),
           currency: 'OMR',
           date: (payment.paid_at ?? new Date()).toISOString().slice(0, 10),
           remarks: payment.remarks ?? '',
@@ -897,8 +1082,7 @@ export class FeePaymentService {
         ]),
       });
       if (result.emailSent + result.smsSent > 0) {
-        payment.receipt_sent_at = new Date();
-        await this.paymentRepo.save(payment);
+        await this.paymentRepo.update({ id: payment.id }, { receipt_sent_at: new Date() });
       } else {
         this.logger.warn(`No receipt delivered for payment ${payment.id}`);
       }
@@ -919,7 +1103,7 @@ export class FeePaymentService {
       locale: payment.receipt_locale === 'en' ? 'en' : 'ar',
       variables: {
         schoolName: school.name ?? 'School',
-        studentName: student ? `${student.firstName} ${student.lastName}`.trim() : payment.student_id,
+        studentName: student ? formatStudentDisplayName(student) : payment.student_id,
         amount: Number(payment.amount).toFixed(3),
         currency: 'OMR',
       },
@@ -943,7 +1127,7 @@ export class FeePaymentService {
       locale,
       variables: {
         schoolName: school?.name ?? 'School',
-        studentName: `${student.firstName} ${student.lastName}`.trim(),
+        studentName: formatStudentDisplayName(student),
         recipientName: locale === 'ar' ? 'ولي الأمر' : 'Parent',
         amount: Number(payment.amount).toFixed(3),
         currency: 'OMR',
@@ -973,7 +1157,7 @@ export class FeePaymentService {
       locale: 'ar',
       variables: {
         schoolName: school?.name ?? 'School',
-        studentName: student ? `${student.firstName} ${student.lastName}`.trim() : payment.student_id,
+        studentName: student ? formatStudentDisplayName(student) : payment.student_id,
         amount: Number(payment.amount).toFixed(3),
         currency: 'OMR',
       },

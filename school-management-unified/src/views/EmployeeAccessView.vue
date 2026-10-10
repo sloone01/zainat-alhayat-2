@@ -22,7 +22,7 @@
       <div v-if="saveOk" class="fk-alert fk-alert--ok">{{ saveOk }}</div>
       <div v-if="saveError" class="fk-alert fk-alert--error">{{ saveError }}</div>
 
-      <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+      <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
         <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
@@ -254,6 +254,7 @@ import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import StaffGroupsPicker from '@/components/StaffGroupsPicker.vue'
 import { userService } from '@/services'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import {
   rbacService,
   type RbacGroup,

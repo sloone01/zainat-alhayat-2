@@ -33,6 +33,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RequireClaim } from '../rbac/require-claim.decorator';
 import { User } from '../entities/user.entity';
 import { resolveActorSchoolId, RequestedSchoolIdPipe } from '../common/security/school-access';
+import { wantsPage } from '../common/pagination';
 
 @Controller('parents')
 @UseGuards(JwtAuthGuard)
@@ -59,7 +60,24 @@ export class ParentController {
   }
 
   @Get('dashboard/weekly-plans')
-  async getMyWeeklyPlans(@Request() req: { user: User }) {
+  async getMyWeeklyPlans(
+    @Request() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('child_id') childId?: string,
+    @Query('week_start') weekStart?: string,
+    @Query('status') status?: string,
+  ) {
+    if (wantsPage(page)) {
+      const data = await this.parentService.getParentWeeklyPlansPage(req.user.id, {
+        page,
+        limit,
+        childId,
+        weekStart,
+        status,
+      });
+      return { success: true, data };
+    }
     const data = await this.parentService.getParentWeeklyPlans(req.user.id);
     return { success: true, data };
   }
@@ -69,7 +87,19 @@ export class ParentController {
     @Request() req: { user: User },
     @Query('offset') offsetRaw?: string,
     @Query('limit') limitRaw?: string,
+    @Query('page') page?: string,
+    @Query('child_id') childId?: string,
+    @Query('status') status?: string,
   ) {
+    if (wantsPage(page)) {
+      const data = await this.parentService.getParentAttendancePage(req.user.id, {
+        page,
+        limit: limitRaw,
+        childId,
+        status,
+      });
+      return { success: true, data };
+    }
     const offset = Math.max(0, parseInt(offsetRaw ?? '0', 10) || 0);
     const limit = Math.min(50, Math.max(1, parseInt(limitRaw ?? '5', 10) || 5));
     const data = await this.parentService.getParentAttendanceView(
@@ -81,9 +111,40 @@ export class ParentController {
   }
 
   @Get('dashboard/activities')
-  async getMyAssignedActivities(@Request() req: { user: User }) {
+  async getMyAssignedActivities(
+    @Request() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('child_id') childId?: string,
+  ) {
+    if (wantsPage(page)) {
+      const data = await this.parentService.getParentAssignedActivitiesPage(req.user.id, {
+        page,
+        limit,
+        childId,
+      });
+      return { success: true, data };
+    }
     const data = await this.parentService.getParentAssignedActivities(req.user.id);
     return { success: true, data, count: data.length };
+  }
+
+  /** Parent self: paged milestones for one linked child. */
+  @Get('dashboard/progress')
+  async getMyProgress(
+    @Request() req: { user: User },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('child_id') childId?: string,
+    @Query('status') status?: string,
+  ) {
+    const data = await this.parentService.getParentProgressPage(req.user.id, {
+      page,
+      limit,
+      childId,
+      status,
+    });
+    return { success: true, data };
   }
 
   @Get('dashboard/bus-movements')

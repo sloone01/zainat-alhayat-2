@@ -116,7 +116,7 @@
               </article>
             </div>
 
-            <div class="hidden overflow-x-auto md:block">
+            <div class="hidden overflow-x-auto px-4 py-4 sm:px-6 md:block">
               <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
