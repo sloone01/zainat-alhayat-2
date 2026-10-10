@@ -4758,6 +4758,8 @@
     "inclusionUsedInPackage": "This included item is already used in {names}.",
     "loadError": "Could not load payment configuration.",
     "saveError": "Could not save changes.",
+    "codeExists": "This code is already used by another item. Enter a different code.",
+    "itemInUse": "This item is already used on a student charge, so it cannot be deleted. Mark it inactive instead.",
     "saved": "Saved.",
     "profileSaved": "Fee setup saved.",
     "pricingModel": "Pricing model",
