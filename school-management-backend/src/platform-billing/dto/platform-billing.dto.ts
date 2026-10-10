@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   MaxLength,
   Min,
@@ -14,7 +15,11 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
-import { PLATFORM_BILLING_PERIODS } from '../platform-billing.types';
+import {
+  PLATFORM_BILLING_PERIODS,
+  PLATFORM_DISCOUNT_KINDS,
+  PLATFORM_DISCOUNT_TYPES,
+} from '../platform-billing.types';
 
 const toBoolean = ({ value }: { value: unknown }) => {
   if (value === true || value === 'true' || value === '1' || value === 1) return true;
@@ -26,10 +31,17 @@ export class PlatformPlanPriceInputDto {
   @IsIn([...PLATFORM_BILLING_PERIODS])
   billing_period: (typeof PLATFORM_BILLING_PERIODS)[number];
 
+  /** Minimum fee for the period. */
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 3 })
   @Min(0)
   amount_omr: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  per_student_omr?: number;
 }
 
 export class PlatformPlanFeatureInputDto {
@@ -74,19 +86,20 @@ export class UpdatePlatformPlanDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
-  included_student_seats?: number;
+  min_students?: number;
 
+  /** Null = no upper limit. */
   @IsOptional()
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 3 })
-  @Min(0)
-  overage_per_student_omr?: number;
+  @IsInt()
+  @Min(1)
+  max_students?: number | null;
 
   @IsOptional()
   @IsBoolean()
   is_active?: boolean;
 
-  /** Module codes included in this plan. Plan package price = sum of module prices. */
+  /** Module codes included in this plan. */
   @IsOptional()
   @IsArray()
   @ArrayUnique()
@@ -139,13 +152,13 @@ export class CreatePlatformPlanDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
-  included_student_seats?: number;
+  min_students?: number;
 
   @IsOptional()
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 3 })
-  @Min(0)
-  overage_per_student_omr?: number;
+  @IsInt()
+  @Min(1)
+  max_students?: number | null;
 
   @IsOptional()
   @Type(() => Number)
@@ -236,12 +249,6 @@ export class UpsertSchoolSubscriptionDto {
   status?: 'draft' | 'active' | 'past_due' | 'cancelled';
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  included_student_seats_override?: number | null;
-
-  @IsOptional()
   @IsArray()
   @ArrayUnique()
   @IsString({ each: true })
@@ -289,6 +296,79 @@ export class IssueInvoiceDto {
   @IsOptional()
   @IsDateString()
   period_end?: string;
+}
+
+const PROMO_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+
+export class UpsertPlatformDiscountDto {
+  @IsIn([...PLATFORM_DISCOUNT_KINDS])
+  kind: (typeof PLATFORM_DISCOUNT_KINDS)[number];
+
+  @IsString()
+  @MaxLength(120)
+  name_en: string;
+
+  @IsString()
+  @MaxLength(120)
+  name_ar: string;
+
+  /** Required when kind = promo. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  @Matches(PROMO_CODE_PATTERN, {
+    message: 'code must be letters, digits, underscore or hyphen',
+  })
+  code?: string | null;
+
+  @IsIn([...PLATFORM_DISCOUNT_TYPES])
+  discount_type: (typeof PLATFORM_DISCOUNT_TYPES)[number];
+
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  value: number;
+
+  /** Plan code; omit or null = every plan. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  plan_code?: string | null;
+
+  /** Required when kind = school. */
+  @IsOptional()
+  @IsUUID()
+  school_id?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn([...PLATFORM_BILLING_PERIODS], { each: true })
+  billing_periods?: (typeof PLATFORM_BILLING_PERIODS)[number][];
+
+  @IsOptional()
+  @IsDateString()
+  starts_on?: string | null;
+
+  @IsOptional()
+  @IsDateString()
+  ends_on?: string | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  duration_periods?: number | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  max_redemptions?: number | null;
+
+  @IsOptional()
+  @IsBoolean()
+  is_active?: boolean;
 }
 
 export class SchoolBillingThawaniSessionDto {

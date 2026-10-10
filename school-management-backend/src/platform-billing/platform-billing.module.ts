@@ -11,6 +11,8 @@ import { SchoolPlatformSubscriptionAddon } from './entities/school-platform-subs
 import { PlatformInvoice } from './entities/platform-invoice.entity';
 import { SchoolModule } from './entities/school-module.entity';
 import { PlatformCustomPlanRequest } from './entities/platform-custom-plan-request.entity';
+import { PlatformDiscount } from './entities/platform-discount.entity';
+import { StudentBillingSubscriber } from './student-billing.subscriber';
 import { School } from '../entities/school.entity';
 import { Student } from '../entities/student.entity';
 import { User } from '../entities/user.entity';
@@ -34,6 +36,7 @@ export const PLATFORM_BILLING_ENTITIES = [
   PlatformInvoice,
   SchoolModule,
   PlatformCustomPlanRequest,
+  PlatformDiscount,
 ];
 
 @Module({
@@ -48,7 +51,7 @@ export const PLATFORM_BILLING_ENTITIES = [
     forwardRef(() => RbacModule),
   ],
   controllers: [PlatformBillingController, PublicPlatformPlansController, SchoolBillingController],
-  providers: [PlatformBillingService, ThawaniService],
+  providers: [PlatformBillingService, ThawaniService, StudentBillingSubscriber],
   exports: [PlatformBillingService, TypeOrmModule],
 })
 export class PlatformBillingModule {}

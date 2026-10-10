@@ -194,6 +194,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresPlatform: true },
     },
     {
+      path: '/platform/discounts',
+      name: 'platform-discounts',
+      component: () => import('../views/PlatformDiscountsView.vue'),
+      meta: { requiresAuth: true, requiresPlatform: true },
+    },
+    {
       path: '/platform/custom-plan-requests',
       name: 'platform-custom-plan-requests',
       component: () => import('../views/PlatformCustomPlanRequestsView.vue'),

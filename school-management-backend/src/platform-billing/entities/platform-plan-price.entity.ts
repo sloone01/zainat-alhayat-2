@@ -21,8 +21,12 @@ export class PlatformPlanPrice {
   @Column({ type: 'varchar', length: 32 })
   billing_period: PlatformBillingPeriod;
 
+  /** Minimum fee for the period: the package never bills below this. */
   @Column({ type: 'numeric', precision: 12, scale: 3 })
   amount_omr: string;
+
+  @Column({ name: 'per_student_omr', type: 'numeric', precision: 12, scale: 3, default: 0 })
+  per_student_omr: string;
 
   @ManyToOne(() => PlatformPlan, (p) => p.prices, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'plan_id' })

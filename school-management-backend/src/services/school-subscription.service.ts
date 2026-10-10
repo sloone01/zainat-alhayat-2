@@ -250,11 +250,18 @@ export class SchoolSubscriptionService {
     if (existing && !isLinkableStaffAccount(existing)) {
       throw new ConflictException('An account with this email already exists. Sign in instead.');
     }
-    await this.signupEmailOtp.consumeVerificationToken(email, dto.email_verification_token);
-
     if (!dto.plan_code?.trim()) {
       throw new BadRequestException('plan_code is required');
     }
+    // Before consuming the OTP token, so a bad code does not force re-verification.
+    if (dto.promo_code?.trim()) {
+      await this.platformBilling.findRedeemablePromo(
+        dto.promo_code,
+        dto.plan_code,
+        dto.billing_period,
+      );
+    }
+    await this.signupEmailOtp.consumeVerificationToken(email, dto.email_verification_token);
 
     const ownerLegal =
       dto.owner_legal_name?.trim() ||
@@ -331,6 +338,7 @@ export class SchoolSubscriptionService {
       schoolId,
       planCode,
       dto.billing_period,
+      dto.promo_code,
     );
 
     const schoolName =

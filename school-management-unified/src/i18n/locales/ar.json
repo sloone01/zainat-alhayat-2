@@ -728,7 +728,15 @@
     "otpInvalid": "رمز غير صالح أو منتهٍ. حاول مرة أخرى.",
     "otpWait": "انتظر {seconds} ثانية قبل طلب رمز آخر.",
     "otpTooMany": "محاولات كثيرة. اطلب رمزاً جديداً.",
-    "otpRequired": "تحقق من بريدك الإلكتروني قبل الإرسال."
+    "otpRequired": "تحقق من بريدك الإلكتروني قبل الإرسال.",
+    "promoCode": "رمز الخصم (اختياري)",
+    "promoApply": "تطبيق",
+    "promoInvalid": "رمز الخصم غير صالح للباقة المختارة.",
+    "promoApplied": "تم تطبيق {amount}",
+    "promoAppliedFor": "تم تطبيق {amount} لعدد {count} من فترات الفوترة",
+    "promoPercentOff": "خصم {value}%",
+    "promoAmountOff": "خصم {value} ر.ع",
+    "readySummaryPerStudent": "{plan} — {rate} ر.ع لكل طالب / سنة"
   },
   "platformBilling": {
     "periods": {
@@ -750,7 +758,6 @@
     "planDetails": "بيانات الباقة",
     "modulesInPlan": "الوحدات في هذه الباقة",
     "modulesInPlanHint": "اختر الوحدات المشمولة في هذه الباقة. أسعار فترات الفوترة تُضبط بشكل منفصل أعلاه (وليست مجموعاً من الوحدات).",
-    "planPricesHint": "عيّن سعر الباقة لكل فترة فوترة.",
     "module": "الوحدة",
     "moduleAmount": "قيمة الوحدة",
     "pageKeys": "الصفحات المرتبطة",
@@ -761,9 +768,6 @@
     "saveModule": "حفظ الوحدة",
     "moduleSaved": "تم حفظ الوحدة.",
     "pricesByPeriod": "الأسعار حسب الفترة",
-    "seatsIncluded": "عدد الطلاب المشمولين",
-    "seatsIncludedHint": "الحد الأقصى لعدد الطلاب في هذه الباقة قبل احتساب الرسوم الإضافية.",
-    "overagePerStudent": "إضافي لكل طالب (ر.ع)",
     "savePlan": "حفظ الباقة",
     "savingPlan": "جاري الحفظ…",
     "planSaved": "تم حفظ الباقة.",
@@ -818,7 +822,7 @@
     "plansStats": {
       "total": "الباقات",
       "active": "نشطة",
-      "maxSeats": "أقصى مقاعد"
+      "maxSeats": "أكبر باقة (طلاب)"
     },
     "saveError": "تعذّر حفظ الاشتراك.",
     "invoiceStatuses": {
@@ -866,11 +870,23 @@
     "modulesSaved": "تم تحديث وحدات المدرسة",
     "planNameAr": "الاسم بالعربية",
     "planNameEn": "الاسم بالإنجليزية",
-    "seats": "عدد الطلاب المشمول",
-    "overage": "سعر الطالب الإضافي (ر.ع.)",
     "prices": "الأسعار حسب فترة الفوترة",
     "modules": "الوحدات المشمولة",
-    "planFieldsRequired": "الرمز والاسم بالعربية والإنجليزية مطلوبة"
+    "planFieldsRequired": "الرمز والاسم بالعربية والإنجليزية مطلوبة",
+    "minStudents": "الحد الأدنى للطلاب",
+    "maxStudentsOptional": "الحد الأقصى للطلاب (اختياري)",
+    "minimumFee": "الحد الأدنى للرسوم",
+    "perStudentRate": "السعر لكل طالب",
+    "studentBand": "الطلاب",
+    "priceSummary": "{rate} ر.ع/طالب · حد أدنى {min}",
+    "studentsBilled": "المفوتر لهذه الفترة",
+    "promoOnSubscription": "رمز الخصم",
+    "overPlanLimit": "عدد الطلاب النشطين في هذه المدرسة أكبر مما تسمح به الباقة ({max}). انقلها إلى باقة أكبر.",
+    "billNewStudents": "فوترة الطلاب الجدد",
+    "noNewStudentsToBill": "لا يوجد طلاب جدد للفوترة في هذه الفترة.",
+    "invoiceKindProration": "إضافية",
+    "invoiceStudentsLine": "{students} طالب × {rate} ر.ع (حد أدنى {min})",
+    "invoiceDiscountLine": "خصم −{amount} ر.ع"
   },
   "navigation": {
     "dashboard": "لوحة التحكم",
@@ -1575,7 +1591,6 @@
     "modulesCount": "{included} من {total} وحدة",
     "moreModules": "+{count} وحدة أخرى",
     "includedSeats": "يشمل {count} طالبًا",
-    "includedSeatsOver": "أكثر من {count} طالب",
     "extraStudent": "{amount} ر.ع لكل طالب إضافي",
     "andMoreModules": "و{count} وحدة إضافية",
     "everythingInEntryPlus": "كل ما في الباقة الأساسية، بالإضافة إلى:",
@@ -1585,7 +1600,13 @@
       "teaching": "المقررات والتدريس — الجداول والخطط الأسبوعية والمواد والدرجات من مساحة عمل واحدة",
       "transport": "النقل المدرسي — الحافلات وتعيين الطلاب وسجلات الصعود اليومية للذهاب والعودة",
       "chat": "المحادثة الداخلية — محادثات جماعية ورسائل مباشرة ورسائل رسمية وغرف اجتماعات"
-    }
+    },
+    "perStudentYear": "/ طالب / سنة",
+    "orPerStudentMonth": "أو {amount} / طالب / شهر",
+    "minimumPerYear": "حد أدنى {amount} / سنة",
+    "studentBandRange": "{min}–{max} طالب",
+    "studentBandUpTo": "حتى {max} طالب",
+    "studentBandFrom": "{min}+ طالب"
   },
   "mobileApp": {
     "badge": "لماذا تختار زينة الحياة",
@@ -5878,5 +5899,52 @@
     "terms5Body": "يمكن للمدرسة إغلاق الحساب. لا يحذف الشخص حساب المدرسة من التطبيق. ويجوز لفِكر إيقاف حساب يُسيء استخدام الخدمة، عندما تطلب المدرسة ذلك أو عند انتهاء الاشتراك.",
     "terms6Title": "التواصل",
     "terms6Body": "للاستفسار عن هذه الشروط: admin@fikr.om أو ‎+968 99788677 أو ‎+968 98234590."
+  },
+  "platformDiscounts": {
+    "nav": "الخصومات",
+    "title": "الخصومات",
+    "listHeading": "كل الخصومات",
+    "count": "{count} خصم",
+    "new": "خصم جديد",
+    "newTitle": "خصم جديد",
+    "editTitle": "تعديل الخصم",
+    "empty": "لا توجد خصومات بعد",
+    "colName": "الاسم",
+    "colKind": "النوع",
+    "colValue": "القيمة",
+    "colAppliesTo": "ينطبق على",
+    "colValidity": "الصلاحية",
+    "colUsage": "الاستخدام",
+    "kinds": {
+      "package": "باقة",
+      "school": "مدرسة",
+      "promo": "رمز خصم"
+    },
+    "types": {
+      "percent": "نسبة مئوية",
+      "fixed": "مبلغ ثابت"
+    },
+    "discountType": "الخصم",
+    "valuePercent": "نسبة الخصم",
+    "valueFixed": "مبلغ الخصم (ر.ع)",
+    "plan": "الباقة",
+    "allPlans": "كل الباقات",
+    "school": "المدرسة",
+    "code": "الرمز",
+    "periodsOptional": "فترات الفوترة (بدون اختيار = الكل)",
+    "startsOn": "يبدأ في",
+    "endsOn": "ينتهي في",
+    "durationPeriods": "عدد الفترات (اختياري)",
+    "durationShort": "{count} فترة",
+    "maxRedemptions": "أقصى عدد استخدامات (اختياري)",
+    "namesRequired": "أدخل الاسم بالعربية والإنجليزية.",
+    "valueRequired": "أدخل قيمة خصم أكبر من 0.",
+    "percentTooHigh": "لا يمكن أن تتجاوز النسبة 100.",
+    "codeRequired": "أدخل رمز الخصم.",
+    "schoolRequired": "اختر مدرسة.",
+    "saved": "تم حفظ الخصم.",
+    "activated": "تم تفعيل الخصم.",
+    "deactivated": "تم إيقاف الخصم.",
+    "confirmDelete": "حذف الخصم \"{name}\"؟"
   }
 }

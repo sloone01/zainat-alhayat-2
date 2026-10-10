@@ -26,6 +26,20 @@ export const PLATFORM_INVOICE_STATUSES = [
 
 export type PlatformInvoiceStatus = (typeof PLATFORM_INVOICE_STATUSES)[number];
 
+/** `proration` = mid-period top-up for students added after the period was invoiced. */
+export const PLATFORM_INVOICE_KINDS = ['subscription', 'proration'] as const;
+
+export type PlatformInvoiceKind = (typeof PLATFORM_INVOICE_KINDS)[number];
+
+/** package = auto-applies to a plan; school = negotiated for one school; promo = code at signup. */
+export const PLATFORM_DISCOUNT_KINDS = ['package', 'school', 'promo'] as const;
+
+export type PlatformDiscountKind = (typeof PLATFORM_DISCOUNT_KINDS)[number];
+
+export const PLATFORM_DISCOUNT_TYPES = ['percent', 'fixed'] as const;
+
+export type PlatformDiscountType = (typeof PLATFORM_DISCOUNT_TYPES)[number];
+
 /** Months added to period_start for each billing period. */
 export const PLATFORM_PERIOD_MONTHS: Record<PlatformBillingPeriod, number> = {
   monthly: 1,

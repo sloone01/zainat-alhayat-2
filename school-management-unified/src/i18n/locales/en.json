@@ -647,7 +647,15 @@
     "otpInvalid": "Invalid or expired code. Try again.",
     "otpWait": "Please wait {seconds} seconds before requesting another code.",
     "otpTooMany": "Too many attempts. Request a new code.",
-    "otpRequired": "Verify your email before submitting."
+    "otpRequired": "Verify your email before submitting.",
+    "promoCode": "Promo code (optional)",
+    "promoApply": "Apply",
+    "promoInvalid": "This promo code is not valid for the selected plan.",
+    "promoApplied": "{amount} applied",
+    "promoAppliedFor": "{amount} applied for {count} billing period(s)",
+    "promoPercentOff": "{value}% off",
+    "promoAmountOff": "{value} OMR off",
+    "readySummaryPerStudent": "{plan} — {rate} OMR per student / year"
   },
   "platformBilling": {
     "periods": {
@@ -669,7 +677,6 @@
     "planDetails": "Plan details",
     "modulesInPlan": "Modules in this plan",
     "modulesInPlanHint": "Choose which modules this plan includes. Plan billing prices are set separately above (not summed from modules).",
-    "planPricesHint": "Set package price for each billing period on this plan.",
     "module": "Module",
     "moduleAmount": "Module value",
     "pageKeys": "Linked pages",
@@ -680,9 +687,6 @@
     "saveModule": "Save module",
     "moduleSaved": "Module saved.",
     "pricesByPeriod": "Prices by period",
-    "seatsIncluded": "Included students",
-    "seatsIncludedHint": "Maximum students included in this plan before overage billing.",
-    "overagePerStudent": "Overage per student (OMR)",
     "savePlan": "Save plan",
     "savingPlan": "Saving…",
     "planSaved": "Plan saved.",
@@ -737,7 +741,7 @@
     "plansStats": {
       "total": "Plans",
       "active": "Active",
-      "maxSeats": "Max seats"
+      "maxSeats": "Largest plan (students)"
     },
     "saveError": "Could not save subscription.",
     "invoiceStatuses": {
@@ -785,11 +789,23 @@
     "modulesSaved": "School modules updated",
     "planNameAr": "Name (Arabic)",
     "planNameEn": "Name (English)",
-    "seats": "Included students",
-    "overage": "Price per extra student (OMR)",
     "prices": "Prices by billing period",
     "modules": "Included modules",
-    "planFieldsRequired": "Code, Arabic name and English name are required"
+    "planFieldsRequired": "Code, Arabic name and English name are required",
+    "minStudents": "Minimum students",
+    "maxStudentsOptional": "Maximum students (optional)",
+    "minimumFee": "Minimum fee",
+    "perStudentRate": "Price per student",
+    "studentBand": "Students",
+    "priceSummary": "{rate} OMR/student · min {min}",
+    "studentsBilled": "Billed this period",
+    "promoOnSubscription": "Promo code",
+    "overPlanLimit": "This school has more active students than the plan allows ({max}). Move it to a larger plan.",
+    "billNewStudents": "Bill new students",
+    "noNewStudentsToBill": "No new students to bill for this period.",
+    "invoiceKindProration": "Top-up",
+    "invoiceStudentsLine": "{students} students × {rate} OMR (min {min})",
+    "invoiceDiscountLine": "Discount −{amount} OMR"
   },
   "brand": {
     "name": "Zinat Al-Haya Kindergarten",
@@ -921,7 +937,6 @@
     "modulesCount": "{included} of {total} modules",
     "moreModules": "+{count} more modules",
     "includedSeats": "Includes {count} students",
-    "includedSeatsOver": "Over {count} students",
     "extraStudent": "{amount} OMR for every additional student",
     "andMoreModules": "and {count} more modules",
     "everythingInEntryPlus": "Everything in the entry plan, plus:",
@@ -931,7 +946,13 @@
       "teaching": "Courses and teaching — class timetables, weekly plans, materials, and marks in one workspace",
       "transport": "Transportation — buses, student assignment, and daily pickup and drop-off logs",
       "chat": "Internal chat — group and direct messages, formal letters, and meeting rooms"
-    }
+    },
+    "perStudentYear": "/ student / year",
+    "orPerStudentMonth": "or {amount} / student / month",
+    "minimumPerYear": "Minimum {amount} / year",
+    "studentBandRange": "{min}–{max} students",
+    "studentBandUpTo": "Up to {max} students",
+    "studentBandFrom": "{min}+ students"
   },
   "mobileApp": {
     "badge": "Why Choose Zinat Al-Haya",
@@ -5875,5 +5896,52 @@
     "terms5Body": "The school can close a login. A person does not delete a school login from the app. FIKR may also suspend a login that misuses the service, when the school asks or when the subscription ends.",
     "terms6Title": "Contact",
     "terms6Body": "Questions about these terms: admin@fikr.om, +968 99788677, or +968 98234590."
+  },
+  "platformDiscounts": {
+    "nav": "Discounts",
+    "title": "Discounts",
+    "listHeading": "All discounts",
+    "count": "{count} discounts",
+    "new": "New discount",
+    "newTitle": "New discount",
+    "editTitle": "Edit discount",
+    "empty": "No discounts yet",
+    "colName": "Name",
+    "colKind": "Type",
+    "colValue": "Value",
+    "colAppliesTo": "Applies to",
+    "colValidity": "Valid",
+    "colUsage": "Usage",
+    "kinds": {
+      "package": "Package",
+      "school": "School",
+      "promo": "Promo code"
+    },
+    "types": {
+      "percent": "Percent",
+      "fixed": "Fixed amount"
+    },
+    "discountType": "Discount",
+    "valuePercent": "Percent off",
+    "valueFixed": "Amount off (OMR)",
+    "plan": "Plan",
+    "allPlans": "All plans",
+    "school": "School",
+    "code": "Code",
+    "periodsOptional": "Billing periods (none = all)",
+    "startsOn": "Starts on",
+    "endsOn": "Ends on",
+    "durationPeriods": "Number of periods (optional)",
+    "durationShort": "{count} period(s)",
+    "maxRedemptions": "Maximum uses (optional)",
+    "namesRequired": "Enter the Arabic and English names.",
+    "valueRequired": "Enter a discount value greater than 0.",
+    "percentTooHigh": "A percent discount cannot exceed 100.",
+    "codeRequired": "Enter a promo code.",
+    "schoolRequired": "Choose a school.",
+    "saved": "Discount saved.",
+    "activated": "Discount activated.",
+    "deactivated": "Discount deactivated.",
+    "confirmDelete": "Delete the discount \"{name}\"?"
   }
 }

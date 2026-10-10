@@ -361,7 +361,6 @@ const pricingPlans = computed(() => {
     moduleCatalog.value.map((m) => [m.code, (ar ? m.name_ar : m.name_en) || m.code]),
   )
   const ordered = [...plans.value].sort((a, b) => a.sort_order - b.sort_order)
-  const mostSeats = Math.max(...ordered.map((p) => p.included_student_seats || 0), 0)
   const bulletText = (p: PlatformPlan) => {
     const fromFeatures = (p.features || [])
       .map((f) => {
@@ -390,11 +389,9 @@ const pricingPlans = computed(() => {
       code: plan.code,
       name: (ar ? plan.name_ar : plan.name_en) || plan.code,
       description: (ar ? plan.description_ar : plan.description_en) || '',
-      seats: plan.included_student_seats || 0,
-      seatsLabel: (plan.included_student_seats || 0) >= 1200
-        ? t('landingPricing.includedSeatsOver', { count: plan.included_student_seats })
-        : t('landingPricing.includedSeats', { count: plan.included_student_seats || 0 }),
-      overage: Number(plan.overage_per_student_omr) || 0,
+      seats: plan.max_students || 0,
+      seatsLabel: t('landingPricing.includedSeats', { count: plan.max_students || 0 }),
+      overage: 0,
       yearly: yearly ?? null,
       monthly: monthly && monthly > 0 ? monthly : null,
       semester: semester && semester > 0 ? semester : null,
@@ -403,8 +400,7 @@ const pricingPlans = computed(() => {
       bullets: shown.slice(0, MAX_PLAN_BULLETS),
       extraCount: Math.max(0, shown.length - MAX_PLAN_BULLETS),
       // Highlight the middle of the range rather than a hardcoded tier name.
-      featured: ordered.length > 2 && plan.included_student_seats > 0 &&
-        plan.included_student_seats !== mostSeats &&
+      featured: ordered.length > 2 &&
         plan.sort_order === ordered[Math.floor(ordered.length / 2)].sort_order,
     }
   })

@@ -114,6 +114,7 @@ import { SchoolPlatformSubscription } from './platform-billing/entities/school-p
 import { SchoolPlatformSubscriptionAddon } from './platform-billing/entities/school-platform-subscription-addon.entity';
 import { PlatformInvoice } from './platform-billing/entities/platform-invoice.entity';
 import { PlatformCustomPlanRequest } from './platform-billing/entities/platform-custom-plan-request.entity';
+import { PlatformDiscount } from './platform-billing/entities/platform-discount.entity';
 
 const entityList = [
   User,
@@ -224,6 +225,7 @@ const entityList = [
   SchoolPlatformSubscriptionAddon,
   PlatformInvoice,
   PlatformCustomPlanRequest,
+  PlatformDiscount,
   SchoolModule,
 ];
 

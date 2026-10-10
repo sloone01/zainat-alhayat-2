@@ -213,4 +213,10 @@ export class SchoolSubscriptionRegisterDto {
 
   @IsIn([...PLATFORM_BILLING_PERIODS])
   billing_period: (typeof PLATFORM_BILLING_PERIODS)[number];
+
+  @Transform(emptyToUndefined)
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  promo_code?: string;
 }

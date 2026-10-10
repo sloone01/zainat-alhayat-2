@@ -11,6 +11,7 @@ import { School } from '../../entities/school.entity';
 import { SchoolPlatformSubscription } from './school-platform-subscription.entity';
 import type {
   PlatformBillingPeriod,
+  PlatformInvoiceKind,
   PlatformInvoiceStatus,
 } from '../platform-billing.types';
 
@@ -34,17 +35,27 @@ export class PlatformInvoice {
   @Column({ name: 'period_end', type: 'date' })
   period_end: string;
 
+  @Column({ type: 'varchar', length: 32, default: 'subscription' })
+  kind: PlatformInvoiceKind;
+
+  /** Package amount before discount: max(minimum, rate × students), prorated for top-ups. */
   @Column({ type: 'numeric', precision: 12, scale: 3, default: 0 })
   base_amount: string;
 
-  @Column({ name: 'seats_included', type: 'int', default: 0 })
-  seats_included: number;
+  @Column({ name: 'students_billed', type: 'int', default: 0 })
+  students_billed: number;
 
-  @Column({ name: 'seats_used', type: 'int', default: 0 })
-  seats_used: number;
+  @Column({ name: 'minimum_omr', type: 'numeric', precision: 12, scale: 3, default: 0 })
+  minimum_omr: string;
 
-  @Column({ type: 'numeric', precision: 12, scale: 3, default: 0 })
-  overage_amount: string;
+  @Column({ name: 'per_student_omr', type: 'numeric', precision: 12, scale: 3, default: 0 })
+  per_student_omr: string;
+
+  @Column({ name: 'discount_amount', type: 'numeric', precision: 12, scale: 3, default: 0 })
+  discount_amount: string;
+
+  @Column({ name: 'discount_id', type: 'uuid', nullable: true })
+  discount_id: string | null;
 
   @Column({ type: 'numeric', precision: 12, scale: 3, default: 0 })
   addons_amount: string;
