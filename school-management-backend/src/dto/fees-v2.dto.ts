@@ -110,6 +110,15 @@ export class UpsertInstallmentPlanDto {
   @Min(0)
   advance_amount?: number | null;
 
+  @IsOptional()
+  @IsBoolean()
+  is_preset?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  inclusion_type_ids?: string[];
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => InstallmentPlanEntryInput)

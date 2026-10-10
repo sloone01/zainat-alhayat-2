@@ -2,14 +2,14 @@
   <DashboardLayout>
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
-        :title="isEdit ? $t('feesV2.editPlan') : $t('feesV2.newPlan')"
-        :subtitle="$t('feesV2.planEditorHint')"
+        :title="isPreset ? $t('feesV2.editPreset') : isEdit ? $t('feesV2.editPlan') : $t('feesV2.newPlan')"
+        :subtitle="isPreset ? undefined : $t('feesV2.planEditorHint')"
       >
         <template #leading>
           <router-link
-            to="/settings/payments/installment-plans"
+            :to="listPath"
             class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('feesV2.backToPlans')"
+            :aria-label="isPreset ? $t('feesV2.backToPresets') : $t('feesV2.backToPlans')"
           >
             <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -52,6 +52,25 @@
                 />
               </div>
             </div>
+
+            <fieldset v-if="isPreset && inclusionTypes.length">
+              <legend class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('feesV2.inclusions') }}</legend>
+              <div class="flex flex-wrap gap-x-5 gap-y-2">
+                <label
+                  v-for="it in inclusionTypes"
+                  :key="it.id"
+                  class="inline-flex items-center gap-2 text-sm text-gray-800"
+                >
+                  <input
+                    v-model="planForm.inclusion_type_ids"
+                    type="checkbox"
+                    :value="it.id"
+                    class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  >
+                  <span>{{ it.label }}</span>
+                </label>
+              </div>
+            </fieldset>
 
             <hr class="border-gray-200">
 
@@ -210,7 +229,7 @@
 
           <div class="flex flex-col-reverse gap-2 border-t border-fikr-hairline px-4 py-4 sm:flex-row sm:flex-wrap sm:justify-end sm:gap-2 sm:px-6">
             <router-link
-              to="/settings/payments/installment-plans"
+              :to="listPath"
               class="fk-btn fk-btn--pearl w-full sm:w-auto"
             >
               {{ $t('common.cancel') }}
@@ -248,6 +267,7 @@ import SuccessFlashDialog from '@/components/SuccessFlashDialog.vue'
 import { useSuccessFlash } from '@/composables/useSuccessFlash'
 import { feesV2Service } from '@/services/fees-v2.service'
 import { authService } from '@/services'
+import paymentConfigService, { type PaymentCatalogRow } from '@/services/payment-config.service'
 import { isFixedAmountPlan } from '@/utils/fees-v2.util'
 import {
   isAutoMonthLabel,
@@ -283,11 +303,16 @@ const {
 
 const saving = ref(false)
 /** Presets store fixed amounts per row (saved from a student charge sheet). */
-const isPreset = ref(false)
+const isPreset = ref(route.path.startsWith('/settings/payments/installment-presets'))
+const listPath = computed(() =>
+  isPreset.value ? '/settings/payments/installment-presets' : '/settings/payments/installment-plans',
+)
+const inclusionTypes = ref<PaymentCatalogRow[]>([])
 const planForm = ref({
   name: '',
   description: '',
   advance_amount: 0,
+  inclusion_type_ids: [] as string[],
   entries: [] as PlanEntryRow[],
 })
 
@@ -334,11 +359,12 @@ watch(locale, refreshAutoLabels)
 async function load() {
   if (isEdit.value && planId.value) {
     const plan = await feesV2Service.getInstallmentPlan(planId.value)
-    isPreset.value = isFixedAmountPlan(plan.entries || [])
+    isPreset.value = plan.is_preset === true || isFixedAmountPlan(plan.entries || [])
     planForm.value = {
       name: plan.name,
       description: plan.description || '',
       advance_amount: Number(plan.advance_amount) || 0,
+      inclusion_type_ids: [...(plan.inclusion_type_ids || [])],
       entries: (plan.entries || []).map((e) => {
         const labelManual = !isAutoMonthLabel(e.month_number, e.label, locale.value)
         return {
@@ -357,8 +383,15 @@ async function load() {
       name: '',
       description: '',
       advance_amount: 0,
+      inclusion_type_ids: [],
       entries: [createEntry(9)],
     }
+  }
+  if (isPreset.value) {
+    inclusionTypes.value = await paymentConfigService
+      .listInclusionTypes(String(schoolId.value))
+      .then((rows) => rows.filter((row) => row.is_active !== false))
+      .catch(() => [])
   }
 }
 
@@ -366,10 +399,13 @@ async function save() {
   saving.value = true
   try {
     const payload = {
-      school_id: schoolId.value,
+      school_id: String(schoolId.value),
       name: planForm.value.name.trim(),
       description: planForm.value.description.trim() || undefined,
       advance_amount: isPreset.value ? Number(planForm.value.advance_amount) || 0 : null,
+      ...(isPreset.value
+        ? { is_preset: true, inclusion_type_ids: [...planForm.value.inclusion_type_ids] }
+        : {}),
       entries: planForm.value.entries.map((e, i) => ({
         sequence: i + 1,
         month_number: e.month_number,
@@ -382,7 +418,7 @@ async function save() {
     } else {
       await feesV2Service.saveInstallmentPlan(payload)
     }
-    showSuccessFlash({ redirectTo: '/settings/payments/installment-plans' })
+    showSuccessFlash({ redirectTo: listPath.value })
   } finally {
     saving.value = false
   }

@@ -133,18 +133,21 @@ export class FeesV2Controller {
     @Query('limit') limit?: string,
     @Query('q') q?: string,
     @Query('status') status?: string,
+    @Query('kind') kindRaw?: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    const kind = kindRaw === 'plan' || kindRaw === 'preset' ? kindRaw : undefined;
     if (wantsPage(page)) {
       const data = await this.installmentPlans.listPage(req.user, schoolId, {
         page,
         limit,
         q,
         status,
+        kind,
       });
       return { success: true, data };
     }
-    const data = await this.installmentPlans.list(req.user, schoolId);
+    const data = await this.installmentPlans.list(req.user, schoolId, kind);
     return { success: true, data };
   }
 

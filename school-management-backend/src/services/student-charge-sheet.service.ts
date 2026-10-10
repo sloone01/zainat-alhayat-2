@@ -1674,13 +1674,15 @@ export class StudentChargeSheetService {
     if (user.role !== 'admin' && !user.isSystemUser) throw new ForbiddenException('Admin only');
     await this.buildOrRefresh(user, studentId);
     const sheet = await this.getForStudent(user, studentId);
+    let nextPlan: InstallmentPlan | null = null;
     if (dto.installment_plan_id) {
-      const plan = await this.planRepo.findOne({
+      nextPlan = await this.planRepo.findOne({
         where: { id: dto.installment_plan_id, school_id: sheet.school_id },
       });
-      if (!plan) throw new NotFoundException('Installment plan not found');
+      if (!nextPlan) throw new NotFoundException('Installment plan not found');
     }
     const nextPlanId = dto.installment_plan_id ?? null;
+    const planChanged = nextPlanId !== sheet.installment_plan_id;
     if (dto.installment_amounts !== undefined) {
       sheet.installment_amounts =
         nextPlanId && dto.installment_amounts?.length
@@ -1689,7 +1691,7 @@ export class StudentChargeSheetService {
               amount: num(moneyStr(row.amount)),
             }))
           : null;
-    } else if (nextPlanId !== sheet.installment_plan_id) {
+    } else if (planChanged) {
       sheet.installment_amounts = null;
     }
     sheet.installment_plan_id = nextPlanId;
@@ -1720,9 +1722,25 @@ export class StudentChargeSheetService {
         sheet,
         dto.inclusions.filter((i) => i.inclusion_type_id),
       );
+    } else if (planChanged && nextPlan?.is_preset) {
+      await this.applyPresetInclusions(sheet, nextPlan);
     }
     await this.applyDiscountTotals(sheet);
     return this.getOne(user, sheet.id);
+  }
+
+  /** Copy a preset's included items onto the sheet (inactive catalog items are dropped). */
+  private async applyPresetInclusions(sheet: StudentChargeSheet, plan: InstallmentPlan) {
+    const ids = plan.inclusion_type_ids ?? [];
+    const active = ids.length
+      ? await this.inclusionTypeRepo.find({
+          where: { id: In(ids), school_id: sheet.school_id, is_active: true },
+        })
+      : [];
+    await this.replaceInclusions(
+      sheet,
+      active.map((t) => ({ inclusion_type_id: t.id })),
+    );
   }
 
   /**
@@ -1783,6 +1801,7 @@ export class StudentChargeSheetService {
           upfront_override: null,
           status: sheet.status,
         });
+        if (plan.is_preset) await this.applyPresetInclusions(sheet, plan);
         await this.applyDiscountTotals(sheet);
         result.applied++;
       } catch (err) {

@@ -16,10 +16,13 @@ import { User } from '../entities/user.entity';
 import { InstallmentPlan } from '../entities/installment-plan.entity';
 import { InstallmentPlanEntry } from '../entities/installment-plan-entry.entity';
 import { StudentChargeSheet } from '../entities/student-charge-sheet.entity';
+import { PaymentInclusionType } from '../entities/payment-inclusion-type.entity';
 import { UpsertInstallmentPlanDto } from '../dto/fees-v2.dto';
 import { moneyStr } from '../utils/fees-v2.util';
 
 export type InstallmentPlanUsageKind = 'student_charge_sheet';
+
+export type InstallmentPlanKind = 'plan' | 'preset';
 
 export interface InstallmentPlanUsageItem {
   kind: InstallmentPlanUsageKind;
@@ -53,11 +56,14 @@ export class InstallmentPlanService {
     }
   }
 
-  async list(user: User, schoolId: string) {
+  async list(user: User, schoolId: string, kind?: InstallmentPlanKind) {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     return this.planRepo.find({
-      where: { school_id: schoolId },
+      where: {
+        school_id: schoolId,
+        ...(kind ? { is_preset: kind === 'preset' } : {}),
+      },
       relations: ['entries'],
       order: { name: 'ASC' },
     });
@@ -67,11 +73,12 @@ export class InstallmentPlanService {
   async listPage(
     user: User,
     schoolId: string,
-    query: PageQuery & { q?: string; status?: string },
+    query: PageQuery & { q?: string; status?: string; kind?: InstallmentPlanKind },
   ): Promise<PageResult<InstallmentPlan>> {
     this.assertAdmin(user);
     this.assertSchool(user, schoolId);
     const qb = this.planRepo.createQueryBuilder('p').where('p.school_id = :schoolId', { schoolId });
+    if (query.kind) qb.andWhere('p.is_preset = :isPreset', { isPreset: query.kind === 'preset' });
     if (query.status === 'active') qb.andWhere('p.is_active = true');
     else if (query.status === 'inactive') qb.andWhere('p.is_active = false');
     const term = likeTerm(query.q);
@@ -94,6 +101,18 @@ export class InstallmentPlanService {
       plan.entries?.sort((a, b) => a.sequence - b.sequence);
     }
     return { ...page, items };
+  }
+
+  private async validInclusionTypeIds(schoolId: string, ids: string[]): Promise<string[] | null> {
+    const unique = [...new Set(ids)];
+    if (!unique.length) return null;
+    const found = await this.planRepo.manager
+      .getRepository(PaymentInclusionType)
+      .find({ where: { id: In(unique), school_id: schoolId } });
+    if (found.length !== unique.length) {
+      throw new BadRequestException('Invalid inclusion type');
+    }
+    return unique;
   }
 
   async getOne(user: User, id: string) {
@@ -119,6 +138,10 @@ export class InstallmentPlanService {
       throw new BadRequestException('Every installment needs an amount, or none of them');
     }
     const advanceAmount = dto.advance_amount != null ? moneyStr(dto.advance_amount) : null;
+    const inclusionTypeIds =
+      dto.inclusion_type_ids !== undefined
+        ? await this.validInclusionTypeIds(dto.school_id, dto.inclusion_type_ids)
+        : undefined;
 
     let plan: InstallmentPlan;
     if (id) {
@@ -129,6 +152,8 @@ export class InstallmentPlanService {
       existing.description = dto.description?.trim() || null;
       existing.is_active = dto.is_active !== false;
       existing.advance_amount = advanceAmount;
+      if (dto.is_preset !== undefined) existing.is_preset = dto.is_preset;
+      if (inclusionTypeIds !== undefined) existing.inclusion_type_ids = inclusionTypeIds;
       plan = await this.planRepo.save(existing);
       await this.entryRepo.delete({ plan_id: plan.id });
     } else {
@@ -139,6 +164,8 @@ export class InstallmentPlanService {
           description: dto.description?.trim() || null,
           is_active: dto.is_active !== false,
           advance_amount: advanceAmount,
+          is_preset: dto.is_preset === true,
+          inclusion_type_ids: inclusionTypeIds ?? null,
         }),
       );
     }

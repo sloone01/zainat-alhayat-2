@@ -918,6 +918,7 @@ function navChildActive(href: string) {
   if (href === '/settings/payments/courses' && route.path.startsWith('/settings/payments/course/')) return true
   if (href === '/settings/payments/packages' && route.path.startsWith('/settings/payments/packages')) return true
   if (href === '/settings/payments/installment-plans' && route.path.startsWith('/settings/payments/installment-plans')) return true
+  if (href === '/settings/payments/installment-presets' && route.path.startsWith('/settings/payments/installment-presets')) return true
   if (href === '/courses' && route.path.startsWith('/courses/')) return true
   if (href === '/graded-courses' && route.path.startsWith('/graded-courses/')) return true
   if (href === '/standalone-courses' && route.path.startsWith('/standalone-courses/')) return true
@@ -1123,6 +1124,7 @@ const navigationByRole = computed(() => {
       { name: t('systemSettings.inclusionItemsLines'), href: '/settings/payments/catalog/inclusions' },
       { name: t('paymentSettings.feePackagesNav'), href: '/settings/payments/packages' },
       { name: t('feesV2.installmentPlansNav'), href: '/settings/payments/installment-plans' },
+      { name: t('feesV2.presetsNav'), href: '/settings/payments/installment-presets' },
       { name: t('paymentSettings.levelFeesNav'), href: '/settings/payments/levels' },
       { name: t('paymentSettings.courseFeesNav'), href: '/settings/payments/courses' },
     ],
@@ -1372,6 +1374,8 @@ const getPageTitle = () => {
   if (currentPath === '/settings/payments/installment-plans') return t('feesV2.installmentPlansTitle')
   if (currentPath === '/settings/payments/installment-plans/new') return t('feesV2.newPlan')
   if (currentPath.startsWith('/settings/payments/installment-plans/')) return t('feesV2.editPlan')
+  if (currentPath === '/settings/payments/installment-presets') return t('feesV2.presetsTitle')
+  if (currentPath.startsWith('/settings/payments/installment-presets/')) return t('feesV2.editPreset')
   if (currentPath === '/settings/payments/packages') return t('paymentSettings.feePackagesTitle')
   if (currentPath === '/settings/payments/packages/new') return t('paymentSettings.createFeePackage')
   if (currentPath.startsWith('/settings/payments/packages/')) return t('paymentSettings.editFeePackage')

@@ -65,6 +65,8 @@ export interface InstallmentPlan {
   description: string | null
   is_active: boolean
   advance_amount?: string | number | null
+  is_preset?: boolean
+  inclusion_type_ids?: string[] | null
   entries: InstallmentPlanEntry[]
 }
 
@@ -291,10 +293,17 @@ class FeesV2Service extends BaseApiService {
     return this.get<InstallmentPlan[]>('/fees/v2/installment-plans', { school_id: String(schoolId) })
   }
 
-  listInstallmentPlansPage(params: { page: number; limit: number; q?: string; status?: string }) {
+  listInstallmentPlansPage(params: {
+    page: number
+    limit: number
+    q?: string
+    status?: string
+    kind?: 'plan' | 'preset'
+  }) {
     const query: Record<string, string | number> = { page: params.page, limit: params.limit }
     if (params.q?.trim()) query.q = params.q.trim()
     if (params.status && params.status !== 'all') query.status = params.status
+    if (params.kind) query.kind = params.kind
     return this.get<PageResult<InstallmentPlan>>('/fees/v2/installment-plans', query)
   }
 
@@ -309,6 +318,8 @@ class FeesV2Service extends BaseApiService {
       description?: string
       is_active?: boolean
       advance_amount?: number | null
+      is_preset?: boolean
+      inclusion_type_ids?: string[]
       entries: Array<{
         sequence: number
         month_number?: number | null

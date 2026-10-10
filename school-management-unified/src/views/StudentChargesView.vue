@@ -39,7 +39,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loadingList" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loadingList && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -230,7 +230,7 @@
           </header>
 
           <div class="p-6">
-            <div v-if="loadingSheet" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+            <div v-if="loadingSheet && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
               <FikrLoader />
               <span class="text-sm">{{ $t('common.loading') }}</span>
             </div>
@@ -290,7 +290,12 @@
                   </label>
                   <select id="student-charge-plan" v-model="selectedPlanId" class="fk-field">
                     <option value="">{{ $t('feesV2.noPlan') }}</option>
-                    <option v-for="p in plans" :key="p.id" :value="p.id">{{ p.name }}</option>
+                    <optgroup v-if="regularPlans.length" :label="$t('feesV2.installmentPlansNav')">
+                      <option v-for="p in regularPlans" :key="p.id" :value="p.id">{{ p.name }}</option>
+                    </optgroup>
+                    <optgroup v-if="presetPlans.length" :label="$t('feesV2.presetsNav')">
+                      <option v-for="p in presetPlans" :key="p.id" :value="p.id">{{ p.name }}</option>
+                    </optgroup>
                   </select>
                 </div>
                 <button
@@ -825,7 +830,12 @@
           <label class="fk-flabel" for="bulk-plan"><span>{{ $t('feesV2.installmentPlan') }}</span></label>
           <select id="bulk-plan" v-model="bulkPlanId" required class="fk-field">
             <option value="" disabled>{{ $t('feesV2.installmentPlan') }}</option>
-            <option v-for="p in plans" :key="p.id" :value="p.id">{{ p.name }}</option>
+            <optgroup v-if="presetPlans.length" :label="$t('feesV2.presetsNav')">
+              <option v-for="p in presetPlans.filter((x) => x.is_active)" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </optgroup>
+            <optgroup v-if="regularPlans.length" :label="$t('feesV2.installmentPlansNav')">
+              <option v-for="p in regularPlans.filter((x) => x.is_active)" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </optgroup>
           </select>
         </div>
       </form>
@@ -1032,6 +1042,7 @@ import { authService } from '@/services'
 import { fitFixedAmounts, planEntryAmounts } from '@/utils/fees-v2.util'
 import { useFeedback } from '@/composables/useFeedback'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const feedback = useFeedback()
@@ -1076,6 +1087,8 @@ const inclusionRows = ref<Array<{ inclusion_type_id: string }>>([])
 const draftUpfront = ref(0)
 /** Staff-edited installment amounts keyed by schedule sequence (advance excluded). */
 const draftRowAmounts = ref<Record<number, number>>({})
+const regularPlans = computed(() => plans.value.filter((p) => !p.is_preset))
+const presetPlans = computed(() => plans.value.filter((p) => p.is_preset))
 const feeLevels = ref<SchoolPaymentLevel[]>([])
 const bulkOpen = ref(false)
 const bulkLevelId = ref('')
@@ -1833,6 +1846,8 @@ async function savePreset() {
       school_id: schoolId.value,
       name,
       advance_amount: advanceRow ? displayInstDue(advanceRow) : 0,
+      is_preset: true,
+      inclusion_type_ids: validInclusionRows().map((row) => row.inclusion_type_id),
       entries: presetRows.value.map((row, i) => ({
         sequence: i + 1,
         month_number: row.inst.month_number ?? null,
@@ -2134,6 +2149,12 @@ watch(selectedPlanId, (id) => {
   if (id !== (sheet.value?.installment_plan_id || '')) {
     draftRowAmounts.value = {}
     draftUpfront.value = planAdvance(id) ?? suggestedUpfrontFromLines()
+    const preset = plans.value.find((p) => p.id === id && p.is_preset)
+    if (preset) {
+      inclusionRows.value = (preset.inclusion_type_ids || [])
+        .filter((typeId) => inclusionTypes.value.some((it) => it.id === typeId))
+        .map((typeId) => ({ inclusion_type_id: typeId }))
+    }
   } else {
     draftRowAmounts.value = savedRowAmounts()
   }

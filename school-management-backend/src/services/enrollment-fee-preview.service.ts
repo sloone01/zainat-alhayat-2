@@ -72,7 +72,7 @@ export class EnrollmentFeePreviewService {
   async listPlans(schoolId: string): Promise<PublicEnrollmentPlanRow[]> {
     await this.assertSchool(schoolId);
     const plans = await this.planRepo.find({
-      where: { school_id: schoolId, is_active: true },
+      where: { school_id: schoolId, is_active: true, is_preset: false },
       relations: ['entries'],
       order: { name: 'ASC' },
     });
