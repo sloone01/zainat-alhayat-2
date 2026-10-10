@@ -940,6 +940,7 @@
     "extraStudent": "{amount} OMR for every additional student",
     "andMoreModules": "and {count} more modules",
     "everythingInEntryPlus": "Everything in the entry plan, plus:",
+    "everythingInPlanPlus": "Everything in {plan}, plus:",
     "packageBullets": {
       "students": "Student files — registration, class groups, daily attendance, progress, and a parent portal for every child",
       "staff": "School staff — employee accounts, roles, and page-level access for teachers and administration",
@@ -948,7 +949,9 @@
       "chat": "Internal chat — group and direct messages, formal letters, and meeting rooms"
     },
     "perStudentYear": "/ student / year",
-    "orPerStudentMonth": "or {amount} / student / month",
+    "paidYearly": "Paid yearly",
+    "perStudentYearBySemester": "{amount} / student / year paid by semester",
+    "perStudentYearByMonth": "{amount} / student / year paid monthly",
     "minimumPerYear": "Minimum {amount} / year",
     "studentBandRange": "{min}–{max} students",
     "studentBandUpTo": "Up to {max} students",

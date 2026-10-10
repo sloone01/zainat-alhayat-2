@@ -10,13 +10,17 @@ export type PublicPricingCard = {
   bandLabel: string
   /** Yearly rate per active student; null when the plan is a flat price. */
   perStudentYearly: number | null
-  perStudentMonthly: number | null
+  /** Per-student rate over a year when paying by semester / monthly. */
+  perStudentYearlyBySemester: number | null
+  perStudentYearlyByMonth: number | null
   /** Yearly minimum fee (or flat yearly price). */
   yearly: number | null
   monthly: number | null
   startingMonthly: number | null
   contactOnly: boolean
   addsOnBaseline: boolean
+  /** Name of the next smaller plan when the bullets only list what this plan adds. */
+  previousName: string
   bullets: string[]
   extraCount: number
   featured: boolean
@@ -35,6 +39,10 @@ function amountOf(plan: PlatformPlan, period: Period): number | null {
 
 function rateOf(plan: PlatformPlan, period: Period): number | null {
   return positive(plan.prices.find((p) => p.billing_period === period)?.per_student_omr)
+}
+
+function annualized(rate: number | null, periodsPerYear: number): number | null {
+  return rate == null ? null : Math.round(rate * periodsPerYear * 100) / 100
 }
 
 function startingMonthly(yearly: number | null, monthly: number | null): number | null {
@@ -76,16 +84,22 @@ export function buildPublicPricingCards(opts: {
       .map((s) => (s || '').trim())
       .filter((s) => s.includes(' ') || s.includes('—') || s.length >= 20)
     if (fromFeatures.length) return fromFeatures
+    const moduleLines = (p.module_codes || []).map((c) => labels.get(c)).filter((x): x is string => Boolean(x))
+    if (modulesDiffer && moduleLines.length) return moduleLines
     const marketing = PACKAGE_BULLET_KEYS.map((key) => t(`landingPricing.packageBullets.${key}`)).filter(Boolean)
     if (marketing.length) return marketing
-    return (p.module_codes || []).map((c) => labels.get(c)).filter((x): x is string => Boolean(x))
+    return moduleLines
   }
+  const moduleKey = (p: PlatformPlan) => [...(p.module_codes || [])].sort().join(',')
+  const modulesDiffer = new Set(ordered.map(moduleKey)).size > 1
 
-  const baseline = ordered.length ? new Set(bulletText(ordered[0])) : new Set<string>()
+  const bulletsByPlan = ordered.map(bulletText)
   const cards = ordered.map((plan, index) => {
-    const all = bulletText(plan)
-    const distinctive = index === 0 ? all : all.filter((line) => !baseline.has(line))
+    const all = bulletsByPlan[index]
+    const previous = index > 0 ? new Set(bulletsByPlan[index - 1]) : null
+    const distinctive = previous ? all.filter((line) => !previous.has(line)) : all
     const shown = distinctive.length ? distinctive : all
+    const previousPlan = index > 0 ? ordered[index - 1] : null
     const yearly = amountOf(plan, 'yearly')
     const monthly = amountOf(plan, 'monthly')
     const perStudentYearly = rateOf(plan, 'yearly')
@@ -95,12 +109,14 @@ export function buildPublicPricingCards(opts: {
       description: (ar ? plan.description_ar : plan.description_en) || '',
       bandLabel: bandLabel(plan, t),
       perStudentYearly,
-      perStudentMonthly: rateOf(plan, 'monthly'),
+      perStudentYearlyBySemester: annualized(rateOf(plan, 'semester'), 2),
+      perStudentYearlyByMonth: annualized(rateOf(plan, 'monthly'), 12),
       yearly,
       monthly,
       startingMonthly: startingMonthly(yearly, monthly),
       contactOnly: yearly == null && perStudentYearly == null,
       addsOnBaseline: index > 0 && distinctive.length > 0,
+      previousName: previousPlan ? (ar ? previousPlan.name_ar : previousPlan.name_en) || previousPlan.code : '',
       bullets: shown.slice(0, MAX_PLAN_BULLETS),
       extraCount: Math.max(0, shown.length - MAX_PLAN_BULLETS),
       featured: ordered.length > 2 && index === Math.floor(ordered.length / 2),
@@ -115,12 +131,14 @@ export function buildPublicPricingCards(opts: {
       description: t('landingPricing.planDescs.complete'),
       bandLabel: '',
       perStudentYearly: null,
-      perStudentMonthly: null,
+      perStudentYearlyBySemester: null,
+      perStudentYearlyByMonth: null,
       yearly: null,
       monthly: null,
       startingMonthly: null,
       contactOnly: true,
       addsOnBaseline: false,
+      previousName: '',
       bullets: bullets.slice(0, MAX_PLAN_BULLETS),
       extraCount: Math.max(0, bullets.length - MAX_PLAN_BULLETS),
       featured: false,

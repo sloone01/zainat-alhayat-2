@@ -1594,6 +1594,7 @@
     "extraStudent": "{amount} ر.ع لكل طالب إضافي",
     "andMoreModules": "و{count} وحدة إضافية",
     "everythingInEntryPlus": "كل ما في الباقة الأساسية، بالإضافة إلى:",
+    "everythingInPlanPlus": "كل ما في باقة {plan}، بالإضافة إلى:",
     "packageBullets": {
       "students": "سجلات الطلاب — التسجيل والمجموعات والحضور اليومي وتتبع التقدم وبوابة ولي الأمر لكل طفل",
       "staff": "كادر المدرسة — حسابات الموظفين والأدوار وصلاحيات الصفحات للمعلمين والإدارة",
@@ -1602,7 +1603,9 @@
       "chat": "المحادثة الداخلية — محادثات جماعية ورسائل مباشرة ورسائل رسمية وغرف اجتماعات"
     },
     "perStudentYear": "/ طالب / سنة",
-    "orPerStudentMonth": "أو {amount} / طالب / شهر",
+    "paidYearly": "عند الدفع سنوياً",
+    "perStudentYearBySemester": "{amount} / طالب / سنة عند الدفع فصلياً",
+    "perStudentYearByMonth": "{amount} / طالب / سنة عند الدفع شهرياً",
     "minimumPerYear": "حد أدنى {amount} / سنة",
     "studentBandRange": "{min}–{max} طالب",
     "studentBandUpTo": "حتى {max} طالب",
