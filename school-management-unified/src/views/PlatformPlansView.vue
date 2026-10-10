@@ -105,7 +105,7 @@
                   </RowActionsMenu>
                 </template>
                 <template #meta>
-                  <KanbanMeta icon="users">{{ plan.included_student_seats }}</KanbanMeta>
+                  <KanbanMeta icon="users">{{ studentBand(plan) }}</KanbanMeta>
                   <KanbanMeta icon="check">{{ moduleCount(plan) }}</KanbanMeta>
                   <KanbanMeta v-for="period in summaryPeriods" :key="period" icon="money">
                     {{ priceOf(plan, period) }}
@@ -125,7 +125,7 @@
                     >
                       {{ $t(`platformBilling.periods.${period}`) }}
                     </th>
-                    <th>{{ $t('platformBilling.seatsIncluded') }}</th>
+                    <th>{{ $t('platformBilling.studentBand') }}</th>
                     <th>{{ $t('common.status') }}</th>
                     <th class="text-end">{{ $t('common.actions') }}</th>
                   </tr>
@@ -153,8 +153,8 @@
                     >
                       {{ priceOf(plan, period) }}
                     </td>
-                    <td class="tabular-nums font-medium text-fikr-ink">
-                      {{ plan.included_student_seats }}
+                    <td class="tabular-nums font-medium text-fikr-ink" dir="ltr">
+                      {{ studentBand(plan) }}
                     </td>
                     <td>
                       <span class="fk-chip" :class="plan.is_active ? 'fk-chip--green' : 'fk-chip--neutral'">
@@ -299,26 +299,29 @@
 
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="plan-seats">
-                {{ $t('platformBilling.seats') }}
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="plan-min-students">
+                {{ $t('platformBilling.minStudents') }}
               </label>
-              <input id="plan-seats" v-model.number="createForm.included_student_seats" type="number" min="0" class="fk-field" />
+              <input id="plan-min-students" v-model.number="createForm.min_students" type="number" min="0" class="fk-field" />
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="plan-overage">
-                {{ $t('platformBilling.overage') }}
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="plan-max-students">
+                {{ $t('platformBilling.maxStudentsOptional') }}
               </label>
-              <input id="plan-overage" v-model.number="createForm.overage_per_student_omr" type="number" min="0" step="0.1" class="fk-field" />
+              <input id="plan-max-students" v-model.number="createForm.max_students" type="number" min="1" class="fk-field" />
             </div>
           </div>
 
           <div>
             <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.prices') }}</label>
-            <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <div v-for="period in periods" :key="period">
-                <span class="mb-1 block text-xs text-gray-500">{{ $t('platformBilling.periods.' + period) }}</span>
-                <input v-model.number="createForm.prices[period]" type="number" min="0" step="1" class="fk-field" />
-              </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
+              <fieldset v-for="period in periods" :key="period" class="rounded-lg border border-gray-200 p-2.5">
+                <legend class="px-1 text-xs font-semibold text-gray-700">{{ $t('platformBilling.periods.' + period) }}</legend>
+                <label class="mb-1 block text-xs text-gray-500" :for="`new-min-${period}`">{{ $t('platformBilling.minimumFee') }}</label>
+                <input :id="`new-min-${period}`" v-model.number="createForm.prices[period].amount_omr" type="number" min="0" step="0.001" class="fk-field" />
+                <label class="mb-1 mt-2 block text-xs text-gray-500" :for="`new-rate-${period}`">{{ $t('platformBilling.perStudentRate') }}</label>
+                <input :id="`new-rate-${period}`" v-model.number="createForm.prices[period].per_student_omr" type="number" min="0" step="0.001" class="fk-field" />
+              </fieldset>
             </div>
           </div>
 
@@ -458,7 +461,15 @@ function moduleCount(plan: PlatformPlan) {
 function priceOf(plan: PlatformPlan, period: PlatformBillingPeriod) {
   const row = plan.prices?.find((p) => p.billing_period === period)
   if (!row) return '—'
-  return `${Number(row.amount_omr).toFixed(3)} OMR`
+  const min = Number(row.amount_omr) || 0
+  const rate = Number(row.per_student_omr) || 0
+  if (!rate) return `${min.toFixed(3)} OMR`
+  return t('platformBilling.priceSummary', { rate: rate.toFixed(3), min: min.toFixed(3) })
+}
+
+function studentBand(plan: PlatformPlan) {
+  const min = plan.min_students ?? 0
+  return plan.max_students != null ? `${min}–${plan.max_students}` : `${min}+`
 }
 
 function onEdit(plan: PlatformPlan) {
@@ -513,10 +524,12 @@ const emptyCreateForm = () => ({
   code: '',
   name_ar: '',
   name_en: '',
-  included_student_seats: 50,
-  overage_per_student_omr: 0,
+  min_students: 0 as number | '',
+  max_students: '' as number | '',
   module_codes: [] as string[],
-  prices: {} as Record<string, number | null>,
+  prices: Object.fromEntries(
+    periods.value.map((p) => [p, { amount_omr: '' as number | '', per_student_omr: '' as number | '' }]),
+  ) as Record<string, { amount_omr: number | ''; per_student_omr: number | '' }>,
 })
 const createForm = ref(emptyCreateForm())
 
@@ -543,14 +556,15 @@ async function submitCreate() {
       code: f.code.trim().toLowerCase(),
       name_en: f.name_en.trim(),
       name_ar: f.name_ar.trim(),
-      included_student_seats: f.included_student_seats || 0,
-      overage_per_student_omr: f.overage_per_student_omr || 0,
+      min_students: Number(f.min_students) || 0,
+      max_students: f.max_students === '' ? null : Number(f.max_students),
       module_codes: f.module_codes,
       prices: Object.entries(f.prices)
-        .filter(([, v]) => v != null && Number(v) >= 0 && String(v) !== '')
-        .map(([billing_period, amount_omr]) => ({
+        .filter(([, v]) => v.amount_omr !== '' || v.per_student_omr !== '')
+        .map(([billing_period, v]) => ({
           billing_period: billing_period as PlatformBillingPeriod,
-          amount_omr: Number(amount_omr),
+          amount_omr: Number(v.amount_omr) || 0,
+          per_student_omr: Number(v.per_student_omr) || 0,
         })),
     })
     createOpen.value = false

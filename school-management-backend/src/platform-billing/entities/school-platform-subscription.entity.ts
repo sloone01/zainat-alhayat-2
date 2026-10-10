@@ -41,12 +41,12 @@ export class SchoolPlatformSubscription {
   @Column({ name: 'period_end', type: 'date' })
   period_end: string;
 
-  @Column({
-    name: 'included_student_seats_override',
-    type: 'int',
-    nullable: true,
-  })
-  included_student_seats_override: number | null;
+  /** Active students already invoiced for the current period (proration baseline). */
+  @Column({ name: 'billed_students', type: 'int', default: 0 })
+  billed_students: number;
+
+  @Column({ name: 'promo_discount_id', type: 'uuid', nullable: true })
+  promo_discount_id: string | null;
 
   @Column({ type: 'text', nullable: true })
   notes: string | null;

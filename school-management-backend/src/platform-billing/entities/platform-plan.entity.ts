@@ -29,17 +29,13 @@ export class PlatformPlan {
   @Column({ name: 'description_ar', type: 'text', nullable: true })
   description_ar: string | null;
 
-  @Column({ name: 'included_student_seats', type: 'int', default: 50 })
-  included_student_seats: number;
+  /** School-size band this package is sold for (active students). */
+  @Column({ name: 'min_students', type: 'int', default: 0 })
+  min_students: number;
 
-  @Column({
-    name: 'overage_per_student_omr',
-    type: 'numeric',
-    precision: 10,
-    scale: 3,
-    default: 0,
-  })
-  overage_per_student_omr: string;
+  /** Null = no upper limit. */
+  @Column({ name: 'max_students', type: 'int', nullable: true })
+  max_students: number | null;
 
   @Column({ name: 'sort_order', type: 'int', default: 0 })
   sort_order: number;

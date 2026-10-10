@@ -64,6 +64,7 @@ const school_access_1 = require("../common/security/school-access");
 const staff_membership_1 = require("../common/identity/staff-membership");
 const letter_approval_token_1 = require("../common/security/letter-approval-token");
 const login_identifier_1 = require("./login-identifier");
+const demo_accounts_service_1 = require("../common/demo/demo-accounts.service");
 function deriveUserType(user) {
     if (user.user_type === 'staff' || user.user_type === 'parent' || user.user_type === 'student' || user.user_type === 'platform') {
         return user.user_type;
@@ -94,8 +95,9 @@ let AuthService = class AuthService {
     rbacGroupService;
     permissionService;
     notifications;
+    demo;
     userCache = new Map();
-    constructor(userRepository, schoolRepository, staffRepository, parentRepository, jwtService, rbacGroupService, permissionService, notifications) {
+    constructor(userRepository, schoolRepository, staffRepository, parentRepository, jwtService, rbacGroupService, permissionService, notifications, demo) {
         this.userRepository = userRepository;
         this.schoolRepository = schoolRepository;
         this.staffRepository = staffRepository;
@@ -104,6 +106,7 @@ let AuthService = class AuthService {
         this.rbacGroupService = rbacGroupService;
         this.permissionService = permissionService;
         this.notifications = notifications;
+        this.demo = demo;
     }
     async register(registerDto, actor) {
         if (!actor) {
@@ -419,7 +422,7 @@ let AuthService = class AuthService {
         return 'admin';
     }
     async issueDemoSession(audience) {
-        const slug = (process.env.DEMO_SCHOOL_SLUG || 'zinat-al-haya').trim().toLowerCase();
+        const slug = (process.env.DEMO_SCHOOL_SLUG || 'fikr-demo').trim().toLowerCase();
         const school = await this.schoolRepository.findOne({ where: { landing_slug: slug } });
         if (!school) {
             throw new common_1.ServiceUnavailableException('Demo school is not configured');
@@ -594,6 +597,7 @@ let AuthService = class AuthService {
         return this.buildAuthResponse(user);
     }
     async changePassword(userId, oldPassword, newPassword) {
+        await this.demo.assertNotPublicDemoUser(userId);
         const user = await this.userRepository
             .createQueryBuilder('user')
             .addSelect('user.password')
@@ -632,7 +636,7 @@ let AuthService = class AuthService {
         const qb = this.userRepository.createQueryBuilder('user');
         this.applyLoginIdentifier(qb, raw);
         const user = await qb.getOne();
-        if (!user || !user.isActive || !user.email) {
+        if (!user || !user.isActive || !user.email || this.demo.isPublicDemoEmail(user.email)) {
             return { message: RESET_SENT };
         }
         await this.issuePasswordResetLink(user);
@@ -695,6 +699,7 @@ let AuthService = class AuthService {
         return { message: 'Password updated' };
     }
     async deactivateUser(userId) {
+        await this.demo.assertNotPublicDemoUser(userId);
         const user = await this.userRepository.findOne({
             where: { id: userId },
         });
@@ -740,7 +745,8 @@ exports.AuthService = AuthService = __decorate([
         jwt_1.JwtService,
         rbac_group_service_1.RbacGroupService,
         rbac_permission_service_1.RbacPermissionService,
-        notification_dispatcher_service_1.NotificationDispatcherService])
+        notification_dispatcher_service_1.NotificationDispatcherService,
+        demo_accounts_service_1.DemoAccountsService])
 ], AuthService);
 function hashResetToken(token) {
     return (0, crypto_1.createHash)('sha256').update(token).digest('hex');

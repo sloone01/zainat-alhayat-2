@@ -35,6 +35,7 @@ import {
   UpdatePlatformModuleDto,
   CreatePlatformPlanDto,
   UpdatePlatformPlanDto,
+  UpsertPlatformDiscountDto,
   UpsertSchoolSubscriptionDto,
 } from './dto/platform-billing.dto';
 
@@ -234,6 +235,63 @@ export class PlatformBillingController {
   ) {
     const data = await this.billing.issueInvoice(req.user, id, dto);
     return { success: true, data };
+  }
+
+  /** Bill students activated since the current period was invoiced (no-op when none). */
+  @Post('schools/:id/invoices/proration')
+  @RequireClaim('platform_schools', 'manage')
+  async issueProrationInvoice(
+    @Req() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const data = await this.billing.issueProrationInvoiceForSchool(req.user, id);
+    return { success: true, data };
+  }
+
+  @Get('discounts')
+  @RequireClaim('platform_schools', 'view')
+  async listDiscounts(@Req() req: { user: User }) {
+    const data = await this.billing.listDiscounts(req.user);
+    return { success: true, data, count: data.length };
+  }
+
+  @Get('discounts/:id')
+  @RequireClaim('platform_schools', 'view')
+  async getDiscount(
+    @Req() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const data = await this.billing.getDiscount(req.user, id);
+    return { success: true, data };
+  }
+
+  @Post('discounts')
+  @RequireClaim('platform_schools', 'manage')
+  @HttpCode(HttpStatus.CREATED)
+  async createDiscount(@Req() req: { user: User }, @Body() dto: UpsertPlatformDiscountDto) {
+    const data = await this.billing.createDiscount(req.user, dto);
+    return { success: true, data, message: 'Discount created' };
+  }
+
+  @Put('discounts/:id')
+  @RequireClaim('platform_schools', 'manage')
+  async updateDiscount(
+    @Req() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpsertPlatformDiscountDto,
+  ) {
+    const data = await this.billing.updateDiscount(req.user, id, dto);
+    return { success: true, data, message: 'Discount updated' };
+  }
+
+  @Delete('discounts/:id')
+  @RequireClaim('platform_schools', 'manage')
+  async deleteDiscount(
+    @Req() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const data = await this.billing.deleteDiscount(req.user, id);
+    return { success: true, data, message: 'Discount deleted' };
   }
 
   @Post('invoices/:id/mark-paid')

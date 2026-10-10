@@ -63,18 +63,21 @@ const pagination_1 = require("../common/pagination");
 const bilingual_name_1 = require("../common/identity/bilingual-name");
 const staff_membership_1 = require("../common/identity/staff-membership");
 const auth_service_1 = require("../auth/auth.service");
+const demo_accounts_service_1 = require("../common/demo/demo-accounts.service");
 let UserService = class UserService {
     userRepository;
     schoolRepository;
     rbacGroupService;
     notifications;
     authService;
-    constructor(userRepository, schoolRepository, rbacGroupService, notifications, authService) {
+    demo;
+    constructor(userRepository, schoolRepository, rbacGroupService, notifications, authService, demo) {
         this.userRepository = userRepository;
         this.schoolRepository = schoolRepository;
         this.rbacGroupService = rbacGroupService;
         this.notifications = notifications;
         this.authService = authService;
+        this.demo = demo;
     }
     generateTempPassword() {
         return (0, crypto_1.randomBytes)(9).toString('base64url').slice(0, 12);
@@ -535,6 +538,7 @@ let UserService = class UserService {
         }
     }
     async update(id, updateUserDto, actor) {
+        await this.demo.assertNotPublicDemoUser(id);
         const user = await this.findOne(id);
         if (updateUserDto.username || updateUserDto.email) {
             const existingUser = await this.userRepository.findOne({
@@ -592,6 +596,7 @@ let UserService = class UserService {
         return saved;
     }
     async updatePassword(id, newPassword) {
+        await this.demo.assertNotPublicDemoUser(id);
         const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
         const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
         await this.userRepository.update(id, {
@@ -600,6 +605,7 @@ let UserService = class UserService {
         });
     }
     async resetPasswordAndNotify(id, actor) {
+        await this.demo.assertNotPublicDemoUser(id);
         const user = await this.findOne(id);
         if (user.user_type === 'parent' && !actor?.isSuperAdmin && !actor?.isSystemUser) {
             throw new common_1.ForbiddenException('A parent password cannot be reset from a school');
@@ -610,6 +616,7 @@ let UserService = class UserService {
         await this.authService.issuePasswordResetLink(user);
     }
     async remove(id) {
+        await this.demo.assertNotPublicDemoUser(id);
         const user = await this.findOne(id);
         await this.userRepository.remove(user);
     }
@@ -664,6 +671,7 @@ let UserService = class UserService {
         });
     }
     async toggleActive(id) {
+        await this.demo.assertNotPublicDemoUser(id);
         const user = await this.findOne(id);
         user.isActive = !user.isActive;
         return this.userRepository.save(user);
@@ -752,6 +760,7 @@ exports.UserService = UserService = __decorate([
         typeorm_2.Repository,
         rbac_group_service_1.RbacGroupService,
         notification_dispatcher_service_1.NotificationDispatcherService,
-        auth_service_1.AuthService])
+        auth_service_1.AuthService,
+        demo_accounts_service_1.DemoAccountsService])
 ], UserService);
 //# sourceMappingURL=user.service.js.map

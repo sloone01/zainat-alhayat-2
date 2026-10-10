@@ -7,9 +7,11 @@ export type PublicPricingCard = {
   code: string
   name: string
   description: string
-  seats: number
-  seatsLabel: string
-  overage: number
+  bandLabel: string
+  /** Yearly rate per active student; null when the plan is a flat price. */
+  perStudentYearly: number | null
+  perStudentMonthly: number | null
+  /** Yearly minimum fee (or flat yearly price). */
   yearly: number | null
   monthly: number | null
   startingMonthly: number | null
@@ -20,16 +22,37 @@ export type PublicPricingCard = {
   featured: boolean
 }
 
-function amountOf(plan: PlatformPlan, period: 'yearly' | 'monthly' | 'semester'): number | null {
-  const raw = plan.prices.find((p) => p.billing_period === period)?.amount_omr
+type Period = 'yearly' | 'monthly' | 'semester'
+
+function positive(raw: unknown): number | null {
   const n = Number(raw)
   return Number.isFinite(n) && n > 0 ? n : null
+}
+
+function amountOf(plan: PlatformPlan, period: Period): number | null {
+  return positive(plan.prices.find((p) => p.billing_period === period)?.amount_omr)
+}
+
+function rateOf(plan: PlatformPlan, period: Period): number | null {
+  return positive(plan.prices.find((p) => p.billing_period === period)?.per_student_omr)
 }
 
 function startingMonthly(yearly: number | null, monthly: number | null): number | null {
   if (monthly != null) return monthly
   if (yearly != null) return Math.round(yearly / 12)
   return null
+}
+
+function bandLabel(
+  plan: PlatformPlan,
+  t: (key: string, params?: Record<string, unknown>) => string,
+): string {
+  const min = plan.min_students ?? 0
+  const max = plan.max_students
+  if (max != null && min > 0) return t('landingPricing.studentBandRange', { min, max })
+  if (max != null) return t('landingPricing.studentBandUpTo', { max })
+  if (min > 0) return t('landingPricing.studentBandFrom', { min })
+  return ''
 }
 
 export function buildPublicPricingCards(opts: {
@@ -43,7 +66,6 @@ export function buildPublicPricingCards(opts: {
   const ar = locale === 'ar'
   const labels = new Map(modules.map((m) => [m.code, (ar ? m.name_ar : m.name_en) || m.code]))
   const ordered = [...plans].sort((a, b) => a.sort_order - b.sort_order)
-  const mostSeats = Math.max(...ordered.map((p) => p.included_student_seats || 0), 0)
 
   const bulletText = (p: PlatformPlan) => {
     const fromFeatures = (p.features || [])
@@ -66,28 +88,22 @@ export function buildPublicPricingCards(opts: {
     const shown = distinctive.length ? distinctive : all
     const yearly = amountOf(plan, 'yearly')
     const monthly = amountOf(plan, 'monthly')
+    const perStudentYearly = rateOf(plan, 'yearly')
     return {
       code: plan.code,
       name: (ar ? plan.name_ar : plan.name_en) || plan.code,
       description: (ar ? plan.description_ar : plan.description_en) || '',
-      seats: plan.included_student_seats || 0,
-      seatsLabel:
-        (plan.included_student_seats || 0) >= 1200
-          ? t('landingPricing.includedSeatsOver', { count: plan.included_student_seats })
-          : t('landingPricing.includedSeats', { count: plan.included_student_seats || 0 }),
-      overage: Number(plan.overage_per_student_omr) || 0,
+      bandLabel: bandLabel(plan, t),
+      perStudentYearly,
+      perStudentMonthly: rateOf(plan, 'monthly'),
       yearly,
       monthly,
       startingMonthly: startingMonthly(yearly, monthly),
-      contactOnly: yearly == null,
+      contactOnly: yearly == null && perStudentYearly == null,
       addsOnBaseline: index > 0 && distinctive.length > 0,
       bullets: shown.slice(0, MAX_PLAN_BULLETS),
       extraCount: Math.max(0, shown.length - MAX_PLAN_BULLETS),
-      featured:
-        ordered.length > 2 &&
-        plan.included_student_seats > 0 &&
-        plan.included_student_seats !== mostSeats &&
-        plan.sort_order === ordered[Math.floor(ordered.length / 2)].sort_order,
+      featured: ordered.length > 2 && index === Math.floor(ordered.length / 2),
     }
   })
 
@@ -97,9 +113,9 @@ export function buildPublicPricingCards(opts: {
       code: 'contact',
       name: t('landingPricing.planNames.complete'),
       description: t('landingPricing.planDescs.complete'),
-      seats: 0,
-      seatsLabel: '',
-      overage: 0,
+      bandLabel: '',
+      perStudentYearly: null,
+      perStudentMonthly: null,
       yearly: null,
       monthly: null,
       startingMonthly: null,

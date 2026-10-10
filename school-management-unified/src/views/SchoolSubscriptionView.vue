@@ -122,6 +122,33 @@
               :selected-code="plan_code"
               @select="onPricingCardSelect"
             />
+
+            <div v-if="!isContactPlan(plan_code)" class="mt-6 max-w-md">
+              <label class="field-label" for="subscribe-promo">{{ $t('subscription.promoCode') }}</label>
+              <div class="flex gap-2">
+                <input
+                  id="subscribe-promo"
+                  v-model="promo_code"
+                  type="text"
+                  maxlength="64"
+                  class="input-field uppercase"
+                  dir="ltr"
+                  autocomplete="off"
+                  @input="promoApplied = null"
+                >
+                <button
+                  type="button"
+                  class="shrink-0 rounded-xl border border-hub-primary px-4 text-sm font-semibold text-hub-primary transition hover:bg-hub-primary hover:text-white disabled:opacity-50"
+                  :disabled="!promo_code.trim() || promoChecking"
+                  @click="applyPromo()"
+                >
+                  {{ $t('subscription.promoApply') }}
+                </button>
+              </div>
+              <p v-if="promoApplied" class="mt-2 text-sm font-semibold text-hub-primary">
+                {{ promoAppliedLabel }}
+              </p>
+            </div>
           </div>
         </section>
 
@@ -324,6 +351,12 @@
               <p v-if="selectedPlan && selectedPlan.contactOnly" class="font-medium text-hub-ink">
                 {{ $t('subscription.contactReadySummary', { plan: selectedPlan.name }) }}
               </p>
+              <p v-else-if="selectedPlan && selectedPlan.perStudentYearly != null" class="font-medium text-hub-ink">
+                {{ $t('subscription.readySummaryPerStudent', {
+                  plan: selectedPlan.name,
+                  rate: selectedPlan.perStudentYearly,
+                }) }}
+              </p>
               <p v-else-if="selectedPlan && selectedPlan.yearly != null" class="font-medium text-hub-ink">
                 {{ $t('subscription.readySummary', {
                   plan: selectedPlan.name,
@@ -372,6 +405,7 @@ import {
   type PlatformBillingPeriod,
   type PlatformModule,
   type PlatformPlan,
+  type PromoPreview,
 } from '@/services/platform-billing.service'
 import { buildPublicPricingCards, type PublicPricingCard } from '@/utils/public-pricing-cards'
 
@@ -393,6 +427,9 @@ const moduleCatalog = ref<PlatformModule[]>([])
 const plansLoading = ref(true)
 const plan_code = ref('standard')
 const billing_period = ref<PlatformBillingPeriod>('yearly')
+const promo_code = ref('')
+const promoApplied = ref<PromoPreview | null>(null)
+const promoChecking = ref(false)
 
 const owner_email = ref('')
 const owner_first_name = ref('')
@@ -566,6 +603,39 @@ function onPricingCardSelect(plan: PublicPricingCard) {
 
 const selectedPlan = computed(() => pricingPlans.value.find((p) => p.code === plan_code.value) || null)
 
+const promoAppliedLabel = computed(() => {
+  const p = promoApplied.value
+  if (!p) return ''
+  const amount = p.discount_type === 'percent'
+    ? t('subscription.promoPercentOff', { value: p.value })
+    : t('subscription.promoAmountOff', { value: p.value })
+  return p.duration_periods
+    ? t('subscription.promoAppliedFor', { amount, count: p.duration_periods })
+    : t('subscription.promoApplied', { amount })
+})
+
+async function applyPromo(opts: { silent?: boolean } = {}) {
+  const code = promo_code.value.trim()
+  if (!code || isContactPlan(plan_code.value)) return
+  promoChecking.value = true
+  try {
+    promoApplied.value = await platformBillingService.previewPromo({
+      code,
+      plan_code: plan_code.value,
+      billing_period: billing_period.value,
+    })
+  } catch {
+    promoApplied.value = null
+    if (!opts.silent) showFormError(t('subscription.promoInvalid'))
+  } finally {
+    promoChecking.value = false
+  }
+}
+
+watch(plan_code, () => {
+  if (promoApplied.value) void applyPromo({ silent: true })
+})
+
 function formatAmount(amount: string | number | null) {
   if (amount == null) return '—'
   const n = Number(amount)
@@ -584,6 +654,7 @@ function buildFormData(): FormData {
   const fd = new FormData()
   fd.append('plan_code', plan_code.value)
   fd.append('billing_period', billing_period.value)
+  if (promo_code.value.trim()) fd.append('promo_code', promo_code.value.trim())
   fd.append('owner_email', owner_email.value.trim())
   fd.append('email_verification_token', emailVerificationToken.value)
   fd.append('owner_first_name', owner_first_name.value.trim())
@@ -647,6 +718,7 @@ function friendlyRegisterError(rawMessage: string): string {
   if (lower.includes('email verification') || lower.includes('verify your email')) {
     return t('subscription.otpRequired')
   }
+  if (lower.includes('promo code')) return t('subscription.promoInvalid')
   if (msg) return msg
   return t('subscription.submitError')
 }

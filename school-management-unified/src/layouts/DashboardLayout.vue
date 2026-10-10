@@ -822,6 +822,7 @@ function isPlatformBillingPath(path: string) {
   return (
     path === '/platform/plans' ||
     path.startsWith('/platform/plans') ||
+    path.startsWith('/platform/discounts') ||
     path === '/platform/custom-plan-requests' ||
     path.startsWith('/platform/custom-plan-requests') ||
     path === '/platform/payments' ||
@@ -1203,6 +1204,7 @@ const navigationByRole = computed(() => {
         icon: 'banknotes',
         children: [
           { name: t('platformBilling.plansNav'), href: '/platform/plans' },
+          { name: t('platformDiscounts.nav'), href: '/platform/discounts' },
           { name: t('platformCustomRequests.nav'), href: '/platform/custom-plan-requests' },
           { name: t('platformFeeTransfers.nav'), href: '/platform/transfers' },
         ],

@@ -8,8 +8,9 @@ import {
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { Cron } from '@nestjs/schedule';
+import { DataSource, In, Not, Repository } from 'typeorm';
 import {
   likeTerm,
   paginateQueryBuilder,
@@ -30,8 +31,19 @@ import {
   PlatformPlanFeatureInputDto,
   UpdatePlatformModuleDto,
   UpdatePlatformPlanDto,
+  UpsertPlatformDiscountDto,
   UpsertSchoolSubscriptionDto,
 } from './dto/platform-billing.dto';
+import { PlatformDiscount } from './entities/platform-discount.entity';
+import {
+  bestDiscount,
+  packageAmount,
+  prorationAmount,
+  remainingFraction,
+  round3,
+  type DiscountRule,
+  type PlanRate,
+} from './platform-pricing';
 import { PlatformModule } from './entities/platform-module.entity';
 import { PlatformPlanModule } from './entities/platform-plan-module.entity';
 import { PlatformAddon } from './entities/platform-addon.entity';
@@ -67,11 +79,24 @@ function money(n: number): string {
   return n.toFixed(3);
 }
 
+/** Billing dates follow the platform's home time zone. */
+function todayMuscat(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Muscat' }).format(new Date());
+}
+
+/** Batches bulk student imports into one top-up invoice. */
+const PRORATION_DEBOUNCE_MS = 10 * 60 * 1000;
+
 @Injectable()
 export class PlatformBillingService {
   private readonly logger = new Logger(PlatformBillingService.name);
+  private readonly prorationTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
+    @InjectRepository(PlatformDiscount)
+    private readonly discountRepo: Repository<PlatformDiscount>,
     @InjectRepository(PlatformPlan)
     private readonly planRepo: Repository<PlatformPlan>,
     @InjectRepository(PlatformPlanPrice)
@@ -384,7 +409,7 @@ export class PlatformBillingService {
       .createQueryBuilder('ps')
       .select('COUNT(*)', 'total')
       .addSelect('COUNT(*) FILTER (WHERE ps.is_active = true)', 'active')
-      .addSelect('COALESCE(MAX(ps.included_student_seats), 0)', 'seats')
+      .addSelect('COALESCE(MAX(ps.max_students), 0)', 'seats')
       .getRawOne<{ total: string; active: string; seats: string }>();
     const stats = {
       total: Number(statsRow?.total ?? 0),
@@ -500,12 +525,9 @@ export class PlatformBillingService {
     if (dto.name_ar != null) plan.name_ar = dto.name_ar.trim();
     if (dto.description_en !== undefined) plan.description_en = dto.description_en;
     if (dto.description_ar !== undefined) plan.description_ar = dto.description_ar;
-    if (dto.included_student_seats != null) {
-      plan.included_student_seats = dto.included_student_seats;
-    }
-    if (dto.overage_per_student_omr != null) {
-      plan.overage_per_student_omr = money(dto.overage_per_student_omr);
-    }
+    if (dto.min_students != null) plan.min_students = dto.min_students;
+    if (dto.max_students !== undefined) plan.max_students = dto.max_students;
+    this.assertStudentBand(plan.min_students, plan.max_students);
     if (dto.is_active != null) plan.is_active = dto.is_active;
     await this.planRepo.save(plan);
 
@@ -572,9 +594,15 @@ export class PlatformBillingService {
     }
   }
 
+  private assertStudentBand(min: number, max: number | null) {
+    if (max != null && max < min) {
+      throw new BadRequestException('max_students must be greater than or equal to min_students');
+    }
+  }
+
   private async applyPlanPrices(
     planId: string,
-    rows: { billing_period: string; amount_omr: number }[],
+    rows: { billing_period: string; amount_omr: number; per_student_omr?: number }[],
   ) {
     for (const row of rows) {
       this.assertBillingPeriod(row.billing_period);
@@ -585,11 +613,10 @@ export class PlatformBillingService {
         price = this.priceRepo.create({
           plan_id: planId,
           billing_period: row.billing_period as PlatformBillingPeriod,
-          amount_omr: money(row.amount_omr),
         });
-      } else {
-        price.amount_omr = money(row.amount_omr);
       }
+      price.amount_omr = money(row.amount_omr);
+      if (row.per_student_omr != null) price.per_student_omr = money(row.per_student_omr);
       await this.priceRepo.save(price);
     }
   }
@@ -637,6 +664,7 @@ export class PlatformBillingService {
       ? await this.resolveModules(dto.module_codes)
       : [];
     for (const row of dto.prices ?? []) this.assertBillingPeriod(row.billing_period);
+    this.assertStudentBand(dto.min_students ?? 0, dto.max_students ?? null);
 
     const last = await this.planRepo.find({ order: { sort_order: 'DESC' }, take: 1 });
     const plan = await this.planRepo.save(
@@ -646,8 +674,8 @@ export class PlatformBillingService {
         name_ar: dto.name_ar.trim(),
         description_en: dto.description_en ?? null,
         description_ar: dto.description_ar ?? null,
-        included_student_seats: dto.included_student_seats ?? 50,
-        overage_per_student_omr: money(dto.overage_per_student_omr ?? 0),
+        min_students: dto.min_students ?? 0,
+        max_students: dto.max_students ?? null,
         sort_order: dto.sort_order ?? (last[0]?.sort_order ?? 0) + 1,
         is_active: dto.is_active ?? true,
       }),
@@ -688,13 +716,14 @@ export class PlatformBillingService {
       name_ar: p.name_ar,
       description_en: p.description_en,
       description_ar: p.description_ar,
-      included_student_seats: p.included_student_seats,
-      overage_per_student_omr: num(p.overage_per_student_omr),
+      min_students: p.min_students,
+      max_students: p.max_students,
       sort_order: p.sort_order,
       is_active: p.is_active,
       prices: (p.prices || []).map((pr) => ({
         billing_period: pr.billing_period,
         amount_omr: num(pr.amount_omr),
+        per_student_omr: num(pr.per_student_omr),
       })),
       features: [...(p.features || [])]
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -735,9 +764,10 @@ export class PlatformBillingService {
       take: 20,
     });
 
-    const studentCount = await this.studentRepo.count({
-      where: { school_id: schoolId },
-    });
+    const studentCount = await this.countBillableStudents(schoolId);
+    const promo = sub?.promo_discount_id
+      ? await this.discountRepo.findOne({ where: { id: sub.promo_discount_id } })
+      : null;
 
     return {
       school: {
@@ -746,12 +776,19 @@ export class PlatformBillingService {
         status: school.status,
       },
       studentCount,
-      subscription: sub ? this.serializeSubscription(sub) : null,
+      subscription: sub ? this.serializeSubscription(sub, studentCount) : null,
+      promo_discount: promo ? this.serializeDiscount(promo) : null,
       invoices: invoices.map((i) => this.serializeInvoice(i)),
     };
   }
 
-  serializeSubscription(sub: SchoolPlatformSubscription) {
+  /** Students that count toward platform billing. Drafts and inactive students are free. */
+  countBillableStudents(schoolId: string): Promise<number> {
+    return this.studentRepo.count({ where: { school_id: schoolId, status: 'active' } });
+  }
+
+  serializeSubscription(sub: SchoolPlatformSubscription, studentCount?: number) {
+    const max = sub.plan?.max_students ?? null;
     return {
       id: sub.id,
       school_id: sub.school_id,
@@ -763,11 +800,10 @@ export class PlatformBillingService {
       status: sub.status,
       period_start: sub.period_start,
       period_end: sub.period_end,
-      included_student_seats_override: sub.included_student_seats_override,
-      included_student_seats:
-        sub.included_student_seats_override ??
-        sub.plan?.included_student_seats ??
-        null,
+      billed_students: sub.billed_students,
+      max_students: max,
+      over_plan_limit: studentCount != null && max != null && studentCount > max,
+      promo_discount_id: sub.promo_discount_id,
       notes: sub.notes,
       addon_codes: (sub.addonLinks || [])
         .map((l) => l.addon?.code)
@@ -782,13 +818,16 @@ export class PlatformBillingService {
       id: inv.id,
       school_id: inv.school_id,
       subscription_id: inv.subscription_id,
+      kind: inv.kind,
       billing_period: inv.billing_period,
       period_start: inv.period_start,
       period_end: inv.period_end,
       base_amount: num(inv.base_amount),
-      seats_included: inv.seats_included,
-      seats_used: inv.seats_used,
-      overage_amount: num(inv.overage_amount),
+      students_billed: inv.students_billed,
+      minimum_omr: num(inv.minimum_omr),
+      per_student_omr: num(inv.per_student_omr),
+      discount_amount: num(inv.discount_amount),
+      discount_id: inv.discount_id,
       addons_amount: num(inv.addons_amount),
       total_amount: num(inv.total_amount),
       status: inv.status,
@@ -836,9 +875,6 @@ export class PlatformBillingService {
     sub.period_start = toDateOnly(start);
     sub.period_end = toDateOnly(end);
     sub.status = dto.status ?? sub.status ?? 'draft';
-    if (dto.included_student_seats_override !== undefined) {
-      sub.included_student_seats_override = dto.included_student_seats_override;
-    }
     if (dto.notes !== undefined) sub.notes = dto.notes;
 
     await this.subRepo.save(sub);
@@ -889,6 +925,7 @@ export class PlatformBillingService {
     schoolId: string,
     planCode: string,
     billingPeriod: string,
+    promoCode?: string | null,
   ) {
     this.assertBillingPeriod(billingPeriod);
     const plan = await this.planRepo.findOne({
@@ -901,30 +938,268 @@ export class PlatformBillingService {
     const start = new Date();
     const end = computePeriodEnd(start, billingPeriod);
 
-    const existing = await this.subRepo.findOne({ where: { school_id: schoolId } });
-    if (existing) {
-      existing.plan_id = plan.id;
-      existing.billing_period = billingPeriod;
-      existing.period_start = toDateOnly(start);
-      existing.period_end = toDateOnly(end);
-      existing.status = 'draft';
-      const saved = await this.subRepo.save(existing);
-      await this.syncSchoolModulesFromPlan(schoolId, plan.id);
-      return saved;
+    const sub =
+      (await this.subRepo.findOne({ where: { school_id: schoolId } })) ??
+      this.subRepo.create({ school_id: schoolId });
+    sub.plan_id = plan.id;
+    sub.billing_period = billingPeriod;
+    sub.period_start = toDateOnly(start);
+    sub.period_end = toDateOnly(end);
+    sub.status = 'draft';
+    if (promoCode?.trim()) {
+      // The school row already exists here; a promo that ran out since validation is dropped, not fatal.
+      try {
+        sub.promo_discount_id = await this.redeemPromo(promoCode, planCode, billingPeriod);
+      } catch (err) {
+        this.logger.warn(
+          `Promo ${promoCode} not applied to school ${schoolId}: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+    const saved = await this.subRepo.save(sub);
+    await this.syncSchoolModulesFromPlan(schoolId, plan.id);
+    return saved;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Discounts
+  // ---------------------------------------------------------------------------
+
+  private toDiscountRule(d: PlatformDiscount): DiscountRule {
+    return {
+      id: d.id,
+      kind: d.kind,
+      discount_type: d.discount_type,
+      value: num(d.value),
+      plan_id: d.plan_id,
+      school_id: d.school_id,
+      billing_periods: d.billing_periods || [],
+      starts_on: d.starts_on,
+      ends_on: d.ends_on,
+      is_active: d.is_active,
+    };
+  }
+
+  /** Active discounts for this school, minus those that already used up their periods. */
+  private async discountRulesForSchool(
+    schoolId: string,
+  ): Promise<(DiscountRule & { source: PlatformDiscount })[]> {
+    const rows = await this.discountRepo.find({ where: { is_active: true } });
+    if (!rows.length) return [];
+    const used: Array<{ discount_id: string; n: string }> = await this.invoiceRepo
+      .createQueryBuilder('inv')
+      .select('inv.discount_id', 'discount_id')
+      .addSelect('COUNT(*)', 'n')
+      .where('inv.school_id = :schoolId', { schoolId })
+      .andWhere("inv.kind = 'subscription'")
+      .andWhere("inv.status <> 'void'")
+      .andWhere('inv.discount_id IS NOT NULL')
+      .groupBy('inv.discount_id')
+      .getRawMany();
+    const usedBy = new Map(used.map((u) => [u.discount_id, Number(u.n)]));
+    return rows
+      .filter((d) => d.duration_periods == null || (usedBy.get(d.id) ?? 0) < d.duration_periods)
+      .map((d) => ({ ...this.toDiscountRule(d), source: d }));
+  }
+
+  private promoInvalid(): BadRequestException {
+    return new BadRequestException('Invalid or expired promo code');
+  }
+
+  /** Validates a promo code for a plan + period without redeeming it. */
+  async findRedeemablePromo(
+    rawCode: string,
+    planCode: string,
+    billingPeriod: string,
+  ): Promise<PlatformDiscount> {
+    const code = rawCode.trim().toUpperCase();
+    if (!code) throw this.promoInvalid();
+    const [promo, plan] = await Promise.all([
+      this.discountRepo
+        .createQueryBuilder('d')
+        .where('UPPER(d.code) = :code', { code })
+        .andWhere("d.kind = 'promo'")
+        .getOne(),
+      this.planRepo.findOne({ where: { code: planCode.trim().toLowerCase(), is_active: true } }),
+    ]);
+    if (!promo || !plan || !promo.is_active) throw this.promoInvalid();
+    const today = todayMuscat();
+    if (promo.starts_on && today < promo.starts_on) throw this.promoInvalid();
+    if (promo.ends_on && today > promo.ends_on) throw this.promoInvalid();
+    if (promo.max_redemptions != null && promo.redemption_count >= promo.max_redemptions) {
+      throw this.promoInvalid();
+    }
+    if (promo.plan_id && promo.plan_id !== plan.id) throw this.promoInvalid();
+    if (
+      promo.billing_periods?.length &&
+      !promo.billing_periods.includes(billingPeriod as PlatformBillingPeriod)
+    ) {
+      throw this.promoInvalid();
+    }
+    return promo;
+  }
+
+  async previewPromo(code: string, planCode: string, billingPeriod: string) {
+    this.assertBillingPeriod(billingPeriod);
+    const promo = await this.findRedeemablePromo(code, planCode, billingPeriod);
+    return {
+      code: promo.code,
+      name_en: promo.name_en,
+      name_ar: promo.name_ar,
+      discount_type: promo.discount_type,
+      value: num(promo.value),
+      duration_periods: promo.duration_periods,
+    };
+  }
+
+  /** Claims one redemption atomically so max_redemptions holds under concurrent signups. */
+  private async redeemPromo(code: string, planCode: string, billingPeriod: string) {
+    const promo = await this.findRedeemablePromo(code, planCode, billingPeriod);
+    const rows: Array<{ id: string }> = await this.dataSource.query(
+      `UPDATE "platform_discounts"
+       SET "redemption_count" = "redemption_count" + 1, "updated_at" = now()
+       WHERE "id" = $1 AND ("max_redemptions" IS NULL OR "redemption_count" < "max_redemptions")
+       RETURNING "id"`,
+      [promo.id],
+    );
+    if (!rows.length) throw this.promoInvalid();
+    return promo.id;
+  }
+
+  serializeDiscount(d: PlatformDiscount) {
+    return {
+      id: d.id,
+      kind: d.kind,
+      name_en: d.name_en,
+      name_ar: d.name_ar,
+      code: d.code,
+      discount_type: d.discount_type,
+      value: num(d.value),
+      plan_id: d.plan_id,
+      plan_code: d.plan?.code ?? null,
+      school_id: d.school_id,
+      school_name: d.school?.name ?? null,
+      billing_periods: d.billing_periods || [],
+      starts_on: d.starts_on,
+      ends_on: d.ends_on,
+      duration_periods: d.duration_periods,
+      max_redemptions: d.max_redemptions,
+      redemption_count: d.redemption_count,
+      is_active: d.is_active,
+      created_at: d.created_at,
+      updated_at: d.updated_at,
+    };
+  }
+
+  async listDiscounts(actor: User) {
+    this.assertPlatformAccess(actor);
+    const rows = await this.discountRepo.find({
+      relations: ['plan', 'school'],
+      order: { created_at: 'DESC' },
+    });
+    return rows.map((d) => this.serializeDiscount(d));
+  }
+
+  async getDiscount(actor: User, id: string) {
+    this.assertPlatformAccess(actor);
+    const row = await this.discountRepo.findOne({ where: { id }, relations: ['plan', 'school'] });
+    if (!row) throw new NotFoundException('Discount not found');
+    return this.serializeDiscount(row);
+  }
+
+  async createDiscount(actor: User, dto: UpsertPlatformDiscountDto) {
+    this.assertPlatformAccess(actor);
+    const row = this.discountRepo.create({ redemption_count: 0 });
+    await this.applyDiscountDto(row, dto);
+    const saved = await this.discountRepo.save(row);
+    return this.getDiscount(actor, saved.id);
+  }
+
+  async updateDiscount(actor: User, id: string, dto: UpsertPlatformDiscountDto) {
+    this.assertPlatformAccess(actor);
+    const row = await this.discountRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Discount not found');
+    await this.applyDiscountDto(row, dto);
+    await this.discountRepo.save(row);
+    return this.getDiscount(actor, id);
+  }
+
+  async deleteDiscount(actor: User, id: string) {
+    this.assertPlatformAccess(actor);
+    const row = await this.discountRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Discount not found');
+    const [invoices, subscriptions] = await Promise.all([
+      this.invoiceRepo.count({ where: { discount_id: id } }),
+      this.subRepo.count({ where: { promo_discount_id: id } }),
+    ]);
+    if (invoices + subscriptions > 0) {
+      throw new ConflictException(
+        `Discount is used on ${invoices} invoice(s) and ${subscriptions} subscription(s); deactivate it instead`,
+      );
+    }
+    await this.discountRepo.delete({ id });
+    return { id, deleted: true };
+  }
+
+  private async applyDiscountDto(row: PlatformDiscount, dto: UpsertPlatformDiscountDto) {
+    if (dto.discount_type === 'percent' && dto.value > 100) {
+      throw new BadRequestException('A percent discount cannot exceed 100');
+    }
+    if (dto.starts_on && dto.ends_on && dto.ends_on < dto.starts_on) {
+      throw new BadRequestException('ends_on must be on or after starts_on');
     }
 
-    const created = await this.subRepo.save(
-      this.subRepo.create({
-        school_id: schoolId,
-        plan_id: plan.id,
-        billing_period: billingPeriod,
-        status: 'draft',
-        period_start: toDateOnly(start),
-        period_end: toDateOnly(end),
-      }),
-    );
-    await this.syncSchoolModulesFromPlan(schoolId, plan.id);
-    return created;
+    let code: string | null = null;
+    if (dto.kind === 'promo') {
+      code = dto.code?.trim().toUpperCase() || null;
+      if (!code) throw new BadRequestException('A promo discount needs a code');
+      const clash = await this.discountRepo
+        .createQueryBuilder('d')
+        .where('UPPER(d.code) = :code', { code })
+        .andWhere(row.id ? 'd.id <> :id' : '1=1', { id: row.id })
+        .getCount();
+      if (clash) throw new ConflictException(`Promo code already exists: ${code}`);
+    }
+
+    let schoolId: string | null = null;
+    if (dto.kind === 'school') {
+      if (!dto.school_id) throw new BadRequestException('A school discount needs a school');
+      const school = await this.schoolRepo.findOne({ where: { id: dto.school_id } });
+      if (!school) throw new BadRequestException('School not found');
+      schoolId = school.id;
+    }
+
+    let planId: string | null = null;
+    if (dto.plan_code?.trim()) {
+      const plan = await this.planRepo.findOne({
+        where: { code: dto.plan_code.trim().toLowerCase() },
+      });
+      if (!plan) throw new BadRequestException(`Unknown plan: ${dto.plan_code}`);
+      planId = plan.id;
+    }
+
+    row.kind = dto.kind;
+    row.name_en = dto.name_en.trim();
+    row.name_ar = dto.name_ar.trim();
+    row.code = code;
+    row.discount_type = dto.discount_type;
+    row.value = money(dto.value);
+    row.plan_id = planId;
+    row.school_id = schoolId;
+    row.billing_periods = dto.billing_periods ?? [];
+    row.starts_on = dto.starts_on || null;
+    row.ends_on = dto.ends_on || null;
+    row.duration_periods = dto.duration_periods ?? null;
+    row.max_redemptions = dto.kind === 'promo' ? (dto.max_redemptions ?? null) : null;
+    row.is_active = dto.is_active ?? row.is_active ?? true;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Invoices
+  // ---------------------------------------------------------------------------
+
+  private rateOf(price: PlatformPlanPrice): PlanRate {
+    return { minimum: num(price.amount_omr), perStudent: num(price.per_student_omr) };
   }
 
   async issueInvoice(
@@ -954,26 +1229,45 @@ export class PlatformBillingService {
       );
     }
 
-    const seatsUsed = await this.studentRepo.count({
-      where: { school_id: schoolId },
-    });
-    const seatsIncluded =
-      sub.included_student_seats_override ?? sub.plan.included_student_seats;
-    const overageRate = num(sub.plan.overage_per_student_omr);
-    const extraSeats = Math.max(0, seatsUsed - seatsIncluded);
-    const overageAmount = extraSeats * overageRate;
+    const rate = this.rateOf(price);
+    const students = await this.countBillableStudents(schoolId);
+    const baseAmount = packageAmount(rate, students);
 
-    const addonLinks = sub.addonLinks || [];
-    let addonsAmount = 0;
+    const best = bestDiscount(
+      await this.discountRulesForSchool(schoolId),
+      {
+        planId: sub.plan_id,
+        period: sub.billing_period,
+        schoolId,
+        promoDiscountId: sub.promo_discount_id,
+        today: todayMuscat(),
+      },
+      baseAmount,
+    );
+    const discountAmt = best?.amount ?? 0;
+
     const lineItems: Record<string, unknown>[] = [
       {
         type: 'base',
         label: `${sub.plan.code} (${sub.billing_period})`,
-        amount: num(price.amount_omr),
+        students,
+        minimum: rate.minimum,
+        per_student: rate.perStudent,
+        amount: baseAmount,
       },
     ];
+    if (best) {
+      lineItems.push({
+        type: 'discount',
+        discount_id: best.discount.id,
+        label: best.discount.source.name_en,
+        label_ar: best.discount.source.name_ar,
+        amount: -discountAmt,
+      });
+    }
 
-    for (const link of addonLinks) {
+    let addonsAmount = 0;
+    for (const link of sub.addonLinks || []) {
       const amt = num(link.addon?.amount_omr);
       addonsAmount += amt;
       lineItems.push({
@@ -984,35 +1278,29 @@ export class PlatformBillingService {
       });
     }
 
-    if (overageAmount > 0) {
-      lineItems.push({
-        type: 'overage',
-        seats_extra: extraSeats,
-        rate: overageRate,
-        amount: overageAmount,
-      });
-    }
-
-    const baseAmount = num(price.amount_omr);
-    const total = baseAmount + addonsAmount + overageAmount;
+    const total = round3(baseAmount - discountAmt + addonsAmount);
 
     const invoice = await this.invoiceRepo.save(
       this.invoiceRepo.create({
+        kind: 'subscription',
         school_id: schoolId,
         subscription_id: sub.id,
         billing_period: sub.billing_period,
         period_start: periodStart,
         period_end: periodEnd,
         base_amount: money(baseAmount),
-        seats_included: seatsIncluded,
-        seats_used: seatsUsed,
-        overage_amount: money(overageAmount),
+        students_billed: students,
+        minimum_omr: money(rate.minimum),
+        per_student_omr: money(rate.perStudent),
+        discount_amount: money(discountAmt),
+        discount_id: best?.discount.id ?? null,
         addons_amount: money(addonsAmount),
         total_amount: money(total),
         status: 'issued',
         line_items: lineItems,
       }),
     );
+    await this.subRepo.update({ id: sub.id }, { billed_students: students });
 
     if (opts?.notify !== false) {
       void this.notifyInvoice(
@@ -1023,6 +1311,150 @@ export class PlatformBillingService {
       );
     }
     return this.serializeInvoice(invoice);
+  }
+
+  /** Debounced top-up check after students are activated. */
+  scheduleProrationCheck(schoolId: string) {
+    const pending = this.prorationTimers.get(schoolId);
+    if (pending) clearTimeout(pending);
+    const timer = setTimeout(() => {
+      this.prorationTimers.delete(schoolId);
+      this.issueProrationInvoice(schoolId).catch((err) =>
+        this.logger.error(
+          `Proration check failed for school ${schoolId}`,
+          err instanceof Error ? err.stack : String(err),
+        ),
+      );
+    }, PRORATION_DEBOUNCE_MS);
+    timer.unref?.();
+    this.prorationTimers.set(schoolId, timer);
+  }
+
+  /** Safety net for activations the entity subscriber cannot see (bulk query updates, restarts). */
+  @Cron('30 2 * * *', { timeZone: 'Asia/Muscat' })
+  async prorationSweep() {
+    const subs = await this.subRepo.find({ where: { status: 'active' }, select: ['school_id'] });
+    for (const { school_id } of subs) {
+      try {
+        await this.issueProrationInvoice(school_id);
+      } catch (err) {
+        this.logger.error(
+          `Proration sweep failed for school ${school_id}`,
+          err instanceof Error ? err.stack : String(err),
+        );
+      }
+    }
+  }
+
+  async issueProrationInvoiceForSchool(actor: User, schoolId: string) {
+    this.assertPlatformAccess(actor);
+    const invoice = await this.issueProrationInvoice(schoolId);
+    return invoice ? this.serializeInvoice(invoice) : null;
+  }
+
+  /**
+   * Bills students activated after the current period was invoiced, prorated to the days left,
+   * at the rate and percent discount locked on that period's subscription invoice.
+   * The subscription row is locked so concurrent instances cannot double-bill.
+   */
+  async issueProrationInvoice(schoolId: string): Promise<PlatformInvoice | null> {
+    const today = todayMuscat();
+    const invoice = await this.dataSource.transaction(async (manager) => {
+      const subRepo = manager.getRepository(SchoolPlatformSubscription);
+      const invRepo = manager.getRepository(PlatformInvoice);
+      const sub = await subRepo.findOne({
+        where: { school_id: schoolId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!sub || sub.status !== 'active') return null;
+
+      const covering = await invRepo.findOne({
+        where: { school_id: schoolId, kind: 'subscription', status: Not('void') },
+        order: { period_end: 'DESC', created_at: 'DESC' },
+      });
+      if (!covering || String(covering.period_end) <= today) return null;
+
+      const students = await manager
+        .getRepository(Student)
+        .count({ where: { school_id: schoolId, status: 'active' } });
+      const billedBefore = sub.billed_students;
+      if (students <= billedBefore) return null;
+
+      const rate: PlanRate = {
+        minimum: num(covering.minimum_omr),
+        perStudent: num(covering.per_student_omr),
+      };
+      const fraction = remainingFraction(
+        String(covering.period_start),
+        String(covering.period_end),
+        today,
+      );
+      const base = prorationAmount(rate, billedBefore, students, fraction);
+
+      await subRepo.update({ id: sub.id }, { billed_students: students });
+      if (base <= 0) return null;
+
+      const lineItems: Record<string, unknown>[] = [
+        {
+          type: 'proration',
+          students_before: billedBefore,
+          students_after: students,
+          minimum: rate.minimum,
+          per_student: rate.perStudent,
+          days_fraction: round3(fraction),
+          amount: base,
+        },
+      ];
+      let discountAmt = 0;
+      let discountId: string | null = null;
+      if (covering.discount_id) {
+        const d = await manager
+          .getRepository(PlatformDiscount)
+          .findOne({ where: { id: covering.discount_id } });
+        if (d?.discount_type === 'percent') {
+          discountAmt = round3((base * Math.min(100, num(d.value))) / 100);
+          discountId = d.id;
+          lineItems.push({
+            type: 'discount',
+            discount_id: d.id,
+            label: d.name_en,
+            label_ar: d.name_ar,
+            amount: -discountAmt,
+          });
+        }
+      }
+
+      return invRepo.save(
+        invRepo.create({
+          kind: 'proration',
+          school_id: schoolId,
+          subscription_id: sub.id,
+          billing_period: covering.billing_period,
+          period_start: today,
+          period_end: covering.period_end,
+          base_amount: money(base),
+          students_billed: students,
+          minimum_omr: covering.minimum_omr,
+          per_student_omr: covering.per_student_omr,
+          discount_amount: money(discountAmt),
+          discount_id: discountId,
+          addons_amount: money(0),
+          total_amount: money(round3(base - discountAmt)),
+          status: 'issued',
+          line_items: lineItems,
+        }),
+      );
+    });
+
+    if (invoice) {
+      void this.notifyInvoice(
+        schoolId,
+        invoice.id,
+        invoice.total_amount,
+        NOTIFICATION_TEMPLATE_KEYS.PLATFORM_INVOICE_ISSUED,
+      );
+    }
+    return invoice;
   }
 
   /** First unpaid invoice for approval (does not send the generic invoice-issued mail). */

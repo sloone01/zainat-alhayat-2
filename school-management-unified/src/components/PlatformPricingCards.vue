@@ -14,20 +14,31 @@
     >
       <span v-if="plan.featured" class="ppc-price__badge">{{ $t('forSchools.gallery.mostPopular') }}</span>
       <p class="ppc-price__name">{{ plan.name }}</p>
-      <p class="ppc-price__amount" :dir="plan.yearly != null ? 'ltr' : undefined">
-        <template v-if="plan.yearly != null">
-          {{ formatOmr(plan.yearly) }} <span>{{ $t('forSchools.gallery.perYear') }}</span>
-        </template>
-        <template v-else>{{ $t('forSchools.gallery.custom') }}</template>
-      </p>
-      <p v-if="plan.startingMonthly != null" class="ppc-price__from">
-        {{ $t('landingPricing.startingFromMonth', { amount: formatOmr(plan.startingMonthly) }) }}
-      </p>
+      <template v-if="plan.perStudentYearly != null">
+        <p class="ppc-price__amount">
+          <bdi dir="ltr">{{ formatOmr(plan.perStudentYearly, 3) }}</bdi>
+          <span>{{ $t('landingPricing.perStudentYear') }}</span>
+        </p>
+        <p v-if="plan.perStudentMonthly != null" class="ppc-price__from">
+          {{ $t('landingPricing.orPerStudentMonth', { amount: formatOmr(plan.perStudentMonthly, 3) }) }}
+        </p>
+        <p v-if="plan.yearly != null" class="ppc-price__desc">
+          {{ $t('landingPricing.minimumPerYear', { amount: formatOmr(plan.yearly) }) }}
+        </p>
+      </template>
+      <template v-else>
+        <p class="ppc-price__amount" :dir="plan.yearly != null ? 'ltr' : undefined">
+          <template v-if="plan.yearly != null">
+            {{ formatOmr(plan.yearly) }} <span>{{ $t('forSchools.gallery.perYear') }}</span>
+          </template>
+          <template v-else>{{ $t('forSchools.gallery.custom') }}</template>
+        </p>
+        <p v-if="plan.startingMonthly != null" class="ppc-price__from">
+          {{ $t('landingPricing.startingFromMonth', { amount: formatOmr(plan.startingMonthly) }) }}
+        </p>
+      </template>
       <p v-if="plan.description" class="ppc-price__desc">{{ plan.description }}</p>
-      <p v-if="plan.seats" class="ppc-price__desc">{{ plan.seatsLabel }}</p>
-      <p v-if="plan.overage" class="ppc-price__desc">
-        {{ $t('landingPricing.extraStudent', { amount: plan.overage }) }}
-      </p>
+      <p v-if="plan.bandLabel" class="ppc-price__desc">{{ plan.bandLabel }}</p>
       <p v-if="plan.addsOnBaseline" class="ppc-price__adds">
         {{ $t('landingPricing.everythingInEntryPlus') }}
       </p>
@@ -121,11 +132,12 @@ const { locale, t } = useI18n()
 const regularCards = computed(() => props.cards.filter((c) => !c.contactOnly))
 const customCard = computed(() => props.cards.find((c) => c.contactOnly))
 
-function formatOmr(amount: number) {
+function formatOmr(amount: number, maxDigits = 0) {
   return new Intl.NumberFormat(locale.value === 'ar' ? 'ar-OM' : 'en-OM', {
     style: 'currency',
     currency: 'OMR',
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxDigits,
   }).format(amount)
 }
 

@@ -49,25 +49,25 @@
               <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.descAr') }}</label>
               <textarea v-model="form.description_ar" rows="2" class="fk-field" dir="rtl" lang="ar" />
             </div>
-            <div class="sm:col-span-2 rounded-xl border border-primary-100 bg-primary-50/40 p-4">
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.seatsIncluded') }}</label>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="plan-min-students">{{ $t('platformBilling.minStudents') }}</label>
               <input
-                v-model.number="form.included_student_seats"
+                id="plan-min-students"
+                v-model.number="form.min_students"
+                type="number"
+                min="0"
+                step="1"
+                class="fk-field"
+              />
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-medium text-gray-600" for="plan-max-students">{{ $t('platformBilling.maxStudentsOptional') }}</label>
+              <input
+                id="plan-max-students"
+                v-model.number="form.max_students"
                 type="number"
                 min="1"
                 step="1"
-                required
-                class="fk-field max-w-xs"
-              />
-              <p class="mt-1.5 text-xs text-gray-600">{{ $t('platformBilling.seatsIncludedHint') }}</p>
-            </div>
-            <div>
-              <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('platformBilling.overagePerStudent') }}</label>
-              <input
-                v-model.number="form.overage_per_student_omr"
-                type="number"
-                min="0"
-                step="0.001"
                 class="fk-field"
               />
             </div>
@@ -79,21 +79,36 @@
 
           <div class="mt-6">
             <h3 class="text-sm font-semibold text-gray-900">{{ $t('platformBilling.pricesByPeriod') }}</h3>
-            <p class="mt-1 text-xs text-gray-500">{{ $t('platformBilling.planPricesHint') }}</p>
-            <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div v-for="period in periods" :key="period">
-                <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t(`platformBilling.periods.${period}`) }}</label>
-                <div class="flex items-center gap-1.5">
-                  <input
-                    v-model.number="form.prices[period]"
-                    type="number"
-                    min="0"
-                    step="0.001"
-                    class="fk-field"
-                  />
-                  <span class="text-xs text-gray-500">{{ $t('landingPricing.currency') }}</span>
-                </div>
-              </div>
+            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <fieldset
+                v-for="period in periods"
+                :key="period"
+                class="rounded-lg border border-gray-200 p-3"
+              >
+                <legend class="px-1 text-xs font-semibold text-gray-700">{{ $t(`platformBilling.periods.${period}`) }}</legend>
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" :for="`price-min-${period}`">
+                  {{ $t('platformBilling.minimumFee') }} ({{ $t('landingPricing.currency') }})
+                </label>
+                <input
+                  :id="`price-min-${period}`"
+                  v-model.number="form.prices[period].amount_omr"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  class="fk-field"
+                />
+                <label class="mb-1.5 mt-3 block text-xs font-medium text-gray-600" :for="`price-rate-${period}`">
+                  {{ $t('platformBilling.perStudentRate') }} ({{ $t('landingPricing.currency') }})
+                </label>
+                <input
+                  :id="`price-rate-${period}`"
+                  v-model.number="form.prices[period].per_student_omr"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  class="fk-field"
+                />
+              </fieldset>
             </div>
           </div>
         </section>
@@ -223,6 +238,7 @@ import {
   platformBillingService,
   type PlatformBillingPeriod,
   type PlatformModule,
+  type PlatformPlanPrice,
 } from '@/services/platform-billing.service'
 
 const route = useRoute()
@@ -239,16 +255,36 @@ const periods = ref<PlatformBillingPeriod[]>(['monthly', 'semester', 'yearly', '
 const selected = reactive<Record<string, boolean>>({})
 const features = ref<{ label_en: string; label_ar: string }[]>([])
 
+type PriceDraft = { amount_omr: number; per_student_omr: number }
+
 const form = ref<{
   name_en: string
   name_ar: string
   description_en: string
   description_ar: string
-  included_student_seats: number
-  overage_per_student_omr: number
+  min_students: number
+  max_students: number | '' | null
   is_active: boolean
-  prices: Record<PlatformBillingPeriod, number>
+  prices: Record<PlatformBillingPeriod, PriceDraft>
 } | null>(null)
+
+function pricesFrom(rows: PlatformPlanPrice[]): Record<PlatformBillingPeriod, PriceDraft> {
+  const out = {} as Record<PlatformBillingPeriod, PriceDraft>
+  for (const period of ['monthly', 'semester', 'yearly', 'summer'] as PlatformBillingPeriod[]) {
+    out[period] = { amount_omr: 0, per_student_omr: 0 }
+  }
+  for (const row of rows) {
+    out[row.billing_period] = {
+      amount_omr: Number(row.amount_omr) || 0,
+      per_student_omr: Number(row.per_student_omr) || 0,
+    }
+  }
+  return out
+}
+
+function toMoney(v: unknown): number {
+  return Number(Number(v || 0).toFixed(3))
+}
 
 function emptyFeature() {
   return { label_en: '', label_ar: '' }
@@ -269,24 +305,15 @@ async function load() {
     const detail = await platformBillingService.getPlanDetail(planCode.value)
     if (detail.billing_periods?.length) periods.value = detail.billing_periods
     modules.value = detail.modules
-    const prices: Record<PlatformBillingPeriod, number> = {
-      monthly: 0,
-      semester: 0,
-      yearly: 0,
-      summer: 0,
-    }
-    for (const row of detail.plan.prices || []) {
-      prices[row.billing_period] = Number(row.amount_omr) || 0
-    }
     form.value = {
       name_en: detail.plan.name_en,
       name_ar: detail.plan.name_ar,
       description_en: detail.plan.description_en || '',
       description_ar: detail.plan.description_ar || '',
-      included_student_seats: detail.plan.included_student_seats,
-      overage_per_student_omr: Number(detail.plan.overage_per_student_omr) || 0,
+      min_students: detail.plan.min_students ?? 0,
+      max_students: detail.plan.max_students,
       is_active: detail.plan.is_active,
-      prices,
+      prices: pricesFrom(detail.plan.prices || []),
     }
     features.value = (detail.plan.features || []).map((f) => ({
       label_en: f.label_en || '',
@@ -320,21 +347,25 @@ async function save() {
       name_ar: form.value.name_ar,
       description_en: form.value.description_en,
       description_ar: form.value.description_ar,
-      included_student_seats: Math.max(0, Math.round(Number(form.value.included_student_seats) || 0)),
-      overage_per_student_omr: Number(Number(form.value.overage_per_student_omr || 0).toFixed(3)),
+      min_students: Math.max(0, Math.round(Number(form.value.min_students) || 0)),
+      max_students:
+        form.value.max_students === '' || form.value.max_students == null
+          ? null
+          : Math.max(1, Math.round(Number(form.value.max_students))),
       is_active: form.value.is_active,
       module_codes,
       features: featurePayload,
       prices: periods.value.map((period) => ({
         billing_period: period,
-        amount_omr: Number(Number(form.value!.prices[period] || 0).toFixed(3)),
+        amount_omr: toMoney(form.value!.prices[period]?.amount_omr),
+        per_student_omr: toMoney(form.value!.prices[period]?.per_student_omr),
       })),
     })
     modules.value = detail.modules
     for (const mod of detail.modules) selected[mod.code] = !!mod.included
-    for (const row of detail.plan.prices || []) {
-      form.value.prices[row.billing_period] = Number(row.amount_omr) || 0
-    }
+    form.value.prices = pricesFrom(detail.plan.prices || [])
+    form.value.min_students = detail.plan.min_students ?? 0
+    form.value.max_students = detail.plan.max_students
     features.value = (detail.plan.features || []).map((f) => ({
       label_en: f.label_en || '',
       label_ar: f.label_ar || '',

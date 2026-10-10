@@ -5,7 +5,9 @@ export type PlatformBillingPeriod = 'monthly' | 'semester' | 'yearly' | 'summer'
 
 export interface PlatformPlanPrice {
   billing_period: PlatformBillingPeriod
+  /** Minimum fee for the period. */
   amount_omr: number
+  per_student_omr: number
 }
 
 export interface PlatformPlanFeatureBullet {
@@ -21,8 +23,9 @@ export interface PlatformPlan {
   name_ar: string
   description_en: string | null
   description_ar: string | null
-  included_student_seats: number
-  overage_per_student_omr: number
+  min_students: number
+  /** Null = no upper limit. */
+  max_students: number | null
   sort_order: number
   is_active: boolean
   prices: PlatformPlanPrice[]
@@ -66,11 +69,11 @@ export interface CreatePlatformPlanRequest {
   name_ar: string
   description_en?: string | null
   description_ar?: string | null
-  included_student_seats?: number
-  overage_per_student_omr?: number
+  min_students?: number
+  max_students?: number | null
   is_active?: boolean
   module_codes?: string[]
-  prices?: { billing_period: PlatformBillingPeriod; amount_omr: number }[]
+  prices?: PlatformPlanPrice[]
 }
 
 export interface PlatformPlansCatalog {
@@ -96,13 +99,16 @@ export interface PlatformInvoice {
   id: string
   school_id: string
   subscription_id: string
+  kind: 'subscription' | 'proration'
   billing_period: PlatformBillingPeriod
   period_start: string
   period_end: string
   base_amount: number
-  seats_included: number
-  seats_used: number
-  overage_amount: number
+  students_billed: number
+  minimum_omr: number
+  per_student_omr: number
+  discount_amount: number
+  discount_id: string | null
   addons_amount: number
   total_amount: number
   status: string
@@ -125,8 +131,10 @@ export interface PlatformSubscriptionDetail {
   status: string
   period_start: string
   period_end: string
-  included_student_seats_override: number | null
-  included_student_seats: number | null
+  billed_students: number
+  max_students: number | null
+  over_plan_limit: boolean
+  promo_discount_id: string | null
   notes: string | null
   addon_codes: string[]
   created_at: string
@@ -135,9 +143,63 @@ export interface PlatformSubscriptionDetail {
 
 export interface SchoolSubscriptionBundle {
   school: { id: number; name: string; status: string }
+  /** Active students (the billable count). */
   studentCount: number
   subscription: PlatformSubscriptionDetail | null
+  promo_discount: PlatformDiscount | null
   invoices: PlatformInvoice[]
+}
+
+export type PlatformDiscountKind = 'package' | 'school' | 'promo'
+export type PlatformDiscountType = 'percent' | 'fixed'
+
+export interface PlatformDiscount {
+  id: string
+  kind: PlatformDiscountKind
+  name_en: string
+  name_ar: string
+  code: string | null
+  discount_type: PlatformDiscountType
+  value: number
+  plan_id: string | null
+  plan_code: string | null
+  school_id: string | null
+  school_name: string | null
+  billing_periods: PlatformBillingPeriod[]
+  starts_on: string | null
+  ends_on: string | null
+  duration_periods: number | null
+  max_redemptions: number | null
+  redemption_count: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface PlatformDiscountPayload {
+  kind: PlatformDiscountKind
+  name_en: string
+  name_ar: string
+  code?: string | null
+  discount_type: PlatformDiscountType
+  value: number
+  plan_code?: string | null
+  school_id?: string | null
+  billing_periods?: PlatformBillingPeriod[]
+  starts_on?: string | null
+  ends_on?: string | null
+  duration_periods?: number | null
+  max_redemptions?: number | null
+  is_active?: boolean
+}
+
+export interface PromoPreview {
+  code: string
+  name_en: string
+  name_ar: string
+  discount_type: PlatformDiscountType
+  value: number
+  duration_periods: number | null
 }
 
 export interface UpsertSubscriptionPayload {
@@ -146,7 +208,6 @@ export interface UpsertSubscriptionPayload {
   period_start?: string
   period_end?: string
   status?: string
-  included_student_seats_override?: number | null
   addon_codes?: string[]
   notes?: string | null
   activate_school?: boolean
@@ -205,8 +266,8 @@ class PlatformBillingApiService extends BaseApiService {
       name_ar?: string
       description_en?: string | null
       description_ar?: string | null
-      included_student_seats?: number
-      overage_per_student_omr?: number
+      min_students?: number
+      max_students?: number | null
       is_active?: boolean
       module_codes?: string[]
       features?: { label_en: string; label_ar: string }[]
@@ -252,6 +313,35 @@ class PlatformBillingApiService extends BaseApiService {
 
   markInvoicePaid(invoiceId: string, formData: FormData): Promise<PlatformInvoice> {
     return this.upload(`/platform/invoices/${invoiceId}/mark-paid`, formData)
+  }
+
+  /** Bills students activated since the period was invoiced; null when nothing is due. */
+  issueProrationInvoice(schoolId: string): Promise<PlatformInvoice | null> {
+    return this.post(`/platform/schools/${schoolId}/invoices/proration`, {})
+  }
+
+  listDiscounts(): Promise<PlatformDiscount[]> {
+    return this.get('/platform/discounts')
+  }
+
+  createDiscount(payload: PlatformDiscountPayload): Promise<PlatformDiscount> {
+    return this.post('/platform/discounts', payload)
+  }
+
+  updateDiscount(id: string, payload: PlatformDiscountPayload): Promise<PlatformDiscount> {
+    return this.put(`/platform/discounts/${id}`, payload)
+  }
+
+  deleteDiscount(id: string): Promise<{ id: string; deleted: boolean }> {
+    return this.delete(`/platform/discounts/${id}`)
+  }
+
+  previewPromo(params: {
+    code: string
+    plan_code: string
+    billing_period: PlatformBillingPeriod
+  }): Promise<PromoPreview> {
+    return this.get('/public/platform-plans/promo', params)
   }
 }
 

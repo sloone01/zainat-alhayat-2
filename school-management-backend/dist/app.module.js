@@ -248,6 +248,7 @@ const public_subscription_module_1 = require("./public-subscription.module");
 const rbac_module_1 = require("./rbac/rbac.module");
 const claim_guard_1 = require("./rbac/claim.guard");
 const platform_billing_module_1 = require("./platform-billing/platform-billing.module");
+const demo_module_1 = require("./common/demo/demo.module");
 let AppModule = class AppModule {
     configure(consumer) {
         consumer.apply(activity_log_middleware_1.ActivityLogMiddleware).forRoutes('*');
@@ -282,6 +283,7 @@ exports.AppModule = AppModule = __decorate([
                 useFactory: (configService) => (0, database_config_1.getDatabaseConfig)(configService),
                 inject: [config_1.ConfigService],
             }),
+            demo_module_1.DemoModule,
             notifications_module_1.NotificationsModule,
             errors_module_1.ErrorsModule,
             typeorm_1.TypeOrmModule.forFeature([

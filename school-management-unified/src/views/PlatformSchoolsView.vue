@@ -305,10 +305,27 @@
           </div>
 
           <template v-else>
-            <div class="text-sm text-gray-600">
-              {{ $t('platformBilling.students') }}:
-              <span class="font-semibold text-gray-900">{{ bundle?.studentCount ?? 0 }}</span>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
+              <span>
+                {{ $t('platformBilling.students') }}:
+                <span class="font-semibold text-gray-900">{{ bundle?.studentCount ?? 0 }}</span>
+              </span>
+              <span v-if="bundle?.subscription">
+                {{ $t('platformBilling.studentsBilled') }}:
+                <span class="font-semibold text-gray-900">{{ bundle.subscription.billed_students }}</span>
+              </span>
+              <span v-if="bundle?.promo_discount">
+                {{ $t('platformBilling.promoOnSubscription') }}:
+                <span class="font-mono font-semibold text-gray-900" dir="ltr">{{ bundle.promo_discount.code }}</span>
+              </span>
             </div>
+
+            <p
+              v-if="bundle?.subscription?.over_plan_limit"
+              class="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+            >
+              {{ $t('platformBilling.overPlanLimit', { max: bundle.subscription.max_students }) }}
+            </p>
 
             <p v-if="!bundle?.subscription" class="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
               {{ $t('platformBilling.noSubscription') }}
@@ -394,6 +411,14 @@
               >
                 {{ $t('platformBilling.issueInvoice') }}
               </button>
+              <button
+                type="button"
+                class="fk-btn fk-btn--pearl"
+                :disabled="actionBusy || bundle?.subscription?.status !== 'active'"
+                @click="issueProrationInvoice"
+              >
+                {{ $t('platformBilling.billNewStudents') }}
+              </button>
             </div>
 
             <div>
@@ -407,15 +432,25 @@
                 >
                   <div class="flex items-start justify-between gap-2">
                     <div>
-                      <div class="font-medium text-gray-900">
+                      <div class="flex items-center gap-2 font-medium text-gray-900">
                         {{ inv.total_amount }} OMR
+                        <span v-if="inv.kind === 'proration'" class="fk-chip fk-chip--neutral text-[11px]">
+                          {{ $t('platformBilling.invoiceKindProration') }}
+                        </span>
                       </div>
                       <div class="text-xs text-gray-500">
                         {{ inv.period_start }} → {{ inv.period_end }} ·
                         {{ invoiceStatusLabel(inv.status) }}
                       </div>
                       <div class="text-xs text-gray-500 mt-0.5">
-                        {{ $t('platformBilling.students') }}: {{ inv.seats_used }}/{{ inv.seats_included }}
+                        {{ $t('platformBilling.invoiceStudentsLine', {
+                          students: inv.students_billed,
+                          rate: inv.per_student_omr,
+                          min: inv.minimum_omr,
+                        }) }}
+                      </div>
+                      <div v-if="inv.discount_amount > 0" class="text-xs text-emerald-700 mt-0.5">
+                        {{ $t('platformBilling.invoiceDiscountLine', { amount: inv.discount_amount }) }}
                       </div>
                       <div
                         v-if="inv.status === 'paid' && (inv.paid_amount != null || inv.paid_receipt_url)"
@@ -798,6 +833,25 @@ async function issueInvoice() {
     bundle.value = await platformBillingService.getSchoolSubscription(selectedSchool.value.id)
     drawerMsg.value = t('platformBilling.invoiceIssued')
     await reloadList()
+  } catch (e: any) {
+    drawerError.value = e?.message || t('platformBilling.saveError')
+  } finally {
+    actionBusy.value = false
+  }
+}
+
+async function issueProrationInvoice() {
+  if (!selectedSchool.value) return
+  actionBusy.value = true
+  drawerError.value = ''
+  drawerMsg.value = ''
+  try {
+    const invoice = await platformBillingService.issueProrationInvoice(selectedSchool.value.id)
+    bundle.value = await platformBillingService.getSchoolSubscription(selectedSchool.value.id)
+    drawerMsg.value = invoice
+      ? t('platformBilling.invoiceIssued')
+      : t('platformBilling.noNewStudentsToBill')
+    if (invoice) await reloadList()
   } catch (e: any) {
     drawerError.value = e?.message || t('platformBilling.saveError')
   } finally {
