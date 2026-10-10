@@ -97,7 +97,6 @@
           </div>
 
           <template v-else-if="courseTotal > 0">
-            <template>
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <KanbanCard
                 v-for="course in paginatedCourses"
@@ -279,7 +278,6 @@
               :show="courseTotal > 0"
               @update:page="goToPage"
             />
-            </template>
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
