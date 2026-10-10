@@ -19,7 +19,7 @@
           </div>
         </header>
 
-        <div v-if="loading" class="flex items-center justify-center py-16 text-gray-500">
+        <div v-if="loading && !routePageLoading" class="flex items-center justify-center py-16 text-gray-500">
           <FikrLoader size="sm" />
         </div>
         <div v-else-if="!total" class="px-6 py-12 text-center text-sm text-gray-500">
@@ -89,6 +89,7 @@ import { useServerPagination } from '@/composables/useServerPagination'
 import { feesV2Service, type FeePayment } from '@/services/fees-v2.service'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

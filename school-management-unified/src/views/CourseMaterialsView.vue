@@ -22,7 +22,7 @@
           </div>
         </header>
         <div class="p-6">
-          <div v-if="loadingCourses" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
+          <div v-if="loadingCourses && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-soft">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -116,7 +116,7 @@
               {{ $t('courseMaterials.addTopic') }}
             </button>
           </header>
-          <div v-if="loadingMaterials" class="flex flex-col items-center justify-center gap-3 py-12 text-fikr-ink-soft">
+          <div v-if="loadingMaterials && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-12 text-fikr-ink-soft">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -370,6 +370,7 @@ import { useListViewMode } from '@/composables/useListViewMode'
 import { useFeedback } from '@/composables/useFeedback'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import KanbanCard from '@/components/ui/kanban-card.vue'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import KanbanMeta from '@/components/ui/kanban-meta.vue'

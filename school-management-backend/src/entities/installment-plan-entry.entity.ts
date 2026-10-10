@@ -23,6 +23,10 @@ export class InstallmentPlanEntry {
   @Column({ type: 'decimal', precision: 8, scale: 4, default: 1 })
   weight: string;
 
+  /** Fixed amount for presets; when set on entries, weights are ignored. */
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  amount: string | null;
+
   @ManyToOne(() => InstallmentPlan, (p) => p.entries, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'plan_id' })
   plan: InstallmentPlan;

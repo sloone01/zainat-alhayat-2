@@ -21,7 +21,7 @@
       </template>
 
       <div
-        v-if="pageLoading"
+        v-if="pageLoading && !routePageLoading"
         class="flex flex-col items-center justify-center gap-3 py-12 text-gray-500"
       >
         <FikrLoader />
@@ -170,6 +170,7 @@ import HealthInfoStep from '@/components/enrollment/HealthInfoStep.vue'
 import GuardianInfoStep from '@/components/enrollment/GuardianInfoStep.vue'
 import AddressInfoStep from '@/components/enrollment/AddressInfoStep.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import { useFeedback } from '@/composables/useFeedback'
 import { getStoredSchoolId } from '@/utils/auth-token'
 import { isNotFutureDate } from '@/utils/validation'

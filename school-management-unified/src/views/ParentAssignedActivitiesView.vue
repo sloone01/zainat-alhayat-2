@@ -6,7 +6,7 @@
         :subtitle="$t('parent.assignedActivitiesSubtitle')"
       />
 
-      <div v-if="loading && !loaded" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
+      <div v-if="loading && !loaded && !routePageLoading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
         <FikrLoader />
         <span>{{ $t('parent.loading') }}</span>
       </div>
@@ -149,6 +149,7 @@ import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { getErrorMessage } from '@/utils/error-reporting'
 import { translateActivityType as translateActivityTypeLabel } from '@/utils/activity-types'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { t, locale } = useI18n()
 const { viewMode, isCards } = useListViewMode()

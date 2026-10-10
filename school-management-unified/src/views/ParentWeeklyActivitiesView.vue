@@ -6,7 +6,7 @@
         :subtitle="$t('parent.weeklyActivitiesSubtitle')"
       />
 
-      <div v-if="loading && !loaded" class="flex items-center justify-center gap-3 py-12">
+      <div v-if="loading && !loaded && !routePageLoading" class="flex items-center justify-center gap-3 py-12">
         <FikrLoader />
         <span class="text-fikr-ink-muted">{{ $t('parent.loading') }}</span>
       </div>
@@ -133,6 +133,7 @@ import { parentService, type ParentListChild } from '../services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { getErrorMessage } from '@/utils/error-reporting'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { t, locale } = useI18n()
 

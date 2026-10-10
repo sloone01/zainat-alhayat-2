@@ -5,7 +5,7 @@
         :title="$t('parent.schedule')"
         :subtitle="weekRangeLabel"
       />
-      <div v-if="loading" class="flex items-center justify-center gap-3 py-12">
+      <div v-if="loading && !routePageLoading" class="flex items-center justify-center gap-3 py-12">
         <FikrLoader />
         <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
@@ -86,6 +86,7 @@ import ScheduleWeekGrid, { type WeekGridCell, type WeekGridSlot } from '@/compon
 import { parentService } from '../services/parent.service'
 import { formatSchoolWeekRange, periodPhase, schoolWeekdayIndex } from '@/utils/schedule-display'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { t, locale } = useI18n()
 

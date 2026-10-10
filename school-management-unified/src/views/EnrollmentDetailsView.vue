@@ -25,7 +25,7 @@
       </FikrPageHeader>
 
       <!-- Loading State -->
-      <div v-if="loading" class="fk-card">
+      <div v-if="loading && !routePageLoading" class="fk-card">
         <header class="flex items-center gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
           <router-link
             to="/enrollments"
@@ -457,6 +457,7 @@ import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import FikrDialog from '@/components/FikrDialog.vue'
 import { enrollmentService } from '@/services/enrollment.service'
 import { useFeedback } from '@/composables/useFeedback'

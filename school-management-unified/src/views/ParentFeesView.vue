@@ -397,6 +397,7 @@
                     <span dir="ltr">{{ formatMoney(familyDueTotal) }}</span>
                   </div>
                 </div>
+                <p v-else-if="desktopBreakdownError" class="mt-3 text-sm font-medium text-navy-800">{{ desktopBreakdownError }}</p>
                 <div v-else-if="desktopBreakdownChild" class="mt-4 flex flex-col gap-2">
                   <p class="text-sm font-medium text-navy-800">
                     {{ desktopBreakdownChild.firstName }} {{ desktopBreakdownChild.lastName }}
@@ -792,17 +793,21 @@ const desktopBreakdownChild = computed(() => {
 })
 
 const breakdownSheet = ref<StudentChargeSheet | null>(null)
+const breakdownError = ref('')
 watch(
   () => desktopBreakdownChild.value?.id,
   (id) => {
+    breakdownError.value = ''
     if (!id || id === selectedId.value) {
       breakdownSheet.value = null
       return
     }
     void feesV2Service.getStudentChargeSheet(id).then((s) => {
       if (desktopBreakdownChild.value?.id === id) breakdownSheet.value = s
-    }).catch(() => {
-      if (desktopBreakdownChild.value?.id === id) breakdownSheet.value = null
+    }).catch((e) => {
+      if (desktopBreakdownChild.value?.id !== id) return
+      breakdownSheet.value = null
+      breakdownError.value = localizedLoadError(e, 'parentFees.loadFailed')
     })
   },
 )
@@ -812,6 +817,13 @@ const desktopBreakdownSheet = computed(() => {
   if (!id) return null
   if (selectedId.value === id && sheet.value) return sheet.value
   return breakdownSheet.value
+})
+
+const desktopBreakdownError = computed(() => {
+  const id = desktopBreakdownChild.value?.id
+  if (!id) return ''
+  if (selectedId.value === id) return sheet.value ? '' : detailError.value
+  return breakdownError.value
 })
 
 const desktopPricedRows = computed(() => buildPricedRows(desktopBreakdownSheet.value))

@@ -75,7 +75,7 @@
         </header>
 
         <div class="px-6 py-5">
-          <div v-if="loading" class="flex flex-col items-center justify-center py-16 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center py-16 text-gray-500">
             <FikrLoader />
             <span class="mt-3 text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -225,6 +225,7 @@ import {
 } from '@/services/rbac.service'
 import { filterRbacPagesForSchool, permissionsPayload } from '@/utils/rbac-page-filter'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const route = useRoute()
 const { locale, t, te } = useI18n()

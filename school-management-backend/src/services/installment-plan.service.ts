@@ -17,6 +17,7 @@ import { InstallmentPlan } from '../entities/installment-plan.entity';
 import { InstallmentPlanEntry } from '../entities/installment-plan-entry.entity';
 import { StudentChargeSheet } from '../entities/student-charge-sheet.entity';
 import { UpsertInstallmentPlanDto } from '../dto/fees-v2.dto';
+import { moneyStr } from '../utils/fees-v2.util';
 
 export type InstallmentPlanUsageKind = 'student_charge_sheet';
 
@@ -113,6 +114,11 @@ export class InstallmentPlanService {
     if (!dto.entries.length) {
       throw new BadRequestException('At least one installment entry is required');
     }
+    const withAmount = dto.entries.filter((e) => e.amount != null).length;
+    if (withAmount > 0 && withAmount < dto.entries.length) {
+      throw new BadRequestException('Every installment needs an amount, or none of them');
+    }
+    const advanceAmount = dto.advance_amount != null ? moneyStr(dto.advance_amount) : null;
 
     let plan: InstallmentPlan;
     if (id) {
@@ -122,6 +128,7 @@ export class InstallmentPlanService {
       existing.name = dto.name.trim();
       existing.description = dto.description?.trim() || null;
       existing.is_active = dto.is_active !== false;
+      existing.advance_amount = advanceAmount;
       plan = await this.planRepo.save(existing);
       await this.entryRepo.delete({ plan_id: plan.id });
     } else {
@@ -131,6 +138,7 @@ export class InstallmentPlanService {
           name: dto.name.trim(),
           description: dto.description?.trim() || null,
           is_active: dto.is_active !== false,
+          advance_amount: advanceAmount,
         }),
       );
     }
@@ -144,6 +152,7 @@ export class InstallmentPlanService {
           month_number: e.month_number ?? null,
           label: e.label?.trim() || null,
           weight: String(e.weight ?? 1),
+          amount: e.amount != null ? moneyStr(e.amount) : null,
         }),
       );
     await this.entryRepo.save(entries);

@@ -44,7 +44,7 @@
             <p>{{ $t('forSchools.customPlan.modulesHint') }}</p>
           </div>
 
-          <div v-if="loading" class="cp-loading">
+          <div v-if="loading && !routePageLoading" class="cp-loading">
             <FikrLoader size="sm" />
             <span>{{ $t('common.loading') }}</span>
           </div>
@@ -279,6 +279,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PlatformMarketingNav from '@/components/PlatformMarketingNav.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import {
   platformBillingService,
   type PlatformModule,

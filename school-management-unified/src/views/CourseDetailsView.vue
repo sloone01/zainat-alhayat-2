@@ -1,7 +1,7 @@
 <template>
   <DashboardLayout>
     <div class="fk-page" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+      <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
         <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
@@ -450,6 +450,7 @@ import { paymentConfigService, type SchoolPaymentLevel } from '@/services/paymen
 import { getStoredSchoolId } from '@/utils/auth-token'
 import { courseActivity, courseLifecycleStatus } from '@/utils/course-status'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

@@ -364,11 +364,13 @@ async function onSetActive(plan: InstallmentPlan, is_active: boolean) {
         name: plan.name,
         description: plan.description || undefined,
         is_active,
+        advance_amount: plan.advance_amount != null ? Number(plan.advance_amount) : null,
         entries: (plan.entries || []).map((e) => ({
           sequence: e.sequence,
           month_number: e.month_number,
           label: e.label,
           weight: typeof e.weight === 'string' ? Number(e.weight) : e.weight,
+          amount: e.amount != null ? Number(e.amount) : null,
         })),
       },
       plan.id,

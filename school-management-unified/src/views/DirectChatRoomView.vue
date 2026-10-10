@@ -38,7 +38,7 @@
 
     <ScrollArea6 ref="threadFrame" @scroll="onThreadScroll">
       <p v-if="loadingOlder" class="text-center text-xs text-fikr-ink-soft">{{ $t('directMessages.loadEarlier') }}</p>
-      <div v-if="threadLoading" class="flex min-h-[12rem] flex-col items-center justify-center gap-3 py-14 text-fikr-ink-soft">
+      <div v-if="threadLoading && !routePageLoading" class="flex min-h-[12rem] flex-col items-center justify-center gap-3 py-14 text-fikr-ink-soft">
         <FikrLoader />
       </div>
       <div v-if="loadError" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -147,6 +147,7 @@ import ChatThreadShell from '@/components/ui/chat-thread-shell.vue'
 import ChatAuditNotice from '@/components/ChatAuditNotice.vue'
 import ScrollArea6 from '@/components/ui/scroll-area6.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import ChatComposer from '@/components/ui/chat-composer.vue'
 import ChatMessageRow from '@/components/ui/chat-message-row.vue'
 import MessageLetterCardFrame, {

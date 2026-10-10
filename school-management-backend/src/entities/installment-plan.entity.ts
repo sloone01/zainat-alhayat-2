@@ -28,6 +28,10 @@ export class InstallmentPlan {
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
+  /** Fixed advance (مقدم) for presets; null uses the package timing ratio. */
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  advance_amount: string | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
 

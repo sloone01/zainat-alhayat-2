@@ -8,7 +8,7 @@
           <h2 class="fk-card__title">{{ $t('platformSettings.paymentsHeading') }}</h2>
         </header>
 
-        <div v-if="loading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
+        <div v-if="loading && !routePageLoading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
           <FikrLoader />
         </div>
 
@@ -88,6 +88,7 @@ import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import KanbanTag from '@/components/ui/kanban-tag.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { platformSettingsService, type ThawaniSetting } from '@/services/platform-settings.service'

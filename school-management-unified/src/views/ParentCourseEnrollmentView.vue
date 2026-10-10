@@ -3,7 +3,7 @@
     <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader :title="$t('courseEnrollment.parentTitle')" />
 
-      <div v-if="loadingChildren" class="flex items-center justify-center gap-3 py-12">
+      <div v-if="loadingChildren && !routePageLoading" class="flex items-center justify-center gap-3 py-12">
         <FikrLoader />
         <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
@@ -76,7 +76,7 @@
             </div>
           </header>
 
-          <div v-if="loadingCourses" class="flex flex-col items-center justify-center gap-3 py-16">
+          <div v-if="loadingCourses && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16">
             <FikrLoader />
             <span class="text-sm text-gray-600">{{ $t('parent.loading') }}</span>
           </div>
@@ -171,6 +171,7 @@ import { useFeedback } from '@/composables/useFeedback'
 import { parentService } from '@/services/parent.service'
 import courseEnrollmentService, { type EnrollableCourseRow } from '@/services/course-enrollment.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const feedback = useFeedback()

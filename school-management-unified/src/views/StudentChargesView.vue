@@ -21,6 +21,14 @@
             </p>
           </div>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              class="fk-btn fk-btn--pearl fk-btn--sm"
+              :disabled="!plans.length"
+              @click="openBulkApply"
+            >
+              {{ $t('feesV2.applyPlanToLevel') }}
+            </button>
             <FikrFilterButton
               :expanded="showFilters"
               :count="hasActiveFilters ? 1 : 0"
@@ -547,15 +555,34 @@
                 {{ $t('feesV2.scheduleTotals', { total: fmt(scheduleTotalDue), pending: fmt(schedulePending) }) }}
               </p>
             </div>
-            <button
-              v-if="!isSheetDirty && payableInstallments.length"
-              type="button"
-              class="fk-btn fk-btn--primary fk-btn--sm shrink-0"
-              :disabled="paying"
-              @click="openPay"
-            >
-              {{ $t('feesV2.addPayment') }}
-            </button>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+              <button
+                v-if="hasRowOverrides && !planLocked"
+                type="button"
+                class="fk-btn fk-btn--pearl fk-btn--sm shrink-0"
+                @click="resetRowAmounts"
+              >
+                {{ $t('feesV2.resetAmounts') }}
+              </button>
+              <button
+                v-if="presetRows.length"
+                type="button"
+                class="fk-btn fk-btn--pearl fk-btn--sm shrink-0"
+                :disabled="savingPreset || applyingPlan"
+                @click="openPresetDialog"
+              >
+                {{ $t('feesV2.saveAsPreset') }}
+              </button>
+              <button
+                v-if="!isSheetDirty && payableInstallments.length"
+                type="button"
+                class="fk-btn fk-btn--primary fk-btn--sm shrink-0"
+                :disabled="paying"
+                @click="openPay"
+              >
+                {{ $t('feesV2.addPayment') }}
+              </button>
+            </div>
           </header>
           <div class="space-y-3 p-4 md:hidden">
             <article
@@ -665,6 +692,19 @@
                         @blur="clampDraftUpfront"
                       >
                     </div>
+                    <div v-else-if="canEditRowAmount(inst)" class="flex w-full justify-end">
+                      <input
+                        :id="`schedule-row-${inst.sequence}`"
+                        :value="displayInstDue(inst)"
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        dir="ltr"
+                        class="fk-field fk-field--mono !m-0 h-8 w-[5.5rem] shrink-0 px-2 py-1 text-end text-sm tabular-nums"
+                        :aria-label="`${$t('feesV2.amount')} — ${scheduleLabel(inst)}`"
+                        @change="onRowAmountChange(inst.sequence, ($event.target as HTMLInputElement).value)"
+                      >
+                    </div>
                     <span v-else class="inline-block font-mono tabular-nums text-gray-700">{{ fmt(displayInstDue(inst)) }}</span>
                   </TableCell>
                   <TableCell class="text-end font-mono tabular-nums text-gray-700">{{ fmt(inst.amount_paid) }}</TableCell>
@@ -764,6 +804,81 @@
         </div>
       </aside>
     </div>
+
+    <FikrDialog
+      :show="bulkOpen"
+      size="sm"
+      compact
+      plain-footer
+      :title="$t('feesV2.applyPlanToLevel')"
+      @close="bulkOpen = false"
+    >
+      <form class="fk-form space-y-3" @submit.prevent="submitBulkApply">
+        <div class="fk-form__row !mb-0">
+          <label class="fk-flabel" for="bulk-level"><span>{{ $t('feesV2.feeLevel') }}</span></label>
+          <select id="bulk-level" v-model="bulkLevelId" required class="fk-field">
+            <option value="" disabled>{{ $t('feesV2.feeLevel') }}</option>
+            <option v-for="lv in feeLevels" :key="lv.id" :value="lv.id">{{ lv.name }}</option>
+          </select>
+        </div>
+        <div class="fk-form__row !mb-0">
+          <label class="fk-flabel" for="bulk-plan"><span>{{ $t('feesV2.installmentPlan') }}</span></label>
+          <select id="bulk-plan" v-model="bulkPlanId" required class="fk-field">
+            <option value="" disabled>{{ $t('feesV2.installmentPlan') }}</option>
+            <option v-for="p in plans" :key="p.id" :value="p.id">{{ p.name }}</option>
+          </select>
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--pearl" :disabled="bulkApplying" @click="bulkOpen = false">
+          {{ $t('common.cancel') }}
+        </button>
+        <button
+          type="button"
+          class="fk-btn fk-btn--primary"
+          :disabled="bulkApplying || !bulkLevelId || !bulkPlanId"
+          @click="submitBulkApply"
+        >
+          {{ bulkApplying ? $t('common.loading') : $t('feesV2.applyNow') }}
+        </button>
+      </template>
+    </FikrDialog>
+
+    <FikrDialog
+      :show="presetOpen"
+      size="sm"
+      compact
+      plain-footer
+      :title="$t('feesV2.saveAsPreset')"
+      @close="presetOpen = false"
+    >
+      <form class="fk-form" @submit.prevent="savePreset">
+        <div class="fk-form__row !mb-0">
+          <label class="fk-flabel" for="preset-name"><span>{{ $t('feesV2.presetName') }}</span></label>
+          <input
+            id="preset-name"
+            v-model="presetName"
+            type="text"
+            maxlength="200"
+            required
+            class="fk-field"
+          >
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="fk-btn fk-btn--pearl" @click="presetOpen = false">
+          {{ $t('common.cancel') }}
+        </button>
+        <button
+          type="button"
+          class="fk-btn fk-btn--primary"
+          :disabled="savingPreset || !presetName.trim()"
+          @click="savePreset"
+        >
+          {{ savingPreset ? $t('common.saving') : $t('common.save') }}
+        </button>
+      </template>
+    </FikrDialog>
 
     <FikrDialog
       :show="payOpen"
@@ -909,12 +1024,17 @@ import {
 import { useListViewMode } from '@/composables/useListViewMode'
 import { studentService, type Student } from '@/services'
 import { feesV2Service, type ChargeSheetSummary, type FeePayment, type StudentChargeSheet, type InstallmentPlan } from '@/services/fees-v2.service'
-import paymentConfigService, { type PaymentCatalogRow } from '@/services/payment-config.service'
+import paymentConfigService, {
+  type PaymentCatalogRow,
+  type SchoolPaymentLevel,
+} from '@/services/payment-config.service'
 import { authService } from '@/services'
-import { splitRoundedUpToFive } from '@/utils/fees-v2.util'
+import { fitFixedAmounts, planEntryAmounts } from '@/utils/fees-v2.util'
+import { useFeedback } from '@/composables/useFeedback'
 import FikrLoader from '@/components/FikrLoader.vue'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 
@@ -954,6 +1074,16 @@ const discountRows = ref<Array<{ discount_type_id: string; amount: number }>>([]
 const extraRows = ref<Array<{ extra_type_id: string; amount: number }>>([])
 const inclusionRows = ref<Array<{ inclusion_type_id: string }>>([])
 const draftUpfront = ref(0)
+/** Staff-edited installment amounts keyed by schedule sequence (advance excluded). */
+const draftRowAmounts = ref<Record<number, number>>({})
+const feeLevels = ref<SchoolPaymentLevel[]>([])
+const bulkOpen = ref(false)
+const bulkLevelId = ref('')
+const bulkPlanId = ref('')
+const bulkApplying = ref(false)
+const presetOpen = ref(false)
+const presetName = ref('')
+const savingPreset = ref(false)
 const applyingPlan = ref(false)
 const applyError = ref('')
 const studentPayments = ref<FeePayment[]>([])
@@ -1075,6 +1205,7 @@ function clearSelection() {
   extraRows.value = []
   inclusionRows.value = []
   draftUpfront.value = 0
+  draftRowAmounts.value = {}
   applyError.value = ''
   void loadSummaries()
 }
@@ -1199,6 +1330,7 @@ function syncSheetDrafts() {
   syncExtraRows()
   syncInclusionRows()
   selectedPlanId.value = sheet.value?.installment_plan_id || ''
+  draftRowAmounts.value = savedRowAmounts()
   draftUpfront.value = Number(sheet.value?.upfront_due || 0)
   // Plan was saved with advance = full net → no installment rows. Stage timing-based advance.
   if (
@@ -1210,6 +1342,26 @@ function syncSheetDrafts() {
   ) {
     draftUpfront.value = suggestedUpfrontFromLines()
   }
+}
+
+function savedRowAmounts(): Record<number, number> {
+  return Object.fromEntries(
+    (sheet.value?.installment_amounts || []).map((row) => [row.sequence, Number(row.amount) || 0]),
+  )
+}
+
+function rowAmountsKey(rows: Record<number, number>) {
+  return Object.entries(rows)
+    .map(([sequence, amount]) => `${sequence}:${moneyKey(amount)}`)
+    .sort()
+    .join('|')
+}
+
+/** Preset advance for a plan, capped at net due; null when the plan has none. */
+function planAdvance(planId: string): number | null {
+  const plan = plans.value.find((p) => p.id === planId)
+  if (plan?.advance_amount == null) return null
+  return money3(Math.min(Math.max(0, Number(plan.advance_amount) || 0), draftNet.value))
 }
 
 /** Advance share from charge payment_timing (same ratio as backend when override is cleared). */
@@ -1282,6 +1434,7 @@ const isSheetDirty = computed(() => {
   const savedPlan = sheet.value.installment_plan_id || ''
   if (selectedPlanId.value !== savedPlan) return true
   if (moneyKey(draftUpfront.value) !== moneyKey(sheet.value.upfront_due)) return true
+  if (rowAmountsKey(draftRowAmounts.value) !== rowAmountsKey(savedRowAmounts())) return true
   const saved = (sheet.value.discountLines || [])
     .map((d) => `${d.discount_type_id}:${moneyKey(d.amount)}`)
     .sort()
@@ -1339,21 +1492,58 @@ function clampDraftUpfront() {
   draftUpfront.value = value
 }
 
+const selectedPlanEntries = computed(() => {
+  const plan = plans.value.find((p) => p.id === selectedPlanId.value)
+  return [...(plan?.entries || [])].sort((a, b) => a.sequence - b.sequence)
+})
+
+const planSequences = computed(() =>
+  selectedPlanEntries.value.map((entry, i) => (entry.sequence === 0 ? Math.max(1, i + 1) : entry.sequence)),
+)
+
+const lastPlanSequence = computed(() => planSequences.value[planSequences.value.length - 1] ?? null)
+
+const hasRowOverrides = computed(() => Object.keys(draftRowAmounts.value).length > 0)
+
 /** Plan-entry sequence → due amount after advance (same split as backend save). */
 const draftInstallmentDueBySeq = computed(() => {
   const map = new Map<number, number>()
-  const plan = plans.value.find((p) => p.id === selectedPlanId.value)
-  const entries = [...(plan?.entries || [])].sort((a, b) => a.sequence - b.sequence)
+  const entries = selectedPlanEntries.value
   if (!entries.length) return map
   const remaining = Math.max(0, draftNet.value - (Number(draftUpfront.value) || 0))
-  const weights = entries.map((e) => Number(e.weight) || 1)
-  const amounts = splitRoundedUpToFive(remaining, weights)
-  entries.forEach((entry, i) => {
-    const sequence = entry.sequence === 0 ? Math.max(1, i + 1) : entry.sequence
-    map.set(sequence, amounts[i] ?? 0)
-  })
+  const base = planEntryAmounts(remaining, entries)
+  const sequences = planSequences.value
+  const amounts = hasRowOverrides.value
+    ? fitFixedAmounts(
+        remaining,
+        sequences.map((seq, i) => draftRowAmounts.value[seq] ?? base[i] ?? 0),
+      )
+    : base
+  sequences.forEach((sequence, i) => map.set(sequence, amounts[i] ?? 0))
   return map
 })
+
+function canEditRowAmount(inst: { sequence: number; label?: string | null }) {
+  return (
+    !planLocked.value &&
+    Boolean(selectedPlanId.value) &&
+    !isAdvanceInstallment(inst) &&
+    inst.sequence !== lastPlanSequence.value &&
+    draftInstallmentDueBySeq.value.has(inst.sequence)
+  )
+}
+
+function onRowAmountChange(sequence: number, raw: string) {
+  const value = Number(raw)
+  draftRowAmounts.value = {
+    ...draftRowAmounts.value,
+    [sequence]: money3(Number.isFinite(value) && value > 0 ? value : 0),
+  }
+}
+
+function resetRowAmounts() {
+  draftRowAmounts.value = {}
+}
 
 type ScheduleDisplayRow = {
   id: string
@@ -1599,6 +1789,13 @@ async function applyPlan() {
         inclusion_type_id: row.inclusion_type_id,
       })),
       upfront_due: selectedPlanId.value ? Number(draftUpfront.value) || 0 : draftNet.value,
+      installment_amounts:
+        selectedPlanId.value && hasRowOverrides.value
+          ? [...draftInstallmentDueBySeq.value].map(([sequence, amount]) => ({
+              sequence,
+              amount: money3(amount),
+            }))
+          : [],
     })
     syncSheetDrafts()
     studentPayments.value = await feesV2Service.listStudentPayments(selectedId.value).catch(() => [])
@@ -1611,6 +1808,100 @@ async function applyPlan() {
       : apiMsg || err?.message || t('feesV2.sheetUnavailable')
   } finally {
     applyingPlan.value = false
+  }
+}
+
+const presetRows = computed(() =>
+  scheduleDisplayRows.value
+    .filter((inst) => !isAdvanceInstallment(inst))
+    .map((inst) => ({ inst, amount: displayInstDue(inst) }))
+    .filter((row) => row.amount > 0.001),
+)
+
+function openPresetDialog() {
+  presetName.value = ''
+  presetOpen.value = true
+}
+
+async function savePreset() {
+  const name = presetName.value.trim()
+  if (!name || !presetRows.value.length || savingPreset.value) return
+  const advanceRow = scheduleDisplayRows.value.find((inst) => isAdvanceInstallment(inst))
+  savingPreset.value = true
+  try {
+    const plan = await feesV2Service.saveInstallmentPlan({
+      school_id: schoolId.value,
+      name,
+      advance_amount: advanceRow ? displayInstDue(advanceRow) : 0,
+      entries: presetRows.value.map((row, i) => ({
+        sequence: i + 1,
+        month_number: row.inst.month_number ?? null,
+        label: row.inst.label ?? null,
+        weight: 1,
+        amount: money3(row.amount),
+      })),
+    })
+    plans.value = [...plans.value, plan].sort((a, b) => a.name.localeCompare(b.name))
+    presetOpen.value = false
+    if (!planLocked.value) {
+      selectedPlanId.value = plan.id
+      draftRowAmounts.value = {}
+      await applyPlan()
+    }
+    feedback.success(t('feesV2.presetSaved'))
+  } catch (e: unknown) {
+    const err = e as { message?: string; response?: { data?: { message?: string | string[] } } }
+    const apiMsg = err?.response?.data?.message
+    feedback.error(
+      Array.isArray(apiMsg) ? apiMsg.join(', ') : apiMsg || err?.message || t('common.error'),
+      t('common.error'),
+    )
+  } finally {
+    savingPreset.value = false
+  }
+}
+
+async function openBulkApply() {
+  bulkPlanId.value = ''
+  bulkLevelId.value = ''
+  bulkOpen.value = true
+  if (!feeLevels.value.length) {
+    feeLevels.value = await paymentConfigService
+      .listLevels(schoolId.value)
+      .then((rows) => rows.filter((lv) => lv.is_active))
+      .catch(() => [])
+  }
+}
+
+async function submitBulkApply() {
+  if (!bulkLevelId.value || !bulkPlanId.value || bulkApplying.value) return
+  bulkApplying.value = true
+  try {
+    const res = await feesV2Service.applyPlanToLevel({
+      installment_plan_id: bulkPlanId.value,
+      level_id: bulkLevelId.value,
+    })
+    bulkOpen.value = false
+    feedback.alert(
+      t('feesV2.bulkApplyResult', {
+        applied: res.applied,
+        total: res.total,
+        locked: res.skipped_locked,
+        custom: res.skipped_custom,
+        failed: res.failed,
+      }),
+      t('feesV2.applyPlanToLevel'),
+    )
+    await loadStudents()
+  } catch (e: unknown) {
+    const err = e as { message?: string; response?: { data?: { message?: string | string[] } } }
+    const apiMsg = err?.response?.data?.message
+    feedback.error(
+      Array.isArray(apiMsg) ? apiMsg.join(', ') : apiMsg || err?.message || t('common.error'),
+      t('common.error'),
+    )
+  } finally {
+    bulkApplying.value = false
   }
 }
 
@@ -1835,12 +2126,16 @@ watch([payAmount, proofFile, allocationInstallments], () => {
 
 watch(selectedPlanId, (id) => {
   if (!id) {
+    draftRowAmounts.value = {}
     draftUpfront.value = draftNet.value
     return
   }
-  // Selecting or changing a plan: default advance from charge timing (not 100% net).
+  // Selecting or changing a plan: preset advance, else charge timing (not 100% net).
   if (id !== (sheet.value?.installment_plan_id || '')) {
-    draftUpfront.value = suggestedUpfrontFromLines()
+    draftRowAmounts.value = {}
+    draftUpfront.value = planAdvance(id) ?? suggestedUpfrontFromLines()
+  } else {
+    draftRowAmounts.value = savedRowAmounts()
   }
   if (Number(draftUpfront.value) > draftNet.value) {
     draftUpfront.value = draftNet.value

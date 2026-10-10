@@ -29,7 +29,7 @@
           </div>
         </header>
 
-        <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
+        <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
@@ -85,6 +85,7 @@ import { useRoute } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import { useFeedback } from '@/composables/useFeedback'
 import reportExportService, {
   type ReportExportTemplateOption,

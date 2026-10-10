@@ -20,7 +20,7 @@
           </div>
         </header>
         <div class="p-6">
-          <div v-if="loadingGroups" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loadingGroups && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -100,7 +100,7 @@
           </button>
         </div>
         <div class="p-6">
-          <div v-if="loadingCourses" class="flex justify-center py-12">
+          <div v-if="loadingCourses && !routePageLoading" class="flex justify-center py-12">
             <FikrLoader />
           </div>
           <div v-else-if="!coursesTotal" class="flex min-h-[12rem] flex-col items-center justify-center px-6 py-12 text-center">
@@ -184,7 +184,7 @@
           </div>
         </div>
 
-        <div v-if="loadingGrid" class="flex justify-center rounded-2xl border border-gray-200/80 bg-white py-16">
+        <div v-if="loadingGrid && !routePageLoading" class="flex justify-center rounded-2xl border border-gray-200/80 bg-white py-16">
           <FikrLoader />
         </div>
 
@@ -369,6 +369,7 @@ import gradedCriterionMarksService, {
 } from '@/services/graded-criterion-marks.service'
 import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { t, locale } = useI18n()
 const feedback = useFeedback()

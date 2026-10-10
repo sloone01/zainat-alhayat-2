@@ -183,7 +183,7 @@ export class FeePaymentService {
           OR EXISTS (
             SELECT 1 FROM students st
             WHERE st.id = p.student_id
-              AND LOWER(CONCAT_WS(' ', st."firstName", st."secondName", st."secondNameEn", st."lastName", st.first_name_ar, st.first_name_en, st.last_name_ar, st.last_name_en)) LIKE :term
+              AND LOWER(CONCAT_WS(' ', st."firstName", st."secondName", st.second_name_en, st."lastName", st.first_name_ar, st.first_name_en, st.last_name_ar, st.last_name_en)) LIKE :term
           )
         )`,
         { term },

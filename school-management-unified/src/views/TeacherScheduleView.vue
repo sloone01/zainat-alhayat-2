@@ -5,7 +5,7 @@
         :title="$t('teacher.mySchedule')"
         :subtitle="weekRangeLabel"
       />
-      <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+      <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
         <FikrLoader />
         <span class="text-sm">{{ $t('parent.loading') }}</span>
       </div>
@@ -105,6 +105,7 @@ import { scheduleService } from '@/services/schedule.service'
 import { authService } from '@/services'
 import { formatSchoolWeekRange, periodPhase, schoolWeekDates, schoolWeekdayIndex } from '@/utils/schedule-display'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { t, locale } = useI18n()
 

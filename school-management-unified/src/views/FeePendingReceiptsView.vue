@@ -29,7 +29,7 @@
           <p v-if="proofError" class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {{ proofError }}
           </p>
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -214,7 +214,7 @@
       plain-footer
       @close="closeAllocation"
     >
-      <div v-if="allocLoading" class="flex items-center justify-center gap-2 py-8 text-sm text-fikr-ink-muted">
+      <div v-if="allocLoading && !routePageLoading" class="flex items-center justify-center gap-2 py-8 text-sm text-fikr-ink-muted">
         <FikrLoader size="sm" />
         <span>{{ $t('common.loading') }}</span>
       </div>
@@ -303,6 +303,7 @@ import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 import { getErrorMessage } from '@/utils/error-reporting'
 import { useFeedback } from '@/composables/useFeedback'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

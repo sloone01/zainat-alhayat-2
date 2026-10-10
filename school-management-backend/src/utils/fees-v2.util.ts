@@ -62,3 +62,36 @@ export function splitRoundedUpToFive(total: number, weights: number[]): number[]
   amounts.push(last);
   return amounts;
 }
+
+/**
+ * Fit fixed row amounts to `total` in order: rows are capped by what is left
+ * (trailing rows can drop to 0) and the last row absorbs any surplus.
+ */
+export function fitFixedAmounts(total: number, amounts: number[]): number[] {
+  if (!amounts.length) return [];
+  if (total <= 0) return amounts.map(() => 0);
+  let left = roundMoney(total);
+  const out = amounts.map((a) => {
+    const take = roundMoney(Math.min(Math.max(0, a), left));
+    left = roundMoney(left - take);
+    return take;
+  });
+  if (left > 0) out[out.length - 1] = roundMoney(out[out.length - 1] + left);
+  return out;
+}
+
+/** True when the plan stores fixed per-row amounts (a preset) instead of weights. */
+export function isFixedAmountPlan(entries: Array<{ amount?: string | number | null }>): boolean {
+  return entries.length > 0 && entries.every((e) => e.amount != null);
+}
+
+/** Row amounts for plan entries: fixed preset amounts, else weighted split rounded up to 5. */
+export function planEntryAmounts(
+  total: number,
+  entries: Array<{ weight?: string | number | null; amount?: string | number | null }>,
+): number[] {
+  if (isFixedAmountPlan(entries)) {
+    return fitFixedAmounts(total, entries.map((e) => num(e.amount)));
+  }
+  return splitRoundedUpToFive(total, entries.map((e) => num(e.weight) || 1));
+}

@@ -81,6 +81,11 @@ export class InstallmentPlanEntryInput {
   @IsNumber()
   @Min(0)
   weight?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  amount?: number | null;
 }
 
 export class UpsertInstallmentPlanDto {
@@ -99,6 +104,11 @@ export class UpsertInstallmentPlanDto {
   @IsOptional()
   @IsBoolean()
   is_active?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  advance_amount?: number | null;
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -149,6 +159,29 @@ export class UpsertBusFeeLinkDto {
   lines: GradeFeeLinkLineInput[];
 }
 
+export class ApplyPlanToLevelDto {
+  @IsOptional()
+  @IsUUID()
+  school_id?: string;
+
+  @IsUUID()
+  installment_plan_id: string;
+
+  @IsUUID()
+  level_id: string;
+}
+
+export class ChargeSheetInstallmentAmountInput {
+  @IsInt()
+  @Min(1)
+  sequence: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  amount: number;
+}
+
 export class AssignStudentChargePlanDto {
   @IsOptional()
   @IsUUID()
@@ -177,6 +210,13 @@ export class AssignStudentChargePlanDto {
   @IsNumber()
   @Min(0)
   upfront_due?: number;
+
+  /** Per-row amounts for this student; empty or null returns to the plan split. */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ChargeSheetInstallmentAmountInput)
+  installment_amounts?: ChargeSheetInstallmentAmountInput[] | null;
 }
 
 export class UpsertCourseFeeLinkDto {

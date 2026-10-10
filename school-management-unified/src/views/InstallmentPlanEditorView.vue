@@ -39,6 +39,18 @@
                   class="fk-field"
                 />
               </div>
+              <div v-if="isPreset">
+                <label class="mb-1.5 block text-xs font-medium text-gray-600" for="plan-advance">{{ $t('feesV2.advanceAmount') }}</label>
+                <input
+                  id="plan-advance"
+                  v-model.number="planForm.advance_amount"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  dir="ltr"
+                  class="fk-field fk-field--mono text-end"
+                />
+              </div>
             </div>
 
             <hr class="border-gray-200">
@@ -112,6 +124,18 @@
                       @input="e.labelManual = true"
                     />
                   </div>
+                  <div v-if="isPreset">
+                    <label class="mb-1.5 block text-xs font-medium text-gray-600">{{ $t('feesV2.amount') }}</label>
+                    <input
+                      v-model.number="e.amount"
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      dir="ltr"
+                      required
+                      class="fk-field fk-field--mono text-end"
+                    />
+                  </div>
                 </div>
               </article>
             </div>
@@ -123,6 +147,7 @@
                     <th class="w-12 px-4 py-3 text-center">#</th>
                     <th class="px-4 py-3 text-start">{{ $t('feesV2.month') }}</th>
                     <th class="px-4 py-3 text-start">{{ $t('feesV2.installmentName') }}</th>
+                    <th v-if="isPreset" class="px-4 py-3 text-end">{{ $t('feesV2.amount') }}</th>
                     <th class="w-16 px-3 py-3 text-center"><span class="sr-only">{{ $t('common.delete') }}</span></th>
                   </tr>
                 </thead>
@@ -151,6 +176,18 @@
                         required
                         class="fk-field min-w-[10rem]"
                         @input="e.labelManual = true"
+                      />
+                    </td>
+                    <td v-if="isPreset" class="align-middle px-4 py-3">
+                      <input
+                        v-model.number="e.amount"
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        dir="ltr"
+                        required
+                        class="fk-field fk-field--mono w-28 text-end"
+                        :aria-label="`${$t('feesV2.amount')} ${i + 1}`"
                       />
                     </td>
                     <td class="align-middle px-3 py-3 text-center">
@@ -211,6 +248,7 @@ import SuccessFlashDialog from '@/components/SuccessFlashDialog.vue'
 import { useSuccessFlash } from '@/composables/useSuccessFlash'
 import { feesV2Service } from '@/services/fees-v2.service'
 import { authService } from '@/services'
+import { isFixedAmountPlan } from '@/utils/fees-v2.util'
 import {
   isAutoMonthLabel,
   isMonthNumberValid,
@@ -222,6 +260,7 @@ type PlanEntryRow = {
   month_number: number | null
   label: string | null
   labelManual: boolean
+  amount: number | null
 }
 
 const route = useRoute()
@@ -243,9 +282,12 @@ const {
 } = useSuccessFlash()
 
 const saving = ref(false)
+/** Presets store fixed amounts per row (saved from a student charge sheet). */
+const isPreset = ref(false)
 const planForm = ref({
   name: '',
   description: '',
+  advance_amount: 0,
   entries: [] as PlanEntryRow[],
 })
 
@@ -269,6 +311,7 @@ function createEntry(month_number: number | null = null): PlanEntryRow {
     month_number,
     label: null,
     labelManual: false,
+    amount: isPreset.value ? 0 : null,
   }
   syncLabelFromMonth(row)
   return row
@@ -291,9 +334,11 @@ watch(locale, refreshAutoLabels)
 async function load() {
   if (isEdit.value && planId.value) {
     const plan = await feesV2Service.getInstallmentPlan(planId.value)
+    isPreset.value = isFixedAmountPlan(plan.entries || [])
     planForm.value = {
       name: plan.name,
       description: plan.description || '',
+      advance_amount: Number(plan.advance_amount) || 0,
       entries: (plan.entries || []).map((e) => {
         const labelManual = !isAutoMonthLabel(e.month_number, e.label, locale.value)
         return {
@@ -301,14 +346,17 @@ async function load() {
           month_number: e.month_number,
           label: e.label,
           labelManual,
+          amount: e.amount != null ? Number(e.amount) : null,
         }
       }),
     }
     refreshAutoLabels()
   } else {
+    isPreset.value = false
     planForm.value = {
       name: '',
       description: '',
+      advance_amount: 0,
       entries: [createEntry(9)],
     }
   }
@@ -321,10 +369,12 @@ async function save() {
       school_id: schoolId.value,
       name: planForm.value.name.trim(),
       description: planForm.value.description.trim() || undefined,
+      advance_amount: isPreset.value ? Number(planForm.value.advance_amount) || 0 : null,
       entries: planForm.value.entries.map((e, i) => ({
         sequence: i + 1,
         month_number: e.month_number,
         label: e.label,
+        amount: isPreset.value ? Number(e.amount) || 0 : null,
       })),
     }
     if (isEdit.value && planId.value) {

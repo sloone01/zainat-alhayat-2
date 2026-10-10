@@ -65,6 +65,10 @@ export class StudentChargeSheet {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   installment_due: string;
 
+  /** Staff-set per-row amounts (by installment sequence); null uses the plan split. */
+  @Column({ type: 'jsonb', nullable: true })
+  installment_amounts: Array<{ sequence: number; amount: number }> | null;
+
   /** Advance/credit left over when an approved payment exceeds the balance due. */
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   credit_balance: string;
