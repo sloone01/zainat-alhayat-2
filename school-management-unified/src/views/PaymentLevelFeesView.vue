@@ -16,7 +16,7 @@
             <h2 class="fk-card__title truncate">{{ $t('paymentSettings.levelsGridTitle') }}</h2>
             <p class="fk-card__meta">{{ $t('paymentSettings.levelsCount', { count: total }) }}</p>
           </div>
-          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+          <div class="flex shrink-0 flex-nowrap items-center justify-end gap-2">
               <FikrToolbarSearch
                 v-model="searchQuery"
                 id="levels-search"

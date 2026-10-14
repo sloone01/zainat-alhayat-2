@@ -1639,7 +1639,9 @@
     "semesters": "Semesters",
     "semester": "semester",
     "semestersList": "Semesters List",
-    "semestersForYear": "Active year: {year}",
+    "semestersForYear": "Year: {year}",
+    "yearSaved": "Academic year saved.",
+    "semesterSaved": "Semester saved.",
     "activateYearToAddSemesters": "Activate an academic year to add semesters.",
     "addSemester": "Add Semester",
     "editSemester": "Edit Semester",
@@ -2088,12 +2090,14 @@
     "decisionHeading": "Registration decision",
     "decisionHint": "Review the submitted details below, then approve or reject this registration.",
     "status": {
+      "draft": "Draft",
       "pending": "Pending",
       "pending_payment": "Pending payment",
       "active": "Active",
       "suspended": "Suspended",
       "rejected": "Rejected"
     },
+    "openSchoolSite": "Open school site",
     "detailsNav": "Registration details",
     "detailsTitle": "Registration details",
     "detailsSubtitle": "Submitted school registration",
@@ -3252,6 +3256,37 @@
       "postponedTasks": "Postponed Tasks",
       "pendingTasks": "Pending Tasks"
     }
+  },
+  "progressSettings": {
+    "title": "Progress tracking settings",
+    "description": "Configure how lessons are loaded and accessed",
+    "lessonAccess": {
+      "title": "Lesson access",
+      "description": "Who can access lessons",
+      "restrictToAssignedTeacher": "Restrict lessons to the assigned teacher",
+      "restrictDescription": "Teachers only see lessons assigned to them",
+      "allowAllTeachers": "Allow all teachers",
+      "allowAllDescription": "All teachers can access every lesson"
+    },
+    "lessonSource": {
+      "title": "Lesson source",
+      "description": "How lessons are loaded",
+      "useSchedule": "Use the timetable",
+      "useScheduleDescription": "Load lessons from the schedule",
+      "showOnlyTodayLessons": "Show today’s lessons only",
+      "showOnlyTodayDescription": "Show only lessons scheduled for today"
+    },
+    "currentConfig": "Current configuration",
+    "restricted": "Restricted",
+    "unrestricted": "Unrestricted",
+    "allTeachers": "All teachers",
+    "assignedOnly": "Assigned only",
+    "teacherAccess": "Teacher access",
+    "fromSchedule": "From schedule",
+    "manual": "Manual",
+    "todayOnly": "Today only",
+    "allLessons": "All lessons",
+    "timeFilter": "Time filter"
   },
   "onlineSession": {
     "title": "Online class session",

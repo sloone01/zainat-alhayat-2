@@ -62,6 +62,7 @@ export interface RegisteredSchoolRow {
   billingPeriod: string | null;
   subscriptionStatus: string | null;
   invoiceStatus: string | null;
+  landing_slug: string | null;
   /** Last active (or latest) membership period start/end. */
   membershipFrom: string | null;
   membershipTo: string | null;
@@ -317,6 +318,7 @@ export class PlatformSchoolService {
         billingPeriod: billing?.billingPeriod ?? null,
         subscriptionStatus: billing?.subscriptionStatus ?? null,
         invoiceStatus: billing?.invoiceStatus ?? null,
+        landing_slug: school.landing_slug ?? null,
         membershipFrom: billing?.membershipFrom ?? null,
         membershipTo: billing?.membershipTo ?? null,
         owner,
@@ -644,7 +646,7 @@ export class PlatformSchoolService {
       throw new BadRequestException('No owner account found for this school.');
     }
     const provisioned = await this.provisionOwnerOnApprove(admin, schoolId, {
-      forceNewPassword: !admin.lastLogin,
+      forceNewPassword: true,
     });
     this.queueOwnerApprovalEmail(provisioned.admin, school, {
       tempPassword: provisioned.tempPassword,

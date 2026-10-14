@@ -320,9 +320,109 @@
               <p v-if="!detail.installmentSchedule.rows.length" class="text-sm text-gray-500">
                 {{ $t('studentPayments.installmentsNoRows') }}
               </p>
+              <div v-else class="space-y-3 md:hidden">
+                <div
+                  v-for="row in detail.installmentSchedule.rows"
+                  :key="row.installment_id"
+                  class="rounded-xl border border-gray-100 bg-white p-3"
+                  :class="row.paid ? 'bg-emerald-50/25' : ''"
+                >
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-gray-900">
+                        {{ row.label || $t('studentPayments.installmentSeq') }} {{ row.sequence }}
+                      </p>
+                      <p class="mt-0.5 text-xs text-gray-600">
+                        {{ $t('studentPayments.installmentMonth') }}
+                        {{ row.month_number ?? '—' }}
+                      </p>
+                    </div>
+                    <span
+                      v-if="row.paid"
+                      class="fk-pill fk-pill--teal !px-2 !py-0.5 !text-[10px]"
+                    >
+                      {{ $t('studentPayments.installmentBadgePaid') }}
+                    </span>
+                    <span
+                      v-else
+                      class="fk-pill fk-pill--outline !px-2 !py-0.5 !text-[10px]"
+                    >
+                      {{ $t('studentPayments.installmentBadgeDue') }}
+                    </span>
+                  </div>
+                  <div class="mt-2 flex items-center justify-between text-xs">
+                    <span class="font-semibold tabular-nums text-gray-900">
+                      {{ Number(row.scheduled_amount).toFixed(2) }} {{ detail.payment.currency }}
+                    </span>
+                    <span class="text-gray-800">
+                      <template v-if="row.paid">{{ formatPaidAt(row.paid.paid_at) }}</template>
+                      <template v-else>—</template>
+                    </span>
+                  </div>
+                  <div class="mt-2 flex flex-wrap justify-end gap-1">
+                    <template v-if="row.paid">
+                      <button
+                        type="button"
+                        class="fk-pill fk-pill--mist !text-[10px] text-red-700 transition-colors hover:bg-red-50"
+                        @click="clearInstallment(row.installment_id)"
+                      >
+                        {{ $t('studentPayments.installmentClearPaid') }}
+                      </button>
+                    </template>
+                    <button
+                      v-else
+                      type="button"
+                      class="fk-pill fk-pill--navy !text-[10px] transition-colors hover:bg-navy-900"
+                      @click="startPayInstallment(row)"
+                    >
+                      {{ $t('studentPayments.installmentMarkPaid') }}
+                    </button>
+                  </div>
+                  <div
+                    v-if="payingInstallmentId === row.installment_id"
+                    class="mt-3 space-y-2 border-t border-gray-100 pt-3"
+                  >
+                    <div>
+                      <label class="mb-1 block text-[11px] font-medium text-gray-500">{{ $t('studentPayments.installmentAmount') }}</label>
+                      <input
+                        v-model.number="payInstallmentForm.amount"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        class="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs"
+                        @input="schedulePayPreview"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-[11px] font-medium text-gray-500">{{ $t('studentPayments.installmentPayRemarks') }}</label>
+                      <input
+                        v-model="payInstallmentForm.remarks"
+                        type="text"
+                        class="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs"
+                      />
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        class="fk-pill fk-pill--navy !text-[11px] transition-colors hover:bg-navy-900"
+                        @click="submitInstallmentPay"
+                      >
+                        {{ $t('studentPayments.installmentSubmitPay') }}
+                      </button>
+                      <button
+                        type="button"
+                        class="fk-pill fk-pill--mist !text-[11px] transition-colors hover:bg-fikr-surface-high"
+                        @click="cancelPayInstallment"
+                      >
+                        {{ $t('studentPayments.installmentCancelPay') }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div
-                v-else
-                class="overflow-x-auto rounded-xl bg-white"
+                v-if="detail.installmentSchedule.rows.length"
+                class="hidden overflow-x-auto rounded-xl bg-white md:block"
               >
                 <table class="w-full min-w-[36rem] border-collapse text-xs">
                   <thead>

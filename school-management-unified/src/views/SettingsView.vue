@@ -196,7 +196,13 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="year in filteredYears" :key="year.id" class="bg-white">
+              <tr
+                v-for="year in filteredYears"
+                :key="year.id"
+                class="cursor-pointer bg-white"
+                :class="semesterYear?.id === year.id ? 'bg-primary-50/60' : ''"
+                @click="selectSemesterYear(year)"
+              >
                 <td>
                   <div class="font-medium text-fikr-ink">{{ year.year }}</div>
                   <div v-if="year.description" class="fk-card__meta">{{ year.description }}</div>
@@ -224,7 +230,7 @@
                     {{ year.semesters?.length || 0 }}
                   </div>
                 </td>
-                <td class="text-end">
+                <td class="text-end" @click.stop>
                   <RowActionsMenu
                     :open="activeYearDropdown === year.id"
                     @toggle="toggleYearDropdown(year.id)"
@@ -246,13 +252,6 @@
                     >
                       {{ $t('settings.archiveYear') }}
                     </RowActionsItem>
-                    <RowActionsItem
-                      v-if="yearStatus(year) === 'archived'"
-                      icon="restore"
-                      @click="restoreYear(year)"
-                    >
-                      {{ $t('settings.restoreYear') }}
-                    </RowActionsItem>
                   </RowActionsMenu>
                 </td>
               </tr>
@@ -260,9 +259,8 @@
           </table>
         </div>
 
-        <div v-else class="fk-empty">
+        <div v-else-if="!years.length" class="fk-empty">
           <h3 class="text-sm font-medium text-fikr-ink">{{ $t('settings.noYears') }}</h3>
-          <p class="mt-1 text-sm text-fikr-ink-soft">{{ $t('settings.noYearsDescription') }}</p>
           <button
             type="button"
             class="fk-btn fk-btn--primary mt-4"
@@ -270,6 +268,9 @@
           >
             {{ $t('settings.createFirstYear') }}
           </button>
+        </div>
+        <div v-else class="fk-empty">
+          <h3 class="text-sm font-medium text-fikr-ink">{{ $t('settings.noYears') }}</h3>
         </div>
       </div>
 
@@ -281,21 +282,33 @@
               {{ $t('settings.semestersForYear', { year: semesterYear.year }) }}
             </p>
           </div>
-          <button
-            type="button"
-            :disabled="!semesterYear"
-            class="fk-iconbtn fk-iconbtn--primary"
-            :aria-label="$t('settings.addSemester')"
-            @click="openSemesterModal(semesterYear)"
-          >
-            <IconPlus />
-          </button>
+          <div class="flex flex-wrap items-center gap-2">
+            <select
+              v-if="semesterYear"
+              v-model="semesterStatusFilter"
+              :dir="isRTL ? 'rtl' : 'ltr'"
+              class="fk-field fk-field--sm w-auto"
+            >
+              <option value="all">{{ $t('settings.allStatuses') }}</option>
+              <option value="active">{{ $t('settings.active') }}</option>
+              <option value="inactive">{{ $t('settings.inactive') }}</option>
+            </select>
+            <button
+              type="button"
+              :disabled="!semesterYear"
+              class="fk-iconbtn fk-iconbtn--primary"
+              :aria-label="$t('settings.addSemester')"
+              @click="openSemesterModal(semesterYear)"
+            >
+              <IconPlus />
+            </button>
+          </div>
         </div>
 
         <p v-if="!semesterYear" class="rounded-lg border border-dashed border-fikr-outline bg-fikr-pearl px-3 py-2 text-center text-sm text-fikr-ink-soft">
           {{ $t('settings.activateYearToAddSemesters') }}
         </p>
-        <div v-else-if="semesterYear.semesters?.length" class="fk-table-wrap">
+        <div v-else-if="filteredSemesters.length" class="fk-table-wrap">
           <table class="fk-table">
             <thead>
               <tr>
@@ -306,7 +319,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="semester in semesterYear.semesters" :key="semester.id">
+              <tr v-for="semester in filteredSemesters" :key="semester.id">
                 <td class="!py-2 font-medium text-fikr-ink">{{ semester.title }}</td>
                 <td
                   class="!py-2 text-fikr-ink-muted"
@@ -354,7 +367,7 @@
             </tbody>
           </table>
         </div>
-        <p v-else class="rounded-lg border border-dashed border-fikr-outline bg-fikr-pearl px-3 py-2 text-center text-sm text-fikr-ink-soft">
+        <p v-else-if="semesterYear" class="rounded-lg border border-dashed border-fikr-outline bg-fikr-pearl px-3 py-2 text-center text-sm text-fikr-ink-soft">
           {{ $t('settings.noSemesters') }}
         </p>
       </div>
@@ -575,16 +588,6 @@
         @save="saveSemester"
       />
 
-      <!-- Progress Dialog -->
-      <ProgressDialog
-        :show="showProgressDialog"
-        :state="progressState"
-        :title="progressTitle"
-        :message="progressMessage"
-        :error-message="errorMessage"
-        @close="showProgressDialog = false"
-      />
-
       <!-- Duration Modal -->
       <DurationModal
         v-if="showAddDurationModal"
@@ -619,7 +622,6 @@ import YearModal from '@/components/YearModal.vue'
 import SemesterModal from '@/components/SemesterModal.vue'
 import DurationModal from '@/components/DurationModal.vue'
 import StartTimesModal from '@/components/StartTimesModal.vue'
-import ProgressDialog from '@/components/ProgressDialog.vue'
 import RowActionsMenu from '@/components/RowActionsMenu.vue'
 import RowActionsItem from '@/components/RowActionsItem.vue'
 import {
@@ -884,6 +886,7 @@ async function saveSchoolInfo() {
 // Reactive data
 const searchQuery = ref('')
 const statusFilter = ref('all')
+const semesterStatusFilter = ref('all')
 const activeYearDropdown = ref<string | null>(null)
 const activeSemesterDropdown = ref<string | null>(null)
 const activeDurationDropdown = ref<string | number | null>(null)
@@ -985,23 +988,32 @@ const generatedTimeSlots = ref<GeneratedSlot[]>([])
 const years = ref<AcademicYear[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
-const showProgressDialog = ref(false)
-const progressState = ref('loading')
-const progressTitle = ref('')
-const progressMessage = ref('')
+const selectedSemesterYearId = ref<string | null>(null)
 const errorMessage = ref('')
 
 // Computed properties
 const isRTL = computed(() => locale.value === 'ar')
 
 const activeYear = computed(() => years.value.find(year => year.is_active))
-const semesterYear = computed(() => activeYear.value || years.value[0] || null)
+const semesterYear = computed(() => {
+  const selected = selectedSemesterYearId.value
+    ? years.value.find((year) => year.id === selectedSemesterYearId.value)
+    : null
+  return selected || activeYear.value || years.value[0] || null
+})
+
+const filteredSemesters = computed(() => {
+  const list = semesterYear.value?.semesters || []
+  if (semesterStatusFilter.value === 'active') return list.filter((semester) => semester.is_active)
+  if (semesterStatusFilter.value === 'inactive') return list.filter((semester) => !semester.is_active)
+  return list
+})
 
 const yearStats = computed(() => ({
   total: years.value.length,
   active: years.value.filter((y) => y.is_active).length,
-  archived: years.value.filter((y) => new Date(y.end_date) < new Date()).length,
-  semesters: activeYear.value?.semesters?.length || 0,
+  archived: years.value.filter((y) => yearStatus(y) === 'archived').length,
+  semesters: semesterYear.value?.semesters?.length || 0,
 }))
 
 const filteredYears = computed(() => {
@@ -1045,6 +1057,12 @@ const loadAcademicYears = async () => {
     loading.value = true
     error.value = null
     years.value = await academicYearService.getAll()
+    if (
+      selectedSemesterYearId.value &&
+      !years.value.some((year) => year.id === selectedSemesterYearId.value)
+    ) {
+      selectedSemesterYearId.value = null
+    }
   } catch (err: any) {
     error.value = err.message || 'Failed to load academic years'
     console.error('Error loading academic years:', err)
@@ -1215,16 +1233,8 @@ const archiveYear = async (year: AcademicYear) => {
   activeYearDropdown.value = null
 }
 
-const restoreYear = async (year: AcademicYear) => {
-  try {
-    // For restore, we update to make it active again
-    await academicYearService.update(year.id, { is_active: false }) // Just make it inactive, not archived
-    await loadAcademicYears() // Reload data
-  } catch (err: any) {
-    error.value = err.message || 'Failed to restore year'
-    console.error('Error restoring year:', err)
-  }
-  activeYearDropdown.value = null
+const selectSemesterYear = (year: AcademicYear) => {
+  selectedSemesterYearId.value = year.id
 }
 
 const openSemesterModal = (year: any) => {
@@ -1275,14 +1285,8 @@ const closeSemesterModal = () => {
 }
 
 const saveYear = async (yearData: any) => {
-  showProgressDialog.value = true
-  progressState.value = 'loading'
-  progressTitle.value = editingYear.value ? 'تحديث السنة الأكاديمية' : 'إنشاء سنة أكاديمية جديدة'
-  progressMessage.value = editingYear.value ? 'جاري تحديث بيانات السنة الأكاديمية...' : 'جاري إنشاء السنة الأكاديمية الجديدة...'
-
   try {
     if (editingYear.value) {
-      // Update existing year
       const updateData: UpdateAcademicYearDto = {
         year: yearData.name || yearData.year,
         start_date: yearData.startDate || yearData.start_date,
@@ -1291,9 +1295,7 @@ const saveYear = async (yearData: any) => {
         is_active: yearData.setAsActive || yearData.isActive || yearData.is_active
       }
       await academicYearService.update(editingYear.value.id, updateData)
-      progressMessage.value = 'تم تحديث السنة الأكاديمية بنجاح'
     } else {
-      // Add new year
       const createData: CreateAcademicYearDto = {
         year: yearData.name || yearData.year,
         start_date: yearData.startDate || yearData.start_date,
@@ -1302,26 +1304,15 @@ const saveYear = async (yearData: any) => {
         is_active: yearData.setAsActive || yearData.isActive || yearData.is_active || false,
       }
       await academicYearService.create(createData)
-      progressMessage.value = 'تم إنشاء السنة الأكاديمية بنجاح'
     }
 
-    await loadAcademicYears() // Reload data
-    progressState.value = 'success'
-
-    setTimeout(() => {
-      showProgressDialog.value = false
-      closeYearModal()
-    }, 1500)
-
+    await loadAcademicYears()
+    closeYearModal()
+    feedback.saved(t('settings.yearSaved'))
   } catch (err: any) {
     console.error('Error saving year:', err)
-    progressState.value = 'error'
-    errorMessage.value = err.message || 'حدث خطأ أثناء العملية'
-    progressMessage.value = 'فشل في العملية'
-
-    setTimeout(() => {
-      showProgressDialog.value = false
-    }, 3000)
+    errorMessage.value = err.message || t('common.error')
+    feedback.error(errorMessage.value)
   }
 }
 
@@ -1335,14 +1326,8 @@ function semesterSaveError(err: { message?: string; response?: { data?: { messag
 }
 
 const saveSemester = async (semesterData: any) => {
-  showProgressDialog.value = true
-  progressState.value = 'loading'
-  progressTitle.value = editingSemester.value ? 'تحديث الفصل الدراسي' : 'إنشاء فصل دراسي جديد'
-  progressMessage.value = editingSemester.value ? 'جاري تحديث بيانات الفصل الدراسي...' : 'جاري إنشاء الفصل الدراسي الجديد...'
-
   try {
     if (editingSemester.value) {
-      // Update existing semester
       const updateData: UpdateSemesterDto = {
         title: semesterData.title,
         start_date: semesterData.startDate || semesterData.start_date,
@@ -1351,9 +1336,7 @@ const saveSemester = async (semesterData: any) => {
         is_active: semesterData.isActive ?? semesterData.is_active,
       }
       await semesterService.update(editingSemester.value.id, updateData)
-      progressMessage.value = 'تم تحديث الفصل الدراسي بنجاح'
     } else {
-      // Add new semester — inactive unless explicitly marked active
       const createData: CreateSemesterDto = {
         title: semesterData.title,
         start_date: semesterData.startDate || semesterData.start_date,
@@ -1363,26 +1346,15 @@ const saveSemester = async (semesterData: any) => {
         is_active: semesterData.isActive ?? semesterData.is_active ?? false,
       }
       await semesterService.create(createData)
-      progressMessage.value = 'تم إنشاء الفصل الدراسي بنجاح'
     }
 
-    await loadAcademicYears() // Reload data to get updated semesters
-    progressState.value = 'success'
-
-    setTimeout(() => {
-      showProgressDialog.value = false
-      closeSemesterModal()
-    }, 1500)
-
+    await loadAcademicYears()
+    closeSemesterModal()
+    feedback.saved(t('settings.semesterSaved'))
   } catch (err: any) {
     console.error('Error saving semester:', err)
-    progressState.value = 'error'
     errorMessage.value = semesterSaveError(err)
-    progressMessage.value = 'فشل في العملية'
-
-    setTimeout(() => {
-      showProgressDialog.value = false
-    }, 3000)
+    feedback.error(errorMessage.value)
   }
 }
 

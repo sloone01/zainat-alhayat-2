@@ -70,12 +70,12 @@
               <KanbanCard
                 v-for="(school, index) in paginatedSchools"
                 :key="school.id"
-                :title="school.name"
+                :title="schoolTitle(school)"
                 :description="submittedEmail(school) || $t('platformSchools.notProvided')"
               >
                 <template #tags>
-                  <KanbanTag :dot="school.status === 'active' ? 'emerald' : school.status === 'rejected' ? 'red' : 'amber'">
-                    {{ statusLabel(school.status) }}
+                  <KanbanTag :dot="displayStatus(school) === 'active' ? 'emerald' : displayStatus(school) === 'rejected' ? 'red' : displayStatus(school) === 'draft' ? 'gray' : 'amber'">
+                    {{ statusLabel(displayStatus(school)) }}
                   </KanbanTag>
                   <KanbanTag v-if="school.planCode" dot="navy">{{ school.planCode }}</KanbanTag>
                 </template>
@@ -87,6 +87,13 @@
                   >
                     <RowActionsItem icon="view" @click="onOpenDetails(school)">
                       {{ $t('platformSchools.detailsNav') }}
+                    </RowActionsItem>
+                    <RowActionsItem
+                      v-if="school.landing_slug"
+                      icon="open"
+                      @click="openSchoolSite(school)"
+                    >
+                      {{ $t('platformSchools.openSchoolSite') }}
                     </RowActionsItem>
                     <RowActionsItem
                       v-if="canManageSchool"
@@ -111,7 +118,7 @@
                   </KanbanMeta>
                 </template>
                 <template #avatars>
-                  <KanbanAvatar :src="school.logo_url || undefined" :initials="school.name.charAt(0)" />
+                  <KanbanAvatar :src="school.logo_url || undefined" :initials="schoolTitle(school).charAt(0)" />
                 </template>
               </KanbanCard>
             </div>
@@ -146,9 +153,9 @@
                         <span
                           v-else
                           class="fk-monogram fk-monogram--navy text-xs"
-                        >{{ school.name.charAt(0) }}</span>
+                        >{{ schoolTitle(school).charAt(0) }}</span>
                         <div class="min-w-0">
-                          <div class="font-medium text-fikr-ink">{{ school.name }}</div>
+                          <div class="font-medium text-fikr-ink">{{ schoolTitle(school) }}</div>
                         </div>
                       </div>
                     </td>
@@ -161,8 +168,8 @@
                       <span v-else class="text-fikr-ink-soft">{{ $t('platformSchools.notProvided') }}</span>
                     </td>
                     <td>
-                      <span class="fk-chip" :class="statusChipClass(school.status)">
-                        {{ statusLabel(school.status) }}
+                      <span class="fk-chip" :class="statusChipClass(displayStatus(school))">
+                        {{ statusLabel(displayStatus(school)) }}
                       </span>
                     </td>
                     <td class="capitalize">{{ school.planCode || '—' }}</td>
@@ -176,6 +183,13 @@
                       >
                         <RowActionsItem icon="view" @click="onOpenDetails(school)">
                           {{ $t('platformSchools.detailsNav') }}
+                        </RowActionsItem>
+                        <RowActionsItem
+                          v-if="school.landing_slug"
+                          icon="open"
+                          @click="openSchoolSite(school)"
+                        >
+                          {{ $t('platformSchools.openSchoolSite') }}
                         </RowActionsItem>
                         <RowActionsItem
                           v-if="canManageSchool"
@@ -578,6 +592,7 @@ import { useServerPagination } from '@/composables/useServerPagination'
 import { useClaims } from '@/composables/useClaims'
 import { useFeedback } from '@/composables/useFeedback'
 import { setSelectedPlatformSchoolId } from '@/composables/usePlatformSchoolSelection'
+import { schoolDisplayName } from '@/utils/school-display-name'
 import {
   platformSchoolService,
   type RegisteredSchool,
@@ -684,6 +699,21 @@ function formatDate(value: string) {
   }
 }
 
+function schoolTitle(school: RegisteredSchool) {
+  return schoolDisplayName(school, locale.value) || school.name
+}
+
+function displayStatus(school: RegisteredSchool) {
+  return school.subscriptionStatus === 'draft' ? 'draft' : school.status
+}
+
+function openSchoolSite(school: RegisteredSchool) {
+  activeMenuId.value = null
+  const slug = (school.landing_slug || '').trim()
+  if (!slug) return
+  window.open(`/s/${encodeURIComponent(slug)}`, '_blank', 'noopener')
+}
+
 function statusLabel(status: string) {
   const key = `platformSchools.status.${status || 'active'}`
   return te(key) ? t(key) : status
@@ -705,6 +735,8 @@ function statusChipClass(status: string) {
       return 'fk-chip--navy'
     case 'rejected':
       return 'fk-chip--red'
+    case 'draft':
+      return 'fk-chip--neutral'
     default:
       return 'fk-chip--neutral'
   }

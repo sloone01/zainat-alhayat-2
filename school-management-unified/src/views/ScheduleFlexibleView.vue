@@ -662,9 +662,11 @@ const saveClass = async (classData: any) => {
       await scheduleService.createSchedule(scheduleData)
       await fetchSchedules(groupId)
     }
+    closeClassModal()
+    feedback.saved(t('common.savedSuccessfully'))
   } catch (error) {
     console.error('Error saving schedule:', error)
-    alert(
+    feedback.error(
       error instanceof Error && error.message === 'shift-failed'
         ? t('scheduleManagement.shiftFailed')
         : t('scheduleManagement.saveFailed'),
@@ -677,8 +679,6 @@ const saveClass = async (classData: any) => {
   } finally {
     loading.value = false
   }
-
-  closeClassModal()
 }
 
 const deleteClass = async (classItem: any) => {
@@ -693,7 +693,7 @@ const deleteClass = async (classItem: any) => {
     }
   } catch (error) {
     console.error('Error deleting schedule:', error)
-    alert(t('scheduleManagement.deleteFailed'))
+    feedback.error(t('scheduleManagement.deleteFailed'))
   } finally {
     loading.value = false
   }

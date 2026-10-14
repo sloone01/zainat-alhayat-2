@@ -310,6 +310,16 @@ const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 const feedback = useFeedback()
 
+function receiptErrorMessage(error: unknown): string {
+  const anyErr = error as { response?: { data?: { code?: string; message?: string } } }
+  const code = String(anyErr?.response?.data?.code || '')
+  const msg = getErrorMessage(error, t('common.error'))
+  if (code === 'NO_ACTIVE_YEAR' || /no active academic year/i.test(msg)) {
+    return t('parentFees.noActiveYear')
+  }
+  return msg
+}
+
 const showFilters = ref(false)
 const searchQuery = ref('')
 const activeMenuId = ref<string | null>(null)
@@ -385,7 +395,7 @@ async function confirmPaid(id: string) {
     await reload()
     feedback.success(t('common.savedSuccessfully'))
   } catch (e) {
-    const msg = getErrorMessage(e, t('common.error'))
+    const msg = receiptErrorMessage(e)
     // Overpayment: let the admin split the amount across open items (leftover → credit).
     if (/exceeds balance/i.test(msg)) {
       const payment = paginatedPayments.value.find((p) => p.id === id)
@@ -469,7 +479,7 @@ async function openAllocation(payment: FeePayment) {
     }
     allocItems.value = items
   } catch (e) {
-    allocError.value = getErrorMessage(e, t('common.error'))
+    allocError.value = receiptErrorMessage(e)
   } finally {
     allocLoading.value = false
   }
@@ -501,7 +511,7 @@ async function confirmAllocation() {
     allocItems.value = []
     feedback.success(t('common.savedSuccessfully'))
   } catch (e) {
-    allocError.value = getErrorMessage(e, t('common.error'))
+    allocError.value = receiptErrorMessage(e)
   } finally {
     allocSaving.value = false
   }
@@ -516,7 +526,7 @@ async function rejectReceipt(id: string) {
     await reload()
     feedback.success(t('common.savedSuccessfully'))
   } catch (e) {
-    feedback.error(getErrorMessage(e, t('common.error')), t('common.error'))
+    feedback.error(receiptErrorMessage(e), t('common.error'))
   } finally {
     busyId.value = null
   }

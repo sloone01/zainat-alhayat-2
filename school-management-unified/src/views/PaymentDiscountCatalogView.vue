@@ -420,7 +420,7 @@ async function saveForm() {
     await reload()
     showForm.value = false
     resetForm()
-    feedback.success(t('common.savedSuccessfully'))
+    feedback.saved(t('common.savedSuccessfully'))
   } catch (e: unknown) {
     feedback.error(paymentCatalogErrorMessage(e, t))
   } finally {

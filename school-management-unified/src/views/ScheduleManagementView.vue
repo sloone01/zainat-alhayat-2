@@ -114,8 +114,10 @@ import { resolveFeeLevelId } from '@/utils/fee-level'
 import { getSelectedScheduleGroupId, setSelectedScheduleGroupId } from '@/utils/selected-schedule-group'
 import { downloadPrintableTimetable, type PrintableTimetable } from '@/utils/printable-timetable'
 import { useSchoolBrand } from '@/composables/useSchoolBrand'
+import { useFeedback } from '@/composables/useFeedback'
 
 const { locale, t } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 const { schoolName } = useSchoolBrand()
 
@@ -597,7 +599,7 @@ const saveClass = async (classData: any) => {
     }
 
     if (durationMinutes <= 0) {
-      alert(t('scheduleManagement.validation.invalidTimeRange'))
+      feedback.error(t('scheduleManagement.validation.invalidTimeRange'))
       return
     }
 
@@ -609,9 +611,10 @@ const saveClass = async (classData: any) => {
       await fetchSchedules(groupId)
     }
     closeClassModal()
+    feedback.saved(t('common.savedSuccessfully'))
   } catch (error) {
     console.error('Error saving schedule:', error)
-    alert(scheduleSaveErrorMessage(error))
+    feedback.error(scheduleSaveErrorMessage(error))
   } finally {
     loading.value = false
   }
@@ -640,7 +643,7 @@ const deleteClass = async (classItem: any) => {
     }
   } catch (error) {
     console.error('Error deleting schedule:', error)
-    alert(t('scheduleManagement.deleteFailed'))
+    feedback.error(t('scheduleManagement.deleteFailed'))
   } finally {
     loading.value = false
   }
