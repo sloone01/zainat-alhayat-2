@@ -34,7 +34,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -220,6 +220,7 @@ import { useListViewMode } from '@/composables/useListViewMode'
 import { feesV2Service, type FeeTransfer, type FeeTransferStatus } from '@/services/fees-v2.service'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

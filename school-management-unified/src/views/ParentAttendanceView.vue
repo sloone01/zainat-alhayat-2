@@ -1,7 +1,7 @@
 <template>
   <DashboardLayout>
     <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div v-if="loading && !loaded" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
+      <div v-if="loading && !loaded && !routePageLoading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
         <FikrLoader />
         <span>{{ $t('parent.loading') }}</span>
       </div>
@@ -246,6 +246,7 @@ import { parentService } from '@/services/parent.service'
 import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { getErrorMessage } from '@/utils/error-reporting'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useServerPagination } from '@/composables/useServerPagination'
 

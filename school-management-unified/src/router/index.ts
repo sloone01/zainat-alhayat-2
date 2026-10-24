@@ -476,6 +476,18 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: '/settings/payments/installment-presets',
+      name: 'installment-presets',
+      component: () => import('../views/InstallmentPresetsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/settings/payments/installment-presets/:planId',
+      name: 'installment-preset-edit',
+      component: () => import('../views/InstallmentPlanEditorView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: '/settings/payments/levels',
       name: 'payment-level-fees',
       component: () => import('../views/PaymentLevelFeesView.vue'),

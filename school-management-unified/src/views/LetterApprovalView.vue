@@ -9,7 +9,7 @@
           <LanguageSwitcher />
         </div>
 
-        <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+        <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
@@ -69,6 +69,7 @@ import { useRoute } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import { getApiBaseUrl } from '@/config/public-config'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import { useFeedback } from '@/composables/useFeedback'
 
 type LetterApprovalView = {

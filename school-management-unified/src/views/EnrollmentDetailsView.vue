@@ -5,6 +5,17 @@
         :title="$t('enrollmentManagement.enrollmentDetails')"
         :subtitle="enrollment ? `${$t('enrollmentManagement.submittedOn')}: ${formatDate(enrollment.createdAt)}` : $t('enrollmentManagement.description')"
       >
+        <template #leading>
+          <router-link
+            to="/enrollments"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('common.back')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </template>
         <template #actions>
           <button
             type="button"
@@ -25,18 +36,7 @@
       </FikrPageHeader>
 
       <!-- Loading State -->
-      <div v-if="loading" class="fk-card">
-        <header class="flex items-center gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
-          <router-link
-            to="/enrollments"
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-            :aria-label="$t('common.back')"
-          >
-            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </router-link>
-        </header>
+      <div v-if="loading && !routePageLoading" class="fk-card">
         <div class="flex flex-col items-center justify-center py-8 text-center">
           <FikrLoader size="sm" />
           <p class="mt-2 text-sm text-gray-500">{{ $t('common.loading') }}</p>
@@ -50,16 +50,7 @@
           <!-- Student Information -->
           <div class="bg-white shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
-              <div class="mb-4 flex items-center gap-3">
-                <router-link
-                  to="/enrollments"
-                  class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-                  :aria-label="$t('common.back')"
-                >
-                  <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                  </svg>
-                </router-link>
+              <div class="mb-4">
                 <h3 class="text-lg font-medium text-gray-900">{{ $t('enrollmentManagement.studentInformation') }}</h3>
               </div>
               <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
@@ -457,6 +448,7 @@ import { useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import FikrDialog from '@/components/FikrDialog.vue'
 import { enrollmentService } from '@/services/enrollment.service'
 import { useFeedback } from '@/composables/useFeedback'

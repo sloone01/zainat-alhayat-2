@@ -29,7 +29,7 @@
           <p v-if="proofError" class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {{ proofError }}
           </p>
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -214,7 +214,7 @@
       plain-footer
       @close="closeAllocation"
     >
-      <div v-if="allocLoading" class="flex items-center justify-center gap-2 py-8 text-sm text-fikr-ink-muted">
+      <div v-if="allocLoading && !routePageLoading" class="flex items-center justify-center gap-2 py-8 text-sm text-fikr-ink-muted">
         <FikrLoader size="sm" />
         <span>{{ $t('common.loading') }}</span>
       </div>
@@ -303,11 +303,22 @@ import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 import { getErrorMessage } from '@/utils/error-reporting'
 import { useFeedback } from '@/composables/useFeedback'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')
 const { viewMode, isCards } = useListViewMode()
 const feedback = useFeedback()
+
+function receiptErrorMessage(error: unknown): string {
+  const anyErr = error as { response?: { data?: { code?: string; message?: string } } }
+  const code = String(anyErr?.response?.data?.code || '')
+  const msg = getErrorMessage(error, t('common.error'))
+  if (code === 'NO_ACTIVE_YEAR' || /no active academic year/i.test(msg)) {
+    return t('parentFees.noActiveYear')
+  }
+  return msg
+}
 
 const showFilters = ref(false)
 const searchQuery = ref('')
@@ -384,7 +395,7 @@ async function confirmPaid(id: string) {
     await reload()
     feedback.success(t('common.savedSuccessfully'))
   } catch (e) {
-    const msg = getErrorMessage(e, t('common.error'))
+    const msg = receiptErrorMessage(e)
     // Overpayment: let the admin split the amount across open items (leftover → credit).
     if (/exceeds balance/i.test(msg)) {
       const payment = paginatedPayments.value.find((p) => p.id === id)
@@ -468,7 +479,7 @@ async function openAllocation(payment: FeePayment) {
     }
     allocItems.value = items
   } catch (e) {
-    allocError.value = getErrorMessage(e, t('common.error'))
+    allocError.value = receiptErrorMessage(e)
   } finally {
     allocLoading.value = false
   }
@@ -500,7 +511,7 @@ async function confirmAllocation() {
     allocItems.value = []
     feedback.success(t('common.savedSuccessfully'))
   } catch (e) {
-    allocError.value = getErrorMessage(e, t('common.error'))
+    allocError.value = receiptErrorMessage(e)
   } finally {
     allocSaving.value = false
   }
@@ -515,7 +526,7 @@ async function rejectReceipt(id: string) {
     await reload()
     feedback.success(t('common.savedSuccessfully'))
   } catch (e) {
-    feedback.error(getErrorMessage(e, t('common.error')), t('common.error'))
+    feedback.error(receiptErrorMessage(e), t('common.error'))
   } finally {
     busyId.value = null
   }

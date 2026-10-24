@@ -162,7 +162,7 @@
             {{ $t('teacherWeeklySessions.newTask') }}
           </button>
         </header>
-        <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+        <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
         </div>
@@ -294,6 +294,7 @@ import { sessionMediaService } from '@/services/session-media.service'
 import { onlineSessionService } from '@/services/online-session.service'
 import type { User } from '@/services/user.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import { dateForWeekdayInWeek, parseLocalDateKey } from '@/utils/calendar-date'
 
 const { t, locale } = useI18n()

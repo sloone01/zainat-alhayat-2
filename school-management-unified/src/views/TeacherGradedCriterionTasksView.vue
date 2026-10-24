@@ -42,7 +42,7 @@
         </header>
 
         <div class="p-5 sm:p-6">
-          <div v-if="loading && !selectedCourseId" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !selectedCourseId && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -77,7 +77,7 @@
         </div>
       </section>
 
-      <div v-if="selectedCourseId && loading" class="fk-card">
+      <div v-if="selectedCourseId && loading && !routePageLoading" class="fk-card">
         <div class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
           <FikrLoader />
           <span class="text-sm">{{ $t('common.loading') }}</span>
@@ -285,6 +285,7 @@ import authService from '@/services/auth.service'
 import gradedCriterionTaskService from '@/services/graded-criterion-task.service'
 import type { CriterionTaskSummary, EligibleGradedCourse, GradedCriterionTaskRow } from '@/services/graded-criterion-task.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { t, locale } = useI18n()
 const feedback = useFeedback()

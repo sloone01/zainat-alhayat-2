@@ -32,6 +32,7 @@ import { StudentChargeSheetDiscountLine } from '../entities/student-charge-sheet
 import { StudentChargeSheetExtraLine } from '../entities/student-charge-sheet-extra-line.entity';
 import { StudentChargeSheetInclusionLine } from '../entities/student-charge-sheet-inclusion-line.entity';
 import { InstallmentPlan } from '../entities/installment-plan.entity';
+import { StudentFeePayment } from '../entities/student-fee-payment.entity';
 import { FeePackageChargeType } from '../entities/fee-package-charge-type.entity';
 import { PaymentDiscountType } from '../entities/payment-discount-type.entity';
 import { PaymentExtraType } from '../entities/payment-extra-type.entity';
@@ -42,7 +43,7 @@ import {
   RecordChargePaymentDto,
   SetChargeSheetDiscountsDto,
 } from '../dto/fees-v2.dto';
-import { moneyStr, num, splitRoundedUpToFive } from '../utils/fees-v2.util';
+import { fitFixedAmounts, moneyStr, num, planEntryAmounts } from '../utils/fees-v2.util';
 import { formatStudentDisplayName } from '../common/identity/bilingual-name';
 import {
   classifyDueState,
@@ -536,16 +537,22 @@ export class StudentChargeSheetService {
       });
       const entries = [...(plan?.entries ?? [])].sort((a, b) => a.sequence - b.sequence);
       if (entries.length) {
-        const weights = entries.map((e) => num(e.weight) || 1);
-        const amounts = splitRoundedUpToFive(installmentDue, weights);
+        const sequences = entries.map((entry, i) =>
+          entry.sequence === StudentChargeSheetService.ADVANCE_SEQUENCE
+            ? Math.max(1, i + 1)
+            : entry.sequence,
+        );
+        const overrides = sheet.installment_amounts?.length
+          ? new Map(sheet.installment_amounts.map((row) => [row.sequence, num(row.amount)]))
+          : null;
+        const amounts = overrides
+          ? fitFixedAmounts(installmentDue, sequences.map((seq) => overrides.get(seq) ?? 0))
+          : planEntryAmounts(installmentDue, entries);
         for (let i = 0; i < entries.length; i++) {
           const entry = entries[i];
           const dueAmt = amounts[i] ?? 0;
           if (dueAmt <= 0) continue;
-          const sequence =
-            entry.sequence === StudentChargeSheetService.ADVANCE_SEQUENCE
-              ? Math.max(1, i + 1)
-              : entry.sequence;
+          const sequence = sequences[i];
           const dueDate = await this.installmentDueDateForSheet(sheet, entry.month_number);
           const id = await this.upsertInstallmentRow({
             existing: bySeq.get(sequence),
@@ -1104,7 +1111,7 @@ export class StudentChargeSheetService {
          s.student_id,
          st."firstName" AS first_name,
          st."secondName" AS second_name,
-         st."secondNameEn" AS second_name_en,
+         st.second_name_en,
          st."lastName" AS last_name,
          st.first_name_ar, st.first_name_en, st.last_name_ar, st.last_name_en,
          ip.name AS plan_name,
@@ -1161,7 +1168,7 @@ export class StudentChargeSheetService {
       `SELECT
          i.id, i.sequence, i.month_number, i.label, i.due_date, i.amount_due, i.amount_paid, i.status,
          s.student_id,
-         st."firstName" AS first_name, st."secondName" AS second_name, st."secondNameEn" AS second_name_en,
+         st."firstName" AS first_name, st."secondName" AS second_name, st.second_name_en,
          st."lastName" AS last_name, st.first_name_ar, st.first_name_en, st.last_name_ar, st.last_name_en,
          ip.name AS plan_name, lv.name AS level_name,
          'late' AS bucket,
@@ -1175,7 +1182,7 @@ export class StudentChargeSheetService {
       `SELECT
          i.id, i.sequence, i.month_number, i.label, i.due_date, i.amount_due, i.amount_paid, i.status,
          s.student_id,
-         st."firstName" AS first_name, st."secondName" AS second_name, st."secondNameEn" AS second_name_en,
+         st."firstName" AS first_name, st."secondName" AS second_name, st.second_name_en,
          st."lastName" AS last_name, st.first_name_ar, st.first_name_en, st.last_name_ar, st.last_name_en,
          ip.name AS plan_name, lv.name AS level_name,
          (${bucketSql}) AS bucket,
@@ -1246,9 +1253,15 @@ export class StudentChargeSheetService {
       else installmentGross += due;
     }
     const timingGross = upfrontGross + installmentGross;
+    const planAdvance =
+      sheet.upfront_override == null && sheet.installment_plan_id
+        ? (await this.planRepo.findOne({ where: { id: sheet.installment_plan_id } }))?.advance_amount
+        : null;
     let upfrontDue = 0;
     if (sheet.upfront_override != null) {
       upfrontDue = Math.min(Math.max(0, num(sheet.upfront_override)), netDue);
+    } else if (planAdvance != null) {
+      upfrontDue = Math.min(Math.max(0, num(planAdvance)), netDue);
     } else if (timingGross > 0) {
       upfrontDue = netDue * (upfrontGross / timingGross);
     }
@@ -1661,19 +1674,34 @@ export class StudentChargeSheetService {
     if (user.role !== 'admin' && !user.isSystemUser) throw new ForbiddenException('Admin only');
     await this.buildOrRefresh(user, studentId);
     const sheet = await this.getForStudent(user, studentId);
+    let nextPlan: InstallmentPlan | null = null;
     if (dto.installment_plan_id) {
-      const plan = await this.planRepo.findOne({
+      nextPlan = await this.planRepo.findOne({
         where: { id: dto.installment_plan_id, school_id: sheet.school_id },
       });
-      if (!plan) throw new NotFoundException('Installment plan not found');
+      if (!nextPlan) throw new NotFoundException('Installment plan not found');
     }
-    sheet.installment_plan_id = dto.installment_plan_id ?? null;
+    const nextPlanId = dto.installment_plan_id ?? null;
+    const planChanged = nextPlanId !== sheet.installment_plan_id;
+    if (dto.installment_amounts !== undefined) {
+      sheet.installment_amounts =
+        nextPlanId && dto.installment_amounts?.length
+          ? dto.installment_amounts.map((row) => ({
+              sequence: row.sequence,
+              amount: num(moneyStr(row.amount)),
+            }))
+          : null;
+    } else if (planChanged) {
+      sheet.installment_amounts = null;
+    }
+    sheet.installment_plan_id = nextPlanId;
     if (dto.upfront_due != null) {
       sheet.upfront_override = moneyStr(dto.upfront_due);
     }
     sheet.status = num(sheet.due_total) > 0 ? 'active' : 'settled';
     await this.sheetRepo.update(sheet.id, {
       installment_plan_id: sheet.installment_plan_id,
+      installment_amounts: sheet.installment_amounts,
       upfront_override: sheet.upfront_override,
       status: sheet.status,
     });
@@ -1694,9 +1722,94 @@ export class StudentChargeSheetService {
         sheet,
         dto.inclusions.filter((i) => i.inclusion_type_id),
       );
+    } else if (planChanged && nextPlan?.is_preset) {
+      await this.applyPresetInclusions(sheet, nextPlan);
     }
     await this.applyDiscountTotals(sheet);
     return this.getOne(user, sheet.id);
+  }
+
+  /** Copy a preset's included items onto the sheet (inactive catalog items are dropped). */
+  private async applyPresetInclusions(sheet: StudentChargeSheet, plan: InstallmentPlan) {
+    const ids = plan.inclusion_type_ids ?? [];
+    const active = ids.length
+      ? await this.inclusionTypeRepo.find({
+          where: { id: In(ids), school_id: sheet.school_id, is_active: true },
+        })
+      : [];
+    await this.replaceInclusions(
+      sheet,
+      active.map((t) => ({ inclusion_type_id: t.id })),
+    );
+  }
+
+  /**
+   * Put one plan on every active student of a fee level. Sheets with payments or open
+   * receipts, and sheets with staff-edited installment amounts, are left untouched.
+   */
+  async applyPlanToLevel(user: User, schoolId: string, planId: string, levelId: string) {
+    if (user.role !== 'admin' && !user.isSystemUser) throw new ForbiddenException('Admin only');
+    const plan = await this.planRepo.findOne({ where: { id: planId, school_id: schoolId } });
+    if (!plan) throw new NotFoundException('Installment plan not found');
+
+    const students = await this.studentRepo
+      .createQueryBuilder('st')
+      .where('st.school_id = :schoolId', { schoolId })
+      .andWhere(`st.status = 'active'`)
+      .andWhere(
+        `(st.payment_level_id = :levelId OR (st.payment_level_id IS NULL AND EXISTS (
+          SELECT 1 FROM student_groups sg
+          INNER JOIN groups g ON g.id = sg.group_id
+          WHERE sg.student_id = st.id AND g.level_id = :levelId
+        )))`,
+        { levelId },
+      )
+      .getMany();
+
+    const paymentRepo = this.sheetRepo.manager.getRepository(StudentFeePayment);
+    const result = { total: students.length, applied: 0, skipped_locked: 0, skipped_custom: 0, failed: 0 };
+
+    for (const student of students) {
+      try {
+        await this.buildOrRefresh(user, student.id);
+        const sheet = await this.getForStudent(user, student.id);
+        const hasPaidRows = (sheet.installments ?? []).some((i) => num(i.amount_paid) > 0.001);
+        const openOrPaid =
+          num(sheet.paid_total) > 0.001 ||
+          hasPaidRows ||
+          (await paymentRepo.count({
+            where: {
+              sheet_id: sheet.id,
+              status: In(['paid', 'pending', 'pending_approval', 'pending_reconcile']),
+            },
+          })) > 0;
+        if (openOrPaid) {
+          result.skipped_locked++;
+          continue;
+        }
+        if (sheet.installment_amounts?.length) {
+          result.skipped_custom++;
+          continue;
+        }
+        sheet.installment_plan_id = plan.id;
+        sheet.installment_amounts = null;
+        sheet.upfront_override = null;
+        sheet.status = num(sheet.due_total) > 0 ? 'active' : 'settled';
+        await this.sheetRepo.update(sheet.id, {
+          installment_plan_id: sheet.installment_plan_id,
+          installment_amounts: null,
+          upfront_override: null,
+          status: sheet.status,
+        });
+        if (plan.is_preset) await this.applyPresetInclusions(sheet, plan);
+        await this.applyDiscountTotals(sheet);
+        result.applied++;
+      } catch (err) {
+        this.logger.warn(`applyPlanToLevel: student ${student.id} failed: ${(err as Error)?.message}`);
+        result.failed++;
+      }
+    }
+    return result;
   }
 
   async setDiscounts(user: User, studentId: string, dto: SetChargeSheetDiscountsDto) {

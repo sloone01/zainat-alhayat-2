@@ -59,6 +59,7 @@ export const RBAC_PAGE_SEED: RbacPageSeed[] = [
   { key: 'courses', route: '/courses', nameEn: 'Courses', nameAr: 'المقررات', scope: 'school', sortOrder: 30, actions: [...CRUD] },
   { key: 'course_enrollments', route: '/course-enrollments', nameEn: 'Course Enrollments', nameAr: 'تسجيل المقررات', scope: 'school', sortOrder: 31, actions: [...VIEW_EDIT, 'create', 'delete'] },
   { key: 'graded_courses', route: '/graded-courses', nameEn: 'Graded Courses', nameAr: 'مقررات التقييم', scope: 'school', sortOrder: 32, actions: [...CRUD] },
+  { key: 'standalone_courses', route: '/standalone-courses', nameEn: 'Independent Courses', nameAr: 'مقررات مستقلة', scope: 'school', sortOrder: 32, actions: [...CRUD] },
   { key: 'schedules', route: '/schedules', nameEn: 'Schedules', nameAr: 'الجداول', scope: 'school', sortOrder: 33, actions: [...CRUD] },
   { key: 'attendance', route: '/attendance', nameEn: 'Attendance', nameAr: 'الحضور', scope: 'school', sortOrder: 34, actions: ['view', 'search', 'create', 'edit'] },
   { key: 'absence_excuses', route: '/attendance/excuses', nameEn: 'Absence excuses', nameAr: 'أعذار الغياب', scope: 'school', sortOrder: 34, actions: ['view', 'approve'] },

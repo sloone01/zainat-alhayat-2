@@ -19,7 +19,6 @@
       </FikrPageHeader>
 
       <div v-if="loadError" class="fk-alert fk-alert--error">{{ loadError }}</div>
-      <div v-if="saveOk" class="fk-alert fk-alert--ok">{{ saveOk }}</div>
       <div v-if="saveError" class="fk-alert fk-alert--error">{{ saveError }}</div>
 
       <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
@@ -255,6 +254,7 @@ import StaffGroupsPicker from '@/components/StaffGroupsPicker.vue'
 import { userService } from '@/services'
 import FikrLoader from '@/components/FikrLoader.vue'
 import { routePageLoading } from '@/router/route-loading'
+import { useFeedback } from '@/composables/useFeedback'
 import {
   rbacService,
   type RbacGroup,
@@ -264,13 +264,13 @@ import {
 
 const route = useRoute()
 const { locale, t, te } = useI18n()
+const feedback = useFeedback()
 const isRTL = computed(() => locale.value === 'ar')
 
 const userId = computed(() => String(route.params.userId || ''))
 
 const loading = ref(true)
 const loadError = ref('')
-const saveOk = ref('')
 const saveError = ref('')
 const saving = ref(false)
 
@@ -380,7 +380,6 @@ function togglePage(pageKey: string) {
 }
 
 function onGroupsChange() {
-  saveOk.value = ''
   saveError.value = ''
 }
 
@@ -392,19 +391,16 @@ function toggleGrant(pageKey: string, action: string) {
   if (cur.size) next[pageKey] = [...cur]
   else delete next[pageKey]
   grants.value = next
-  saveOk.value = ''
   saveError.value = ''
 }
 
 function clearExtraClaims() {
   grants.value = {}
-  saveOk.value = ''
 }
 
 function discardChanges() {
   selectedGroupIds.value = [...savedGroupIds.value]
   grants.value = JSON.parse(savedGrants.value || '{}')
-  saveOk.value = ''
   saveError.value = ''
 }
 
@@ -431,7 +427,6 @@ function grantsFromOverrides(overrides: RbacUserOverride[]) {
 async function saveAll() {
   if (!user.value || !dirty.value) return
   saving.value = true
-  saveOk.value = ''
   saveError.value = ''
   try {
     if (groupsDirty.value) {
@@ -449,9 +444,10 @@ async function saveAll() {
       await rbacService.setUserOverrides(userId.value, overridesFromGrants())
       savedGrants.value = JSON.stringify(grants.value)
     }
-    saveOk.value = t('userManagement.accessSaved')
+    feedback.saved(t('userManagement.accessSaved'))
   } catch (e: any) {
     saveError.value = e?.message || t('userManagement.accessSaveError')
+    feedback.error(saveError.value)
   } finally {
     saving.value = false
   }

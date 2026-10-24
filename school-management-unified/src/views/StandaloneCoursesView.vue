@@ -43,7 +43,7 @@
             <h2 class="fk-card__title truncate">{{ $t('standaloneCourses.listHeading') }}</h2>
           </div>
         </header>
-        <div v-if="loading" class="flex justify-center py-12">
+        <div v-if="loading && !routePageLoading" class="flex justify-center py-12">
           <FikrLoader />
         </div>
         <div v-else-if="!courses.length" class="py-12 text-center text-sm text-gray-500">
@@ -76,6 +76,7 @@ import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import authService from '@/services/auth.service'
 import courseService, { type Course } from '@/services/course.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale } = useI18n()
 const isRTL = computed(() => locale.value === 'ar')

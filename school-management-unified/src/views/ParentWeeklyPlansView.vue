@@ -6,7 +6,7 @@
         :subtitle="$t('parent.weeklyPlan')"
       />
 
-      <div v-if="loading && !loaded" class="flex items-center justify-center gap-3 py-12">
+      <div v-if="loading && !loaded && !routePageLoading" class="flex items-center justify-center gap-3 py-12">
         <FikrLoader />
         <span class="text-gray-600">{{ $t('parent.loading') }}</span>
       </div>
@@ -203,6 +203,7 @@ import FullScreenCalendar from '@/components/ui/fullscreen-calendar.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import { normalizeScheduleDayKey } from '@/utils/schedule-display'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import FikrPagination from '@/components/FikrPagination.vue'
 import { useServerPagination } from '@/composables/useServerPagination'
 import {

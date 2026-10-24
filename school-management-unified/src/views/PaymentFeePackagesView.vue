@@ -33,7 +33,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading && !loaded" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !loaded && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -258,6 +258,7 @@ import FikrPagination from '@/components/FikrPagination.vue'
 import { useServerPagination } from '@/composables/useServerPagination'
 import { authService } from '@/services'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import { feesV2Service, type FeePackageUsageItem } from '@/services/fees-v2.service'
 import {
   feePackageService,

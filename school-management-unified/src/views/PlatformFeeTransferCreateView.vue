@@ -62,7 +62,7 @@
             </div>
           </div>
 
-          <div v-if="loading" class="flex items-center justify-center py-12 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex items-center justify-center py-12 text-gray-500">
             <FikrLoader size="sm" />
           </div>
 
@@ -215,6 +215,7 @@ import { feesV2Service, type FeePayment } from '@/services/fees-v2.service'
 import { personFirstName, personFullName, personLastName } from '@/utils/person-name'
 import { openAuthenticatedMedia } from '@/utils/authenticated-media'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const router = useRouter()

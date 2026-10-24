@@ -21,7 +21,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -145,7 +145,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -458,6 +458,7 @@ import { progressService } from '@/services/progress.service'
 import { formatGroupAgeRangeLabel } from '@/utils/groupAgeRange'
 import { getErrorMessage, isDroppedRequest } from '@/utils/error-reporting'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { t, locale } = useI18n()
 const feedback = useFeedback()

@@ -28,6 +28,18 @@ export class InstallmentPlan {
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
+  /** Fixed advance (مقدم) for presets; null uses the package timing ratio. */
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  advance_amount: string | null;
+
+  /** Saved from a charge sheet; listed on the presets page, not with installment plans. */
+  @Column({ type: 'boolean', default: false })
+  is_preset: boolean;
+
+  /** Preset included items copied onto the sheet when the preset is applied. */
+  @Column({ type: 'jsonb', nullable: true })
+  inclusion_type_ids: string[] | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
 

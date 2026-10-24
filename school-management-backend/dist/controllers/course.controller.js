@@ -17,13 +17,25 @@ exports.CourseController = void 0;
 const common_1 = require("@nestjs/common");
 const course_service_1 = require("../services/course.service");
 const require_claim_decorator_1 = require("../rbac/require-claim.decorator");
+const rbac_permission_service_1 = require("../rbac/rbac-permission.service");
 const school_access_1 = require("../common/security/school-access");
 const pagination_1 = require("../common/pagination");
 let CourseController = CourseController_1 = class CourseController {
     courseService;
+    permissions;
     logger = new common_1.Logger(CourseController_1.name);
-    constructor(courseService) {
+    constructor(courseService, permissions) {
         this.courseService = courseService;
+        this.permissions = permissions;
+    }
+    async assertKindClaim(user, courseKind, action) {
+        if (courseKind?.trim() !== 'standalone')
+            return;
+        if (user.isSuperAdmin || user.isSystemUser)
+            return;
+        if (!(await this.permissions.hasClaim(user.id, 'standalone_courses', action))) {
+            throw new common_1.ForbiddenException(`Missing claim standalone_courses:${action}`);
+        }
     }
     schoolOf(req, requested) {
         const schoolId = (0, school_access_1.resolveActorSchoolId)(req.user, requested);
@@ -33,6 +45,7 @@ let CourseController = CourseController_1 = class CourseController {
         return schoolId;
     }
     async create(req, createCourseDto) {
+        await this.assertKindClaim(req.user, createCourseDto.course_kind, 'create');
         const schoolId = this.schoolOf(req, createCourseDto.school_id);
         createCourseDto.school_id = schoolId;
         this.logger.log(`POST /courses - Creating course: ${JSON.stringify(createCourseDto)}`);
@@ -51,6 +64,7 @@ let CourseController = CourseController_1 = class CourseController {
         }
     }
     async findAll(req, schoolId, courseKind, page, limit, q, status, category) {
+        await this.assertKindClaim(req.user, courseKind, 'view');
         const requested = schoolId ? String(schoolId) : undefined;
         const schoolIdNum = this.schoolOf(req, requested);
         this.logger.log(`GET /courses - school_id: ${schoolIdNum}, course_kind: ${courseKind ?? 'any'}`);
@@ -110,6 +124,7 @@ let CourseController = CourseController_1 = class CourseController {
     async duplicate(req, id, body = {}) {
         const source = await this.courseService.findOne(id);
         (0, school_access_1.assertSameSchool)(req.user, source.school_id);
+        await this.assertKindClaim(req.user, source.course_kind, 'create');
         const course = await this.courseService.duplicate(id, body?.newName, source.school_id);
         return {
             success: true,
@@ -122,6 +137,7 @@ let CourseController = CourseController_1 = class CourseController {
         try {
             const course = await this.courseService.findOne(id);
             (0, school_access_1.assertSameSchool)(req.user, course.school_id);
+            await this.assertKindClaim(req.user, course.course_kind, 'view');
             this.logger.log(`GET /courses/${id} - Course retrieved successfully`);
             return {
                 success: true,
@@ -146,6 +162,8 @@ let CourseController = CourseController_1 = class CourseController {
     async update(req, id, updateCourseDto) {
         const course = await this.courseService.findOne(id);
         (0, school_access_1.assertSameSchool)(req.user, course.school_id);
+        await this.assertKindClaim(req.user, course.course_kind, 'edit');
+        await this.assertKindClaim(req.user, updateCourseDto.course_kind, 'edit');
         return {
             success: true,
             data: await this.courseService.update(id, updateCourseDto),
@@ -155,6 +173,7 @@ let CourseController = CourseController_1 = class CourseController {
     async updateStatus(req, id, isActive) {
         const course = await this.courseService.findOne(id);
         (0, school_access_1.assertSameSchool)(req.user, course.school_id);
+        await this.assertKindClaim(req.user, course.course_kind, 'edit');
         return {
             success: true,
             data: await this.courseService.updateStatus(id, isActive),
@@ -164,6 +183,7 @@ let CourseController = CourseController_1 = class CourseController {
     async remove(req, id) {
         const course = await this.courseService.findOne(id);
         (0, school_access_1.assertSameSchool)(req.user, course.school_id);
+        await this.assertKindClaim(req.user, course.course_kind, 'delete');
         await this.courseService.remove(id);
         return {
             success: true,
@@ -306,6 +326,7 @@ __decorate([
 exports.CourseController = CourseController = CourseController_1 = __decorate([
     (0, common_1.Controller)('courses'),
     (0, require_claim_decorator_1.RequireClaim)('courses', 'view'),
-    __metadata("design:paramtypes", [course_service_1.CourseService])
+    __metadata("design:paramtypes", [course_service_1.CourseService,
+        rbac_permission_service_1.RbacPermissionService])
 ], CourseController);
 //# sourceMappingURL=course.controller.js.map

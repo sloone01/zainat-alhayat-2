@@ -45,6 +45,7 @@ export interface RegisteredSchool {
   billingPeriod: string | null
   subscriptionStatus: string | null
   invoiceStatus: string | null
+  landing_slug?: string | null
   membershipFrom: string | null
   membershipTo: string | null
   owner: RegisteredSchoolOwner | null

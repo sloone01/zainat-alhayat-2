@@ -18,7 +18,7 @@
         </router-link>
       </template>
 
-      <div v-if="loading" class="flex flex-col items-center justify-center py-8 text-center">
+      <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center py-8 text-center">
         <FikrLoader size="sm" />
         <p class="mt-2 text-sm text-gray-500">{{ $t('common.loading') }}</p>
       </div>
@@ -116,6 +116,7 @@ import PaymentPlanStep from '@/components/enrollment/PaymentPlanStep.vue'
 import ReviewSubmitStep from '@/components/enrollment/ReviewSubmitStep.vue'
 import { createEmptyStaffIntakeForm, formatStaffIntakeDate, splitFullName } from '@/components/enrollment/staffIntake'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { t } = useI18n()
 const feedback = useFeedback()

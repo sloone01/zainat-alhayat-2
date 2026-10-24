@@ -32,6 +32,7 @@ import { FeePackageStructureService } from '../services/fee-package-structure.se
 import { FeePaymentService } from '../services/fee-payment.service';
 import { PlatformBillingService } from '../platform-billing/platform-billing.service';
 import {
+  ApplyPlanToLevelDto,
   AssignStudentChargePlanDto,
   CreateThawaniSessionDto,
   RecordChargePaymentDto,
@@ -132,18 +133,21 @@ export class FeesV2Controller {
     @Query('limit') limit?: string,
     @Query('q') q?: string,
     @Query('status') status?: string,
+    @Query('kind') kindRaw?: string,
   ) {
     const schoolId = this.schoolOf(req, requestedSchoolId);
+    const kind = kindRaw === 'plan' || kindRaw === 'preset' ? kindRaw : undefined;
     if (wantsPage(page)) {
       const data = await this.installmentPlans.listPage(req.user, schoolId, {
         page,
         limit,
         q,
         status,
+        kind,
       });
       return { success: true, data };
     }
-    const data = await this.installmentPlans.list(req.user, schoolId);
+    const data = await this.installmentPlans.list(req.user, schoolId, kind);
     return { success: true, data };
   }
 
@@ -273,6 +277,19 @@ export class FeesV2Controller {
     const data = await this.chargeSheets.listSchoolSummaries(req.user, {
       studentIds: studentIds.length ? studentIds : undefined,
     });
+    return { success: true, data };
+  }
+
+  @Post('charge-sheets/apply-plan')
+  @Roles('admin')
+  async applyPlanToLevel(@Body() body: ApplyPlanToLevelDto, @Request() req: { user: User }) {
+    const schoolId = this.schoolOf(req, body.school_id);
+    const data = await this.chargeSheets.applyPlanToLevel(
+      req.user,
+      schoolId,
+      body.installment_plan_id,
+      body.level_id,
+    );
     return { success: true, data };
   }
 

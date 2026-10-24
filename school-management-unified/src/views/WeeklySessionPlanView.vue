@@ -101,7 +101,7 @@
       </div>
 
       <div
-        v-else-if="loading"
+        v-else-if="loading && !routePageLoading"
         class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-16 text-gray-500"
       >
         <FikrLoader />
@@ -179,6 +179,7 @@ import {
 } from '@/utils/schedule-display'
 import FullScreenCalendar from '@/components/ui/fullscreen-calendar.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import {
   dateForWeekdayInWeek,
   groupDatedEvents,

@@ -55,6 +55,7 @@ export interface InstallmentPlanEntry {
   month_number: number | null
   label: string | null
   weight: string | number
+  amount?: string | number | null
 }
 
 export interface InstallmentPlan {
@@ -63,6 +64,9 @@ export interface InstallmentPlan {
   name: string
   description: string | null
   is_active: boolean
+  advance_amount?: string | number | null
+  is_preset?: boolean
+  inclusion_type_ids?: string[] | null
   entries: InstallmentPlanEntry[]
 }
 
@@ -236,6 +240,7 @@ export interface StudentChargeSheet {
   status: string
   installment_plan_id: string | null
   installmentPlan?: InstallmentPlan | null
+  installment_amounts?: Array<{ sequence: number; amount: number }> | null
   lines: ChargeSheetLine[]
   installments: ChargeSheetInstallment[]
   discountLines?: ChargeSheetDiscountLine[]
@@ -288,10 +293,17 @@ class FeesV2Service extends BaseApiService {
     return this.get<InstallmentPlan[]>('/fees/v2/installment-plans', { school_id: String(schoolId) })
   }
 
-  listInstallmentPlansPage(params: { page: number; limit: number; q?: string; status?: string }) {
+  listInstallmentPlansPage(params: {
+    page: number
+    limit: number
+    q?: string
+    status?: string
+    kind?: 'plan' | 'preset'
+  }) {
     const query: Record<string, string | number> = { page: params.page, limit: params.limit }
     if (params.q?.trim()) query.q = params.q.trim()
     if (params.status && params.status !== 'all') query.status = params.status
+    if (params.kind) query.kind = params.kind
     return this.get<PageResult<InstallmentPlan>>('/fees/v2/installment-plans', query)
   }
 
@@ -305,11 +317,15 @@ class FeesV2Service extends BaseApiService {
       name: string
       description?: string
       is_active?: boolean
+      advance_amount?: number | null
+      is_preset?: boolean
+      inclusion_type_ids?: string[]
       entries: Array<{
         sequence: number
         month_number?: number | null
         label?: string | null
         weight?: number
+        amount?: number | null
       }>
     },
     id?: string,
@@ -438,9 +454,20 @@ class FeesV2Service extends BaseApiService {
       extras?: Array<{ extra_type_id: string; amount: number; remarks?: string }>
       inclusions?: Array<{ inclusion_type_id: string }>
       upfront_due?: number
+      installment_amounts?: Array<{ sequence: number; amount: number }>
     },
   ) {
     return this.put<StudentChargeSheet>(`/fees/v2/students/${studentId}/charge-sheet/plan`, payload)
+  }
+
+  applyPlanToLevel(payload: { installment_plan_id: string; level_id: string }) {
+    return this.post<{
+      total: number
+      applied: number
+      skipped_locked: number
+      skipped_custom: number
+      failed: number
+    }>('/fees/v2/charge-sheets/apply-plan', payload, { timeout: 180000 })
   }
 
   setChargeSheetDiscounts(

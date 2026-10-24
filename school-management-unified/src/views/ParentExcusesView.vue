@@ -3,7 +3,7 @@
     <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader :title="$t('absenceExcuses.parentNav')" :subtitle="$t('absenceExcuses.pageSubtitle')" />
 
-      <div v-if="loading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
+      <div v-if="loading && !routePageLoading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
         <FikrLoader />
         <span>{{ $t('parent.loading') }}</span>
       </div>
@@ -226,6 +226,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrDialog from '@/components/FikrDialog.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'

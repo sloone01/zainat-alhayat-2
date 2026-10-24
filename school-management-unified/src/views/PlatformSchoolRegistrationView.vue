@@ -3,12 +3,24 @@
     <div class="fk-page pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
       <FikrPageHeader
         :title="$t('platformSchools.detailsTitle')"
-        :subtitle="school?.name || $t('platformSchools.detailsSubtitle')"
-      />
+        :subtitle="schoolTitle || $t('platformSchools.detailsSubtitle')"
+      >
+        <template #leading>
+          <router-link
+            to="/platform/schools"
+            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+            :aria-label="$t('platformSchools.backToList')"
+          >
+            <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+        </template>
+      </FikrPageHeader>
 
       <div v-if="flashError" class="fk-alert fk-alert--error mb-4">{{ flashError }}</div>
 
-      <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+      <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
         <FikrLoader />
         <span class="text-sm">{{ $t('common.loading') }}</span>
       </div>
@@ -61,15 +73,6 @@
             <section class="fk-card rounded-lg">
               <header class="flex flex-wrap items-center justify-between gap-3 border-b border-fikr-hairline px-5 py-4 sm:px-6">
                 <div class="flex min-w-0 items-center gap-3">
-                  <router-link
-                    to="/platform/schools"
-                    class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary-200/80 bg-primary-100 text-primary-700 shadow-sm hover:border-primary-300 hover:bg-primary-200 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
-                    :aria-label="$t('platformSchools.backToList')"
-                  >
-                    <svg class="h-4 w-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </router-link>
                   <h2 class="fk-card__title truncate">{{ $t('platformSchools.sectionSchool') }}</h2>
                 </div>
                 <div class="flex shrink-0 flex-wrap items-center gap-2">
@@ -299,7 +302,7 @@
     <FikrDialog
       :show="approveDialogOpen"
       :title="$t('platformSchools.approveDialogTitle')"
-      :subtitle="$t('platformSchools.approveConfirm', { name: school?.name || '' })"
+      :subtitle="$t('platformSchools.approveConfirm', { name: schoolTitle || '' })"
       plain-footer
       @close="approveDialogOpen = false"
     >
@@ -317,7 +320,7 @@
     <FikrDialog
       :show="rejectDialogOpen"
       :title="$t('platformSchools.rejectDialogTitle')"
-      :subtitle="$t('platformSchools.rejectConfirm', { name: school?.name || '' })"
+      :subtitle="$t('platformSchools.rejectConfirm', { name: schoolTitle || '' })"
       plain-footer
       @close="rejectDialogOpen = false"
     >
@@ -358,16 +361,19 @@ import { useClaims } from '@/composables/useClaims'
 import { useFeedback } from '@/composables/useFeedback'
 import { resolveSelectedPlatformSchoolId } from '@/composables/usePlatformSchoolSelection'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import {
   platformSchoolService,
   type RegisteredSchool,
 } from '@/services/platform-school.service'
+import { schoolDisplayName } from '@/utils/school-display-name'
 
 const { locale, t, te } = useI18n()
 const { hasClaim } = useClaims()
 const feedback = useFeedback()
 
 const isRTL = computed(() => locale.value === 'ar')
+const schoolTitle = computed(() => schoolDisplayName(school.value, locale.value))
 const canManage = computed(() => hasClaim('platform_schools', 'manage'))
 
 const loading = ref(true)

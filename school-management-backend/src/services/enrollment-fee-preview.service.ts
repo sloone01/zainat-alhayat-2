@@ -7,7 +7,7 @@ import { SchoolPaymentLevel } from '../entities/school-payment-level.entity';
 import { GradeFeeLink } from '../entities/grade-fee-link.entity';
 import { LevelPaymentProfile } from '../entities/level-payment-profile.entity';
 import { FeePackage } from '../entities/fee-package.entity';
-import { moneyStr, num, splitRoundedUpToFive } from '../utils/fees-v2.util';
+import { moneyStr, num, planEntryAmounts } from '../utils/fees-v2.util';
 
 export type PublicEnrollmentPlanRow = {
   id: string;
@@ -72,7 +72,7 @@ export class EnrollmentFeePreviewService {
   async listPlans(schoolId: string): Promise<PublicEnrollmentPlanRow[]> {
     await this.assertSchool(schoolId);
     const plans = await this.planRepo.find({
-      where: { school_id: schoolId, is_active: true },
+      where: { school_id: schoolId, is_active: true, is_preset: false },
       relations: ['entries'],
       order: { name: 'ASC' },
     });
@@ -209,7 +209,9 @@ export class EnrollmentFeePreviewService {
     }
 
     let advanceDue = 0;
-    if (timingGross > 0) {
+    if (plan?.advance_amount != null) {
+      advanceDue = Math.min(Math.max(0, num(plan.advance_amount)), listTotal);
+    } else if (timingGross > 0) {
       advanceDue = listTotal * (upfrontGross / timingGross);
     }
     if (!plan) {
@@ -230,8 +232,7 @@ export class EnrollmentFeePreviewService {
     if (plan && installmentDue > 0) {
       const entries = [...(plan.entries ?? [])].sort((a, b) => a.sequence - b.sequence);
       if (entries.length) {
-        const weights = entries.map((e) => num(e.weight) || 1);
-        const amounts = splitRoundedUpToFive(installmentDue, weights);
+        const amounts = planEntryAmounts(installmentDue, entries);
         for (let i = 0; i < entries.length; i++) {
           const amt = amounts[i] ?? 0;
           if (amt <= 0) continue;

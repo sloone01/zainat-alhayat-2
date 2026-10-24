@@ -237,7 +237,6 @@
               class="fk-field"
             >
           </div>
-          <p v-if="formError" class="text-sm text-red-700">{{ formError }}</p>
         </div>
       </form>
       <template #footer>
@@ -269,6 +268,7 @@ import FikrPagination from '@/components/FikrPagination.vue'
 import { useServerPagination } from '@/composables/useServerPagination'
 import { authService } from '@/services'
 import paymentConfigService, { type CatalogListParams, type PaymentCatalogRow } from '@/services/payment-config.service'
+import { paymentCatalogErrorMessage } from '@/utils/payment-catalog-errors'
 import FikrLoader from '@/components/FikrLoader.vue'
 import { routePageLoading } from '@/router/route-loading'
 
@@ -318,7 +318,7 @@ const {
     }),
     debounceKeys: ['q'],
     onError: (err) => {
-      flashError.value = (err as { message?: string })?.message || t('paymentSettings.loadError')
+      flashError.value = paymentCatalogErrorMessage(err, t, 'paymentSettings.loadError')
     },
   },
 )
@@ -394,9 +394,9 @@ async function saveForm() {
     await reload()
     showForm.value = false
     resetForm()
-    feedback.success(t('common.savedSuccessfully'))
+    feedback.saved(t('common.savedSuccessfully'))
   } catch (e: unknown) {
-    formError.value = (e as { message?: string })?.message || t('paymentSettings.saveError')
+    feedback.error(paymentCatalogErrorMessage(e, t))
   } finally {
     saving.value = false
   }

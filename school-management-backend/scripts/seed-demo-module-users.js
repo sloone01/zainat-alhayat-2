@@ -720,21 +720,43 @@ async function ensureMembership(client, userId, groupId) {
   );
 }
 
+async function firstActiveLevelId(client, schoolId) {
+  const { rows } = await client.query(
+    `SELECT id FROM school_payment_levels
+     WHERE school_id = $1 AND is_active = true
+     ORDER BY sort_order ASC, created_at ASC
+     LIMIT 1`,
+    [schoolId],
+  );
+  return rows[0]?.id ?? null;
+}
+
 async function ensureClassGroup(client, schoolId, name) {
-  if (schoolId === '(pending)') return { id: '(pending)', name };
+  if (schoolId === '(pending)') return { id: '(pending)', name, level_id: null };
+  const levelId = await firstActiveLevelId(client, schoolId);
+  if (!levelId) log(`WARN: no active grade level for school ${schoolId} — demo fees will not price`);
   const existing = (
     await client.query(
-      `SELECT id, name FROM groups WHERE school_id = $1 AND name = $2 LIMIT 1`,
+      `SELECT id, name, level_id FROM groups WHERE school_id = $1 AND name = $2 LIMIT 1`,
       [schoolId, name],
     )
   ).rows[0];
-  if (existing) return existing;
-  if (!APPLY) return { id: '(pending)', name };
+  if (existing) {
+    if (APPLY && !existing.level_id && levelId) {
+      await client.query(`UPDATE groups SET level_id = $2, updated_at = NOW() WHERE id = $1`, [
+        existing.id,
+        levelId,
+      ]);
+      existing.level_id = levelId;
+    }
+    return existing;
+  }
+  if (!APPLY) return { id: '(pending)', name, level_id: levelId };
   const { rows } = await client.query(
-    `INSERT INTO groups (name, capacity, is_active, status, "studentCount", "teacherCount", school_id, created_at, updated_at)
-     VALUES ($1, 25, true, 'active', 0, 0, $2, NOW(), NOW())
-     RETURNING id, name`,
-    [name, schoolId],
+    `INSERT INTO groups (name, capacity, is_active, status, "studentCount", "teacherCount", school_id, level_id, created_at, updated_at)
+     VALUES ($1, 25, true, 'active', 0, 0, $2, $3, NOW(), NOW())
+     RETURNING id, name, level_id`,
+    [name, schoolId, levelId],
   );
   return rows[0];
 }

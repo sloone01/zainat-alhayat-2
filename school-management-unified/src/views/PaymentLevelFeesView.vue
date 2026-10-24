@@ -16,7 +16,7 @@
             <h2 class="fk-card__title truncate">{{ $t('paymentSettings.levelsGridTitle') }}</h2>
             <p class="fk-card__meta">{{ $t('paymentSettings.levelsCount', { count: total }) }}</p>
           </div>
-          <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+          <div class="flex shrink-0 flex-nowrap items-center justify-end gap-2">
               <FikrToolbarSearch
                 v-model="searchQuery"
                 id="levels-search"
@@ -33,7 +33,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -242,6 +242,7 @@ import { useServerPagination } from '@/composables/useServerPagination'
 import { authService } from '@/services'
 import paymentConfigService, { type SchoolPaymentLevelSummary } from '@/services/payment-config.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const router = useRouter()

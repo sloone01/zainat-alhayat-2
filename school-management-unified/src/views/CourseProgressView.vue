@@ -21,7 +21,7 @@
         </template>
       </FikrPageHeader>
 
-      <div v-if="loading" class="flex justify-center py-16">
+      <div v-if="loading && !routePageLoading" class="flex justify-center py-16">
         <FikrLoader />
       </div>
 
@@ -408,6 +408,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import FikrPageHeader from '@/components/FikrPageHeader.vue'
 import FikrFilterButton from '@/components/FikrFilterButton.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import MilestoneStatusButton from '@/components/MilestoneStatusButton.vue'
 import StudentNotesModal from '@/components/StudentNotesModal.vue'
 import { progressService } from '@/services/progress.service'

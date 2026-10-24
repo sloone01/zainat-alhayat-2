@@ -91,13 +91,12 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
 
           <template v-else-if="courseTotal > 0">
-            <template>
             <div v-if="isCards" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <KanbanCard
                 v-for="course in paginatedCourses"
@@ -279,7 +278,6 @@
               :show="courseTotal > 0"
               @update:page="goToPage"
             />
-            </template>
           </template>
 
           <div v-else class="flex min-h-[16rem] flex-col items-center justify-center text-center">
@@ -390,6 +388,7 @@ import courseService, { type Course } from '@/services/course.service'
 import { courseDisplayStatus, courseLifecycleStatus } from '@/utils/course-status'
 import { exportCourseList, type CourseExportKey } from '@/utils/course-list-export'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const route = useRoute()

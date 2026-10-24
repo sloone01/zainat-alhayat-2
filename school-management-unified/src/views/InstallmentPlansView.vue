@@ -33,7 +33,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-gray-500">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -261,6 +261,7 @@ import {
   type InstallmentPlanUsageItem,
 } from '@/services/fees-v2.service'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { locale, t } = useI18n()
 const feedback = useFeedback()
@@ -290,7 +291,7 @@ const {
   goToPage,
   reload,
 } = useServerPagination<InstallmentPlan, { q: string; status: string }>(
-  (params) => feesV2Service.listInstallmentPlansPage(params),
+  (params) => feesV2Service.listInstallmentPlansPage({ ...params, kind: 'plan' }),
   {
     filters: () => ({ q: searchQuery.value, status: statusFilter.value }),
     debounceKeys: ['q'],
@@ -364,11 +365,13 @@ async function onSetActive(plan: InstallmentPlan, is_active: boolean) {
         name: plan.name,
         description: plan.description || undefined,
         is_active,
+        advance_amount: plan.advance_amount != null ? Number(plan.advance_amount) : null,
         entries: (plan.entries || []).map((e) => ({
           sequence: e.sequence,
           month_number: e.month_number,
           label: e.label,
           weight: typeof e.weight === 'string' ? Number(e.weight) : e.weight,
+          amount: e.amount != null ? Number(e.amount) : null,
         })),
       },
       plan.id,

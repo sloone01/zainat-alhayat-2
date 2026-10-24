@@ -63,13 +63,6 @@
               </svg>
             </div>
             <p class="mt-4 text-sm text-gray-500">{{ $t('feesV2.noChargesYet') }}</p>
-            <button
-              type="button"
-              @click="addLine"
-              class="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-primary-200 bg-primary-50 px-4 py-2 text-sm font-medium text-primary-800 hover:bg-primary-100"
-            >
-              + {{ $t('feesV2.addCharge') }}
-            </button>
           </div>
 
           <!-- Mobile: stacked cards -->
@@ -250,9 +243,6 @@
           </div>
           <div v-else-if="!discountLines.length" class="px-6 py-10 text-center">
             <p class="text-sm text-gray-500">{{ $t('paymentSettings.noDiscountTypesAdded') }}</p>
-            <button type="button" class="mt-4 fk-btn fk-btn--pearl fk-btn--sm" @click="addDiscountLine">
-              {{ $t('paymentSettings.addDiscountLine') }}
-            </button>
           </div>
           <div v-else class="divide-y divide-gray-100">
             <div
@@ -306,9 +296,6 @@
           </div>
           <div v-else-if="!extraLines.length" class="px-6 py-10 text-center">
             <p class="text-sm text-gray-500">{{ $t('paymentSettings.noExtraTypesAdded') }}</p>
-            <button type="button" class="mt-4 fk-btn fk-btn--pearl fk-btn--sm" @click="addExtraLine">
-              {{ $t('paymentSettings.addExtraLine') }}
-            </button>
           </div>
           <div v-else class="divide-y divide-gray-100">
             <div
@@ -362,9 +349,6 @@
           </div>
           <div v-else-if="!inclusionLines.length" class="px-6 py-10 text-center">
             <p class="text-sm text-gray-500">{{ $t('paymentSettings.noInclusionTypesAdded') }}</p>
-            <button type="button" class="mt-4 fk-btn fk-btn--pearl fk-btn--sm" @click="addInclusionLine">
-              {{ $t('paymentSettings.addInclusionLine') }}
-            </button>
           </div>
           <div v-else class="divide-y divide-gray-100">
             <div

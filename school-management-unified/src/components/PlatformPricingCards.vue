@@ -16,11 +16,15 @@
       <p class="ppc-price__name">{{ plan.name }}</p>
       <template v-if="plan.perStudentYearly != null">
         <p class="ppc-price__amount">
-          <bdi dir="ltr">{{ formatOmr(plan.perStudentYearly, 3) }}</bdi>
+          <bdi dir="ltr">{{ formatOmr(plan.perStudentYearly, 2) }}</bdi>
           <span>{{ $t('landingPricing.perStudentYear') }}</span>
         </p>
-        <p v-if="plan.perStudentMonthly != null" class="ppc-price__from">
-          {{ $t('landingPricing.orPerStudentMonth', { amount: formatOmr(plan.perStudentMonthly, 3) }) }}
+        <p class="ppc-price__from">{{ $t('landingPricing.paidYearly') }}</p>
+        <p v-if="plan.perStudentYearlyBySemester != null" class="ppc-price__from">
+          {{ $t('landingPricing.perStudentYearBySemester', { amount: formatOmr(plan.perStudentYearlyBySemester, 2) }) }}
+        </p>
+        <p v-if="plan.perStudentYearlyByMonth != null" class="ppc-price__from">
+          {{ $t('landingPricing.perStudentYearByMonth', { amount: formatOmr(plan.perStudentYearlyByMonth, 2) }) }}
         </p>
         <p v-if="plan.yearly != null" class="ppc-price__desc">
           {{ $t('landingPricing.minimumPerYear', { amount: formatOmr(plan.yearly) }) }}
@@ -40,7 +44,7 @@
       <p v-if="plan.description" class="ppc-price__desc">{{ plan.description }}</p>
       <p v-if="plan.bandLabel" class="ppc-price__desc">{{ plan.bandLabel }}</p>
       <p v-if="plan.addsOnBaseline" class="ppc-price__adds">
-        {{ $t('landingPricing.everythingInEntryPlus') }}
+        {{ $t('landingPricing.everythingInPlanPlus', { plan: plan.previousName }) }}
       </p>
       <ul v-if="plan.bullets.length" class="ppc-list">
         <li v-for="bullet in plan.bullets" :key="bullet">{{ bullet }}</li>

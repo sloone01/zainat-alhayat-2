@@ -35,7 +35,7 @@
         </header>
 
         <div class="p-6">
-          <div v-if="loading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
+          <div v-if="loading && !routePageLoading" class="flex flex-col items-center justify-center gap-3 py-16 text-fikr-ink-muted">
             <FikrLoader />
             <span class="text-sm">{{ $t('common.loading') }}</span>
           </div>
@@ -603,6 +603,7 @@ import notificationTemplateService from '@/services/notification-template.servic
 import { createParentApprovalLetterBundle } from '@/utils/activity-parent-approval-letter-defaults'
 import { ACTIVITY_TYPE_VALUES, translateActivityType as translateActivityTypeLabel } from '@/utils/activity-types'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import { fetchAuthenticatedMediaObjectUrl } from '@/utils/authenticated-media'
 
 const { locale, t } = useI18n()

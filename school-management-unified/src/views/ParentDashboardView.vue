@@ -1,7 +1,7 @@
 <template>
   <DashboardLayout>
     <div class="fk-page fk-parent-home pb-10" :dir="isRTL ? 'rtl' : 'ltr'">
-      <div v-if="loading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
+      <div v-if="loading && !routePageLoading" class="flex items-center justify-center gap-3 py-12 text-fikr-ink-muted">
         <FikrLoader />
         <span>{{ $t('parent.loading') }}</span>
       </div>
@@ -500,6 +500,7 @@ import { formatParentGroupNames } from '@/utils/parent-group-names'
 import { canInviteeJoinMeeting } from '@/utils/meeting-host'
 import LocationPickerDialog from '@/components/LocationPickerDialog.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 
 const { t, locale } = useI18n()
 const feedback = useFeedback()

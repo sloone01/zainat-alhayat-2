@@ -295,7 +295,7 @@
       </div>
     </section>
     <div
-      v-if="loginNavigating"
+      v-if="loginNavigating && !routePageLoading"
       class="fixed inset-0 z-[60] flex items-center justify-center bg-white/75"
     >
       <FikrLoader />
@@ -309,6 +309,7 @@ import { useRoute, useRouter, isNavigationFailure } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import FikrLoader from '@/components/FikrLoader.vue'
+import { routePageLoading } from '@/router/route-loading'
 import childrenPlayingImage from '@/assets/children-playing.jpeg'
 import schoolAppImage from '@/assets/school-app.jpg'
 import {

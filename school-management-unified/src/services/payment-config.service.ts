@@ -1,6 +1,5 @@
 import { BaseApiService } from './api'
 import type { PageResult } from '@/composables/useServerPagination'
-import type { PageResult } from '@/composables/useServerPagination'
 
 export interface SchoolPaymentLevel {
   id: string
